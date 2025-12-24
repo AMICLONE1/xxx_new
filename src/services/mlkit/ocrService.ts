@@ -1,4 +1,4 @@
-import { TextRecognition } from '@react-native-ml-kit/text-recognition';
+import TextRecognition from '@react-native-ml-kit/text-recognition';
 
 export interface OCRResult {
   text: string;
@@ -25,7 +25,7 @@ class OCRService {
       
       return {
         text: result.text,
-        blocks: result.blocks.map((block) => ({
+        blocks: result.blocks.map((block: any) => ({
           text: block.text,
           boundingBox: {
             x: block.frame.x,

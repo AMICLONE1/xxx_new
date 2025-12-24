@@ -38,8 +38,8 @@ export default function HomeScreen({ navigation }: Props) {
       const todayData = energyData.filter(
         (data) => data.timestamp >= today && data.generation > 0
       );
-      const yield = todayData.reduce((sum, data) => sum + data.generation, 0);
-      setDailyYield(yield);
+      const totalYield = todayData.reduce((sum, data) => sum + data.generation, 0);
+      setDailyYield(totalYield);
     }
   }, [energyData]);
 

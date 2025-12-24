@@ -1,9 +1,9 @@
 // User Types
 export interface User {
   id: string;
-  phoneNumber: string;
+  email: string; // Primary identifier for authentication
+  phoneNumber?: string; // Optional, can be added later
   name?: string;
-  email?: string;
   kycStatus: KYCStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -140,7 +140,7 @@ export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
   Login: undefined;
-  OTP: { phoneNumber: string };
+  OTP: { email: string };
   Onboarding: undefined;
   KYC: undefined;
   MeterRegistration: { isHardwareRequest?: boolean } | undefined;
@@ -158,7 +158,6 @@ export type RootStackParamList = {
   EnergyChart: undefined;
   TradingBot: undefined;
   TopUp: undefined;
-  MeterStatus: undefined;
 };
 
 export type MainTabParamList = {

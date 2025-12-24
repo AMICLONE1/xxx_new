@@ -31,6 +31,20 @@ interface Props {
 }
 
 export default function OrderScreen({ navigation, route }: Props) {
+  if (!route.params) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Error</Text>
+          <Text>Missing order parameters</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const { sellerId, sellerName, pricePerUnit, availableEnergy } = route.params;
   const { addOrder } = useTradingStore();
   const { wallet } = useWalletStore();

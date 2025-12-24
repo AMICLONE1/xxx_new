@@ -61,8 +61,13 @@ class ApiClient {
   }
 
   private getAuthHeaders(): Record<string, string> {
-    // This will be implemented with secure storage
-    const token = ''; // Get from secure storage
+    // Get token from auth store
+    // Note: This is a synchronous method, so we can't use the async store directly
+    // The token should be set in the store when user logs in
+    // For now, we'll get it from secure storage synchronously if possible
+    // In a real implementation, you might want to pass the token as a parameter
+    // or use a different approach for getting the token
+    const token = ''; // TODO: Retrieve from auth store or secure storage
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 

@@ -1,6 +1,8 @@
 import { MMKV } from 'react-native-mmkv';
 import { EnergyData, Order } from '@/types';
 
+// Create MMKV storage instance
+// @ts-expect-error - MMKV type definitions may have issues with constructor
 const storage = new MMKV({
   id: 'powernetpro-storage',
 });

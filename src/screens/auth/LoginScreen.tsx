@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
-import { validatePhoneNumber, formatPhoneNumber } from '@/utils/helpers';
+import { validateEmail } from '@/utils/helpers';
+import { authService } from '@/services/api/authService';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -20,32 +21,39 @@ interface Props {
 }
 
 export default function LoginScreen({ navigation }: Props) {
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-    const cleaned = phoneNumber.replace(/\D/g, '');
-    const fullNumber = cleaned.startsWith('91') ? `+${cleaned}` : `+91${cleaned}`;
+    const trimmedEmail = email.trim().toLowerCase();
 
-    if (!validatePhoneNumber(fullNumber)) {
-      Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number');
+    if (!validateEmail(trimmedEmail)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
 
     setIsLoading(true);
     try {
-      // TODO: Uncomment when backend is ready
-      // const response = await authService.sendOTP({ phoneNumber: fullNumber });
-      // if (response.success) {
-      //   navigation.navigate('OTP', { phoneNumber: fullNumber });
-      // } else {
-      //   throw new Error(response.error || 'Failed to send OTP');
-      // }
-      
-      // Temporary: Navigate directly for development
-      navigation.navigate('OTP', { phoneNumber: fullNumber });
+      const response = await authService.sendOTP({ email: trimmedEmail });
+      if (response.success) {
+        Alert.alert(
+          'OTP Sent',
+          'Please check your email for the 6-digit verification code. If you received a confirmation email instead, please check Supabase settings (see FIX_OTP_EMAIL_ISSUE.md)',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('OTP', { email: trimmedEmail }),
+            },
+          ]
+        );
+      } else {
+        throw new Error(response.error || 'Failed to send OTP');
+      }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send OTP');
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to send OTP. Please check your Supabase email configuration.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -61,25 +69,23 @@ export default function LoginScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>Democratizing Energy</Text>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Phone Number</Text>
-          <View style={styles.phoneInputContainer}>
-            <Text style={styles.countryCode}>+91</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your phone number"
-              keyboardType="phone-pad"
-              maxLength={10}
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              autoFocus
-            />
-          </View>
+          <Text style={styles.label}>Email Address</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email address"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={email}
+            onChangeText={setEmail}
+            autoFocus
+          />
         </View>
 
         <TouchableOpacity
           style={[styles.button, isLoading && styles.buttonDisabled]}
           onPress={handleLogin}
-          disabled={isLoading || phoneNumber.length !== 10}
+          disabled={isLoading || !email.trim()}
         >
           <Text style={styles.buttonText}>
             {isLoading ? 'Sending OTP...' : 'Continue'}
@@ -126,23 +132,13 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 8,
   },
-  phoneInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  input: {
     borderWidth: 1,
     borderColor: '#d1d5db',
     borderRadius: 8,
     paddingHorizontal: 12,
-  },
-  countryCode: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
     paddingVertical: 12,
+    fontSize: 16,
     color: '#111827',
   },
   button: {

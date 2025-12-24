@@ -25,7 +25,13 @@ interface Props {
 }
 
 export default function OTPScreen({ navigation, route }: Props) {
-  const { phoneNumber } = route.params;
+  if (!route.params?.email) {
+    // Redirect to login if email is missing
+    navigation.replace('Login');
+    return null;
+  }
+
+  const { email } = route.params;
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -83,34 +89,17 @@ export default function OTPScreen({ navigation, route }: Props) {
 
     setIsLoading(true);
     try {
-      // TODO: Uncomment when backend is ready
-      // const response = await authService.verifyOTP({
-      //   phoneNumber,
-      //   otp: otpString,
-      // });
-      // if (response.success && response.data) {
-      //   await setToken(response.data.token);
-      //   setUser(response.data.user);
-      //   navigation.replace('Onboarding');
-      // } else {
-      //   throw new Error(response.error || 'Invalid OTP');
-      // }
-
-      // Temporary: Mock implementation for development
-      const mockUser = {
-        id: '1',
-        phoneNumber,
-        kycStatus: 'pending' as const,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      const mockToken = 'mock_token';
-
-      await setToken(mockToken);
-      setUser(mockUser);
-
-      // Navigate to onboarding or home based on user state
-      navigation.replace('Onboarding');
+      const response = await authService.verifyOTP({
+        email,
+        otp: otpString,
+      });
+      if (response.success && response.data) {
+        await setToken(response.data.token);
+        setUser(response.data.user);
+        navigation.replace('Onboarding');
+      } else {
+        throw new Error(response.error || 'Invalid OTP');
+      }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Invalid OTP. Please try again.');
       setOtp(['', '', '', '', '', '']);
@@ -124,18 +113,13 @@ export default function OTPScreen({ navigation, route }: Props) {
     if (resendCooldown > 0) return;
 
     try {
-      // TODO: Uncomment when backend is ready
-      // const response = await authService.sendOTP({ phoneNumber });
-      // if (response.success) {
-      //   setResendCooldown(OTP_RESEND_COOLDOWN);
-      //   Alert.alert('Success', 'OTP has been resent to your phone number');
-      // } else {
-      //   throw new Error(response.error || 'Failed to resend OTP');
-      // }
-      
-      // Temporary: Mock implementation
-      setResendCooldown(OTP_RESEND_COOLDOWN);
-      Alert.alert('Success', 'OTP has been resent to your phone number');
+      const response = await authService.sendOTP({ email });
+      if (response.success) {
+        setResendCooldown(OTP_RESEND_COOLDOWN);
+        Alert.alert('Success', 'OTP has been resent to your email');
+      } else {
+        throw new Error(response.error || 'Failed to resend OTP');
+      }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to resend OTP');
     }
@@ -149,14 +133,16 @@ export default function OTPScreen({ navigation, route }: Props) {
       <View style={styles.content}>
         <Text style={styles.title}>Enter OTP</Text>
         <Text style={styles.subtitle}>
-          We've sent a 6-digit code to {phoneNumber}
+          We've sent a 6-digit code to {email}
         </Text>
 
         <View style={styles.otpContainer}>
           {otp.map((digit, index) => (
             <TextInput
               key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
+              ref={(ref) => {
+                inputRefs.current[index] = ref;
+              }}
               style={styles.otpInput}
               value={digit}
               onChangeText={(value) => handleOtpChange(index, value)}

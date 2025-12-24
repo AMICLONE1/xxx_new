@@ -1,37 +1,38 @@
+// Re-export Supabase auth service as the main auth service
+// This allows existing code to continue working while using Supabase under the hood
+export {
+  supabaseAuthService as authService,
+  type SendOTPRequest,
+  type VerifyOTPRequest,
+  type AuthResponse,
+} from '../supabase/authService';
+
+// Legacy API client methods (can be removed if not needed)
 import { apiClient } from './client';
-import { User, ApiResponse } from '@/types';
+import { ApiResponse } from '@/types';
 
-export interface SendOTPRequest {
-  phoneNumber: string;
-}
-
-export interface VerifyOTPRequest {
-  phoneNumber: string;
-  otp: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
-}
-
-class AuthService {
-  async sendOTP(data: SendOTPRequest): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post('/auth/send-otp', data);
+class LegacyAuthService {
+  // These methods now use Supabase but maintain API compatibility
+  async sendOTP(data: { email: string }): Promise<ApiResponse<{ message: string }>> {
+    // Fallback to API if Supabase is not configured
+    try {
+      const { supabaseAuthService } = await import('../supabase/authService');
+      return supabaseAuthService.sendOTP(data);
+    } catch {
+      return apiClient.post('/auth/send-otp', data);
+    }
   }
 
-  async verifyOTP(data: VerifyOTPRequest): Promise<ApiResponse<AuthResponse>> {
-    return apiClient.post('/auth/verify-otp', data);
-  }
-
-  async refreshToken(token: string): Promise<ApiResponse<{ token: string }>> {
-    return apiClient.post('/auth/refresh', { token });
-  }
-
-  async logout(): Promise<ApiResponse<void>> {
-    return apiClient.post('/auth/logout');
+  async verifyOTP(data: { email: string; otp: string }): Promise<ApiResponse<any>> {
+    try {
+      const { supabaseAuthService } = await import('../supabase/authService');
+      return supabaseAuthService.verifyOTP(data);
+    } catch {
+      return apiClient.post('/auth/verify-otp', data);
+    }
   }
 }
 
-export const authService = new AuthService();
+// Export both for backward compatibility
+export const legacyAuthService = new LegacyAuthService();
 

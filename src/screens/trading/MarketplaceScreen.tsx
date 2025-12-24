@@ -36,7 +36,8 @@ interface Filters {
 }
 
 export default function MarketplaceScreen({ navigation }: Props) {
-  const { isOnline } = useNetworkStatus();
+  const { isConnected } = useNetworkStatus();
+  const isOnline = isConnected;
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -64,13 +65,18 @@ export default function MarketplaceScreen({ navigation }: Props) {
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
-      setUserLocation({
-        lat: location.coords.latitude,
-        lng: location.coords.longitude,
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
       });
-    } catch (error) {
+      if (location?.coords) {
+        setUserLocation({
+          lat: location.coords.latitude,
+          lng: location.coords.longitude,
+        });
+      }
+    } catch (error: any) {
       console.error('Error getting location:', error);
+      Alert.alert('Error', 'Failed to get location. Please try again.');
     }
   };
 
@@ -115,8 +121,8 @@ export default function MarketplaceScreen({ navigation }: Props) {
           // Transform Beckn response to Seller format
           if (becknResponse?.message?.catalog?.['bpp/providers']) {
             results = becknResponse.message.catalog['bpp/providers'].flatMap((provider) =>
-              provider.items.map((item) => {
-                const location = provider.locations[0];
+              (provider.items || []).map((item) => {
+                const location = provider.locations?.[0];
                 const [lat, lng] = location?.gps?.split(',')?.map(Number) || [0, 0];
                 const distance = userLocation
                   ? calculateDistance(userLocation.lat, userLocation.lng, lat, lng)
@@ -124,9 +130,9 @@ export default function MarketplaceScreen({ navigation }: Props) {
 
                 return {
                   id: `${provider.id}_${item.id}`,
-                  name: provider.descriptor.name || 'Energy Seller',
+                  name: provider.descriptor?.name || 'Energy Seller',
                   location: { lat, lng },
-                  pricePerUnit: parseFloat(item.descriptor.price?.value || '0'),
+                  pricePerUnit: parseFloat(item.descriptor?.price?.value || '0'),
                   availableEnergy: 100, // Default, would come from actual data
                   rating: 4.5, // Default
                   greenEnergy: true,

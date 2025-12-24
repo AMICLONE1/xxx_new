@@ -8,8 +8,8 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Slider,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';

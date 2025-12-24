@@ -28,9 +28,9 @@ export default function MeterStatusScreen() {
         id: 'requested',
         label: 'Request Received',
         status:
-          currentMeter.verificationStatus === 'requested' ||
           currentMeter.verificationStatus === 'pending' ||
-          currentMeter.verificationStatus === 'verified'
+          currentMeter.verificationStatus === 'verified' ||
+          currentMeter.verificationStatus === 'rejected'
             ? 'completed'
             : currentMeter.verificationStatus === 'requested'
             ? 'current'
@@ -51,9 +51,10 @@ export default function MeterStatusScreen() {
         label: 'Meter Verified',
         status:
           currentMeter.verificationStatus === 'verified'
-            ? 'current'
-            : currentMeter.verificationStatus === 'verified'
             ? 'completed'
+            : currentMeter.verificationStatus === 'pending' ||
+              currentMeter.verificationStatus === 'requested'
+            ? 'current'
             : 'pending',
       },
     ];

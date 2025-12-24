@@ -56,7 +56,9 @@
     "extra": {
       "apiBaseUrl": "https://api.powernetpro.com",
       "becknGatewayUrl": "https://gateway.becknprotocol.io",
-      "becknDomain": "energy"
+      "becknDomain": "energy",
+       "supabaseUrl": "https://ncejoqiddhaxuetjhjrs.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jZWpvcWlkZGhheHVldGpoanJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0MjA3ODQsImV4cCI6MjA4MTk5Njc4NH0.w9tsVgdxzb52_n58XUJ8i76u6Rm0cY_Pw_Q-vEc9T7I"
     }
   }
 }

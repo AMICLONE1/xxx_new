@@ -37,7 +37,13 @@ export default function KYCScreen({ navigation }: Props) {
 
   const handleScanComplete = async (result: { text: string; extractedData: any }) => {
     setShowScanner(false);
-    setDocumentsScanned([...documentsScanned, selectedDocument!]);
+    
+    if (!selectedDocument) {
+      Alert.alert('Error', 'No document selected');
+      return;
+    }
+    
+    setDocumentsScanned([...documentsScanned, selectedDocument]);
     
     // If identity document scanned, show liveness check
     if (selectedDocument === 'aadhaar' || selectedDocument === 'pan') {
@@ -53,10 +59,15 @@ export default function KYCScreen({ navigation }: Props) {
       );
     } else {
       // TODO: Upload to backend and verify
+      if (!selectedDocument) {
+        Alert.alert('Error', 'No document selected');
+        return;
+      }
+      
       setKYCData({
         userId: 'current_user_id',
-        documentType: selectedDocument!,
-        documentNumber: result.extractedData.consumerNumber,
+        documentType: selectedDocument,
+        documentNumber: result.extractedData?.consumerNumber,
         status: 'pending',
         submittedAt: new Date(),
       });
@@ -64,24 +75,33 @@ export default function KYCScreen({ navigation }: Props) {
   };
 
   const handleLivenessComplete = async (imageUri: string) => {
-    setShowLivenessCheck(false);
-    
-    // TODO: Upload liveness check image to backend
-    // For now, set status to pending
-    const scannedDoc = documentsScanned.find((doc) => doc === 'aadhaar' || doc === 'pan');
-    if (scannedDoc) {
-      setKYCData({
-        userId: 'current_user_id',
-        documentType: scannedDoc as 'aadhaar' | 'pan',
-        status: 'pending',
-        submittedAt: new Date(),
-      });
-    }
+    try {
+      setShowLivenessCheck(false);
+      
+      if (!imageUri) {
+        Alert.alert('Error', 'Failed to capture image. Please try again.');
+        return;
+      }
+      
+      // TODO: Upload liveness check image to backend
+      // For now, set status to pending
+      const scannedDoc = documentsScanned.find((doc) => doc === 'aadhaar' || doc === 'pan');
+      if (scannedDoc) {
+        setKYCData({
+          userId: 'current_user_id',
+          documentType: scannedDoc as 'aadhaar' | 'pan',
+          status: 'pending',
+          submittedAt: new Date(),
+        });
+      }
 
-    Alert.alert(
-      'Verification Submitted',
-      'Your identity verification has been submitted. You will be notified once verification is complete.'
-    );
+      Alert.alert(
+        'Verification Submitted',
+        'Your identity verification has been submitted. You will be notified once verification is complete.'
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to complete liveness check. Please try again.');
+    }
   };
 
   const getStatusColor = () => {

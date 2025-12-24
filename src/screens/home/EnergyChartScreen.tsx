@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+// Victory Native imports - may need adjustment based on actual package exports
+// @ts-ignore - victory-native type definitions may be incomplete
 import { VictoryChart, VictoryLine, VictoryAxis, VictoryArea } from 'victory-native';
 import { useMeterStore } from '@/store';
 import { EnergyData } from '@/types';
@@ -129,14 +131,14 @@ export default function EnergyChartScreen() {
                   tickLabels: { fill: '#6b7280', fontSize: 12 },
                   grid: { stroke: '#e5e7eb', strokeDasharray: '4,4' },
                 }}
-                tickFormat={(t) => `${t}kW`}
+                tickFormat={(t: number) => `${t}kW`}
               />
               <VictoryAxis
                 style={{
                   axis: { stroke: '#d1d5db' },
                   tickLabels: { fill: '#6b7280', fontSize: 12 },
                 }}
-                tickFormat={(t) => {
+                tickFormat={(t: number) => {
                   if (filteredData[t]) {
                     const date = filteredData[t].timestamp;
                     return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
@@ -185,19 +187,25 @@ export default function EnergyChartScreen() {
                   }}
                 />
                 <VictoryLine
-                  data={filteredData.map((d, i) => ({
-                    x: i,
-                    y: energyData.find((ed) => ed.timestamp === d.timestamp)?.generation || 0,
-                  }))}
+                  data={filteredData.map((d, i) => {
+                    const matchingData = energyData.find((ed) => ed.timestamp.getTime() === d.timestamp.getTime());
+                    return {
+                      x: i,
+                      y: matchingData?.generation || 0,
+                    };
+                  })}
                   style={{
                     data: { stroke: '#10b981', strokeWidth: 2 },
                   }}
                 />
                 <VictoryLine
-                  data={filteredData.map((d, i) => ({
-                    x: i,
-                    y: -(energyData.find((ed) => ed.timestamp === d.timestamp)?.consumption || 0),
-                  }))}
+                  data={filteredData.map((d, i) => {
+                    const matchingData = energyData.find((ed) => ed.timestamp.getTime() === d.timestamp.getTime());
+                    return {
+                      x: i,
+                      y: -(matchingData?.consumption || 0),
+                    };
+                  })}
                   style={{
                     data: { stroke: '#ef4444', strokeWidth: 2 },
                   }}

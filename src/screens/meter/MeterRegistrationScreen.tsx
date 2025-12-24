@@ -34,10 +34,6 @@ interface Props {
 export default function MeterRegistrationScreen({ navigation, route }: Props) {
   // Check if this is a hardware request flow
   const isHardwareRequest = route?.params?.isHardwareRequest || false;
-
-  if (isHardwareRequest || showHardwareRequest) {
-    return <HardwareRequestScreen navigation={navigation} />;
-  }
   const { setCurrentMeter } = useMeterStore();
   const [discomName, setDiscomName] = useState('');
   const [consumerNumber, setConsumerNumber] = useState('');
@@ -46,6 +42,10 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDiscomPicker, setShowDiscomPicker] = useState(false);
   const [showHardwareRequest, setShowHardwareRequest] = useState(false);
+
+  if (isHardwareRequest || showHardwareRequest) {
+    return <HardwareRequestScreen navigation={navigation} />;
+  }
 
   const handleBillUpload = async () => {
     try {

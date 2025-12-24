@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
@@ -15,7 +15,12 @@ export default function ProfileScreen({ navigation }: Props) {
   const { logout, user } = useAuthStore();
 
   const handleLogout = async () => {
-    await logout();
+    try {
+      await logout();
+      // Navigation will be handled by AppNavigator based on isAuthenticated state
+    } catch (error) {
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+    }
   };
 
   return (
@@ -29,8 +34,14 @@ export default function ProfileScreen({ navigation }: Props) {
 
           {user && (
             <View style={styles.userInfo}>
-              <Text style={styles.userLabel}>Phone Number</Text>
-              <Text style={styles.userValue}>{user.phoneNumber}</Text>
+              <Text style={styles.userLabel}>Email</Text>
+              <Text style={styles.userValue}>{user.email}</Text>
+              {user.phoneNumber && (
+                <>
+                  <Text style={styles.userLabel}>Phone Number</Text>
+                  <Text style={styles.userValue}>{user.phoneNumber}</Text>
+                </>
+              )}
             </View>
           )}
 

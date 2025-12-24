@@ -40,12 +40,16 @@ export default function WalletScreen({ navigation }: Props) {
     return (
       <View style={styles.transactionItem}>
         <View style={styles.transactionInfo}>
-          <Text style={styles.transactionType}>{item.type.replace('_', ' ')}</Text>
-          <Text style={styles.transactionTime}>{getTimeAgo(item.createdAt)}</Text>
+          <Text style={styles.transactionType}>
+            {item.type ? item.type.replace(/_/g, ' ') : 'Transaction'}
+          </Text>
+          <Text style={styles.transactionTime}>
+            {item.createdAt ? getTimeAgo(item.createdAt) : 'Unknown time'}
+          </Text>
         </View>
         <Text style={[styles.transactionAmount, { color: amountColor }]}>
           {amountPrefix}
-          {item.currency === 'INR' ? formatCurrency(item.amount) : formatEnergy(item.amount)}
+          {item.currency === 'INR' ? formatCurrency(item.amount || 0) : formatEnergy(item.amount || 0)}
         </Text>
       </View>
     );

@@ -43,6 +43,14 @@ export const validatePhoneNumber = (phone: string): boolean => {
 };
 
 /**
+ * Validate email address
+ */
+export const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim().toLowerCase());
+};
+
+/**
  * Calculate distance between two coordinates (Haversine formula)
  */
 export const calculateDistance = (
