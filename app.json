@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -54,7 +53,7 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "https://api.powernetpro.com",
+         "apiBaseUrl": "https://ncejoqiddhaxuetjhjrs.supabase.co/rest/v1",
       "becknGatewayUrl": "https://gateway.becknprotocol.io",
       "mapboxAccessToken": "pk.eyJ1IjoidXNlcjA1MTIiLCJhIjoiY21lZnE5YWtxMDg0YzJrcjZ1aWFuNDY0dSJ9.bM3DfPDdw5SJP32pj4S_NA",
       "becknDomain": "energy",
