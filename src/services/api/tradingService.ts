@@ -47,7 +47,23 @@ class TradingService {
     greenEnergyOnly?: boolean;
     minRating?: number;
   }): Promise<ApiResponse<any[]>> {
-    return apiClient.post('/trading/search', filters);
+    try {
+      return await apiClient.post('/trading/search', filters);
+    } catch (error: any) {
+      // Enhanced error logging
+      console.error('API search failed:', {
+        error: error.message || error,
+        code: error.code,
+        url: '/trading/search',
+        filters,
+      });
+      
+      // Return error response instead of throwing
+      return {
+        success: false,
+        error: error.message || 'Failed to search sellers. Backend API may be unavailable.',
+      };
+    }
   }
 }
 

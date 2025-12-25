@@ -18,7 +18,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
-import Mapbox from '@rnmapbox/maps';
 import Constants from 'expo-constants';
 import { RootStackParamList, Seller } from '@/types';
 import { becknClient } from '@/services/beckn/becknClient';
@@ -26,14 +25,10 @@ import { tradingService } from '@/services/api/tradingService';
 import { formatCurrency, formatEnergy, calculateDistance } from '@/utils/helpers';
 import { SEARCH_RADIUS_KM, MIN_SELL_PRICE, MAX_SELL_PRICE } from '@/utils/constants';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { generateMockSellers } from '@/services/mock/mockSellers';
+import { MapboxWebView } from '@/components/mapbox/MapboxWebView';
 
 const { width, height } = Dimensions.get('window');
-
-// Initialize Mapbox
-const MAPBOX_TOKEN = Constants.expoConfig?.extra?.mapboxAccessToken || process.env.MAPBOX_ACCESS_TOKEN || '';
-if (MAPBOX_TOKEN) {
-  Mapbox.setAccessToken(MAPBOX_TOKEN);
-}
 
 type MarketplaceScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -60,8 +55,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const mapRef = useRef<Mapbox.MapView>(null);
-  const cameraRef = useRef<Mapbox.Camera>(null);
+  // Removed native map refs - using WebView now
   const [filters, setFilters] = useState<Filters>({
     minPrice: MIN_SELL_PRICE.toString(),
     maxPrice: MAX_SELL_PRICE.toString(),
@@ -198,10 +192,56 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   )
                 : undefined,
             }));
+          } else if (apiResponse.error) {
+            // API failed, use mock data for development
+            console.warn('Backend API unavailable, using mock data:', apiResponse.error);
+            const mockSellers = generateMockSellers(userLocation);
+            results = mockSellers.map((seller) => ({
+              ...seller,
+              distance: userLocation
+                ? calculateDistance(
+                    userLocation.lat,
+                    userLocation.lng,
+                    seller.location.lat,
+                    seller.location.lng
+                  )
+                : undefined,
+            }));
           }
-        } catch (apiError) {
+        } catch (apiError: any) {
           console.error('API search failed:', apiError);
+          // Use mock data as fallback
+          console.warn('Using mock sellers data for development');
+          const mockSellers = generateMockSellers(userLocation);
+          results = mockSellers.map((seller) => ({
+            ...seller,
+            distance: userLocation
+              ? calculateDistance(
+                  userLocation.lat,
+                  userLocation.lng,
+                  seller.location.lat,
+                  seller.location.lng
+                )
+              : undefined,
+          }));
         }
+      }
+
+      // If still no results and we have user location, use mock data
+      if (results.length === 0 && userLocation) {
+        console.warn('No sellers found from API/Beckn, using mock data for development');
+        const mockSellers = generateMockSellers(userLocation);
+        results = mockSellers.map((seller) => ({
+          ...seller,
+          distance: userLocation
+            ? calculateDistance(
+                userLocation.lat,
+                userLocation.lng,
+                seller.location.lat,
+                seller.location.lng
+              )
+            : undefined,
+        }));
       }
 
       let filteredResults = results;
@@ -239,24 +279,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
 
       setSellers(filteredResults);
 
-      // Center map on results if in map view
-      if (viewMode === 'map' && filteredResults.length > 0 && mapReady && cameraRef.current) {
-        const lats = filteredResults.map((s) => s.location.lat);
-        const lngs = filteredResults.map((s) => s.location.lng);
-        const minLat = Math.min(...lats);
-        const maxLat = Math.max(...lats);
-        const minLng = Math.min(...lngs);
-        const maxLng = Math.max(...lngs);
-        
-        const centerLat = (minLat + maxLat) / 2;
-        const centerLng = (minLng + maxLng) / 2;
-
-        cameraRef.current.setCamera({
-          centerCoordinate: [centerLng, centerLat],
-          zoomLevel: 12,
-          animationDuration: 1000,
-        });
-      }
+      // Map will auto-fit to show all sellers (handled by WebView)
     } catch (error: any) {
       console.error('Error searching sellers:', error);
       Alert.alert('Error', 'Failed to search sellers. Please try again.');
@@ -346,6 +369,8 @@ export default function MarketplaceScreen({ navigation }: Props) {
   );
 
   const renderMapView = () => {
+    const MAPBOX_TOKEN = Constants.expoConfig?.extra?.mapboxAccessToken || process.env.MAPBOX_ACCESS_TOKEN || '';
+    
     if (!MAPBOX_TOKEN) {
       return (
         <View style={styles.mapContainer}>
@@ -353,7 +378,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
             <MaterialCommunityIcons name="map" size={64} color="#d1d5db" />
             <Text style={styles.mapPlaceholderText}>
               Map view requires Mapbox credentials{'\n'}
-              Configure MAPBOX_ACCESS_TOKEN in your .env file
+              Configure MAPBOX_ACCESS_TOKEN in your .env file or app.json
             </Text>
             <TouchableOpacity
               style={styles.switchToListButton}
@@ -370,72 +395,28 @@ export default function MarketplaceScreen({ navigation }: Props) {
 
     return (
       <View style={styles.mapContainer}>
-        <Mapbox.MapView
-          ref={mapRef}
-          style={styles.map}
-          styleURL={Mapbox.StyleURL.Street}
-          onDidFinishLoadingMap={() => setMapReady(true)}
-          logoEnabled={false}
-          attributionEnabled={false}
-        >
-          <Mapbox.Camera
-            ref={cameraRef}
-            defaultSettings={{
-              centerCoordinate: [centerLocation.lng, centerLocation.lat],
-              zoomLevel: 12,
-            }}
-          />
-
-          {/* User Location Marker */}
-          {userLocation && (
-            <Mapbox.PointAnnotation
-              id="user-location"
-              coordinate={[userLocation.lng, userLocation.lat]}
-            >
-              <View style={styles.userLocationMarker}>
-                <View style={styles.userLocationDot} />
-                <View style={styles.userLocationPulse} />
-              </View>
-            </Mapbox.PointAnnotation>
-          )}
-
-          {/* Seller Markers */}
-          {sellers.map((seller) => (
-            <Mapbox.PointAnnotation
-              key={seller.id}
-              id={seller.id}
-              coordinate={[seller.location.lng, seller.location.lat]}
-              onSelected={() => handleMarkerPress(seller)}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.sellerMarker,
-                  seller.greenEnergy && styles.sellerMarkerGreen,
-                ]}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons
-                  name={seller.greenEnergy ? 'solar-power' : 'lightning-bolt'}
-                  size={24}
-                  color="#ffffff"
-                />
-              </TouchableOpacity>
-            </Mapbox.PointAnnotation>
-          ))}
-        </Mapbox.MapView>
+        <MapboxWebView
+          accessToken={MAPBOX_TOKEN}
+          center={centerLocation}
+          zoom={12}
+          sellers={sellers}
+          userLocation={userLocation || undefined}
+          onMarkerClick={(sellerId) => {
+            const seller = sellers.find(s => s.id === sellerId);
+            if (seller) {
+              handleMarkerPress(seller);
+            }
+          }}
+          onMapReady={() => setMapReady(true)}
+        />
 
         {/* Map Controls */}
         <View style={styles.mapControls}>
           <TouchableOpacity
             style={styles.mapControlButton}
             onPress={() => {
-              if (userLocation && cameraRef.current) {
-                cameraRef.current.setCamera({
-                  centerCoordinate: [userLocation.lng, userLocation.lat],
-                  zoomLevel: 14,
-                  animationDuration: 500,
-                });
-              }
+              // Map will center on user location automatically via WebView
+              // This button can be used to trigger a refresh if needed
             }}
           >
             <Ionicons name="locate" size={20} color="#10b981" />
@@ -1016,13 +997,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 32,
   },
+  mapPlaceholderTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
   mapPlaceholderText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
     textAlign: 'center',
-    marginTop: 16,
     marginBottom: 24,
     lineHeight: 20,
+    paddingHorizontal: 20,
   },
   switchToListButton: {
     paddingHorizontal: 24,

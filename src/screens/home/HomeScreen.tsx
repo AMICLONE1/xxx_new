@@ -173,83 +173,6 @@ export default function HomeScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Energy Flow Visualization */}
-        <View style={styles.energyFlowContainer}>
-          <Text style={styles.energyFlowTitle}>Energy Flow</Text>
-          <View style={styles.energyFlowDiagram}>
-            {/* Solar Panel */}
-            <View style={styles.flowNode}>
-              <Animated.View style={[styles.flowIconContainer, { opacity: solarOpacity }]}>
-                <LinearGradient
-                  colors={['#fbbf24', '#f59e0b']}
-                  style={styles.flowIconGradient}
-                >
-                  <MaterialCommunityIcons name="solar-power" size={32} color="#ffffff" />
-                </LinearGradient>
-              </Animated.View>
-              <Text style={styles.flowLabel}>Solar</Text>
-              <Text style={styles.flowValue}>{formatEnergy(currentGeneration, 'kW')}</Text>
-            </View>
-
-            {/* Arrow 1 */}
-            <View style={styles.flowArrow}>
-              <Ionicons name="arrow-forward" size={24} color="#10b981" />
-            </View>
-
-            {/* House */}
-            <View style={styles.flowNode}>
-              <Animated.View style={[styles.flowIconContainer, { opacity: houseOpacity }]}>
-                <LinearGradient
-                  colors={['#3b82f6', '#2563eb']}
-                  style={styles.flowIconGradient}
-                >
-                  <Ionicons name="home" size={32} color="#ffffff" />
-                </LinearGradient>
-              </Animated.View>
-              <Text style={styles.flowLabel}>Home</Text>
-              <Text style={styles.flowValue}>Consuming</Text>
-            </View>
-
-            {/* Arrow 2 */}
-            <View style={styles.flowArrow}>
-              <Ionicons name="arrow-forward" size={24} color="#10b981" />
-            </View>
-
-            {/* Battery */}
-            <View style={styles.flowNode}>
-              <Animated.View style={[styles.flowIconContainer, { opacity: batteryOpacity }]}>
-                <LinearGradient
-                  colors={['#8b5cf6', '#7c3aed']}
-                  style={styles.flowIconGradient}
-                >
-                  <MaterialCommunityIcons name="battery-charging" size={32} color="#ffffff" />
-                </LinearGradient>
-              </Animated.View>
-              <Text style={styles.flowLabel}>Battery</Text>
-              <Text style={styles.flowValue}>Stored</Text>
-            </View>
-
-            {/* Arrow 3 */}
-            <View style={styles.flowArrow}>
-              <Ionicons name="arrow-forward" size={24} color="#10b981" />
-            </View>
-
-            {/* Grid/Neighbor */}
-            <View style={styles.flowNode}>
-              <Animated.View style={[styles.flowIconContainer, { opacity: gridOpacity }]}>
-                <LinearGradient
-                  colors={['#10b981', '#059669']}
-                  style={styles.flowIconGradient}
-                >
-                  <MaterialCommunityIcons name="transmission-tower" size={32} color="#ffffff" />
-                </LinearGradient>
-              </Animated.View>
-              <Text style={styles.flowLabel}>{isSelling ? 'Selling' : 'Grid'}</Text>
-              <Text style={styles.flowValue}>{isSelling ? 'Active' : 'Connected'}</Text>
-            </View>
-          </View>
-        </View>
-
         {/* Main Stats Grid */}
         <View style={styles.statsGrid}>
           {/* Daily Yield - Large Card */}
@@ -427,6 +350,77 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.chartButtonText}>View Detailed Charts</Text>
           <Ionicons name="chevron-forward" size={20} color="#6b7280" />
         </TouchableOpacity>
+
+        {/* Energy Flow Visualization - Compact Version at Bottom */}
+        <View style={styles.energyFlowContainerCompact}>
+          <View style={styles.energyFlowHeader}>
+            <MaterialCommunityIcons name="transit-connection-variant" size={20} color="#10b981" />
+            <Text style={styles.energyFlowTitleCompact}>Energy Flow</Text>
+          </View>
+          <View style={styles.energyFlowDiagramCompact}>
+            {/* Solar */}
+            <View style={styles.flowNodeCompact}>
+              <Animated.View style={[styles.flowIconContainerCompact, { opacity: solarOpacity }]}>
+                <LinearGradient
+                  colors={['#fbbf24', '#f59e0b']}
+                  style={styles.flowIconGradientCompact}
+                >
+                  <MaterialCommunityIcons name="solar-power" size={20} color="#ffffff" />
+                </LinearGradient>
+              </Animated.View>
+              <Text style={styles.flowLabelCompact}>Solar</Text>
+              <Text style={styles.flowValueCompact}>{formatEnergy(currentGeneration, 'kW')}</Text>
+            </View>
+
+            <Ionicons name="arrow-forward" size={16} color="#10b981" style={styles.flowArrowCompact} />
+
+            {/* Home */}
+            <View style={styles.flowNodeCompact}>
+              <Animated.View style={[styles.flowIconContainerCompact, { opacity: houseOpacity }]}>
+                <LinearGradient
+                  colors={['#3b82f6', '#2563eb']}
+                  style={styles.flowIconGradientCompact}
+                >
+                  <Ionicons name="home" size={20} color="#ffffff" />
+                </LinearGradient>
+              </Animated.View>
+              <Text style={styles.flowLabelCompact}>Home</Text>
+              <Text style={styles.flowValueCompact}>Consuming</Text>
+            </View>
+
+            <Ionicons name="arrow-forward" size={16} color="#10b981" style={styles.flowArrowCompact} />
+
+            {/* Battery */}
+            <View style={styles.flowNodeCompact}>
+              <Animated.View style={[styles.flowIconContainerCompact, { opacity: batteryOpacity }]}>
+                <LinearGradient
+                  colors={['#8b5cf6', '#7c3aed']}
+                  style={styles.flowIconGradientCompact}
+                >
+                  <MaterialCommunityIcons name="battery-charging" size={20} color="#ffffff" />
+                </LinearGradient>
+              </Animated.View>
+              <Text style={styles.flowLabelCompact}>Battery</Text>
+              <Text style={styles.flowValueCompact}>Stored</Text>
+            </View>
+
+            <Ionicons name="arrow-forward" size={16} color="#10b981" style={styles.flowArrowCompact} />
+
+            {/* Grid/Neighbor */}
+            <View style={styles.flowNodeCompact}>
+              <Animated.View style={[styles.flowIconContainerCompact, { opacity: gridOpacity }]}>
+                <LinearGradient
+                  colors={['#10b981', '#059669']}
+                  style={styles.flowIconGradientCompact}
+                >
+                  <MaterialCommunityIcons name="transmission-tower" size={20} color="#ffffff" />
+                </LinearGradient>
+              </Animated.View>
+              <Text style={styles.flowLabelCompact}>{isSelling ? 'Selling' : 'Grid'}</Text>
+              <Text style={styles.flowValueCompact}>{isSelling ? 'Active' : 'Connected'}</Text>
+            </View>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -525,62 +519,68 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 32,
   },
-  energyFlowContainer: {
+  energyFlowContainerCompact: {
     backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 8,
     marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  energyFlowTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  energyFlowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  energyFlowTitleCompact: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#111827',
-    marginBottom: 16,
-    textAlign: 'center',
   },
-  energyFlowDiagram: {
+  energyFlowDiagramCompact: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
   },
-  flowNode: {
+  flowNodeCompact: {
     alignItems: 'center',
     flex: 1,
-    minWidth: 70,
+    minWidth: 60,
   },
-  flowIconContainer: {
-    marginBottom: 8,
+  flowIconContainerCompact: {
+    marginBottom: 6,
   },
-  flowIconGradient: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  flowIconGradientCompact: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  flowLabel: {
-    fontSize: 12,
+  flowLabelCompact: {
+    fontSize: 11,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  flowValue: {
-    fontSize: 10,
+  flowValueCompact: {
+    fontSize: 9,
     color: '#6b7280',
   },
-  flowArrow: {
-    paddingHorizontal: 4,
+  flowArrowCompact: {
+    paddingHorizontal: 2,
+    marginHorizontal: 2,
   },
   statsGrid: {
     flexDirection: 'row',

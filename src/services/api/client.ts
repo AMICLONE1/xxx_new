@@ -53,9 +53,28 @@ class ApiClient {
       return await response.json();
     } catch (error: any) {
       clearTimeout(timeoutId);
+      
+      // Enhanced error handling
       if (error.name === 'AbortError') {
-        throw { message: 'Request timeout', code: 'TIMEOUT' } as ApiError;
+        throw { 
+          message: 'Request timeout - Server took too long to respond', 
+          code: 'TIMEOUT',
+          originalError: error 
+        } as ApiError;
       }
+      
+      // Network errors (connection failed, DNS error, etc.)
+      if (error.message?.includes('Network request failed') || 
+          error.message?.includes('Failed to fetch') ||
+          error.message?.includes('NetworkError')) {
+        throw { 
+          message: `Network error: Unable to connect to ${this.baseUrl}. Please check your internet connection or backend server status.`, 
+          code: 'NETWORK_ERROR',
+          originalError: error 
+        } as ApiError;
+      }
+      
+      // Re-throw other errors
       throw error;
     }
   }
