@@ -80,27 +80,29 @@ export default function HardwareRequestScreen({ navigation }: Props) {
 
     setIsSubmitting(true);
     try {
-      // TODO: Uncomment when backend is ready
-      // const response = await meterService.requestHardwareInstallation({
-      //   address: `${address}, ${apartmentNumber}`.trim(),
-      //   loadCapacity,
-      // });
-      // if (response.success && response.data) {
-      //   Alert.alert(
-      //     'Request Submitted',
-      //     `Your request has been submitted. Request ID: ${response.data.requestId}`,
-      //     [{ text: 'OK', onPress: () => navigation.goBack() }]
-      //   );
-      // } else {
-      //   throw new Error(response.error || 'Failed to submit request');
-      // }
-
-      // Mock implementation
-      Alert.alert(
-        'Request Submitted',
-        'Your hardware installation request has been submitted. A technician will contact you within 2-3 business days.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      const response = await meterService.requestHardwareInstallation({
+        address: `${address}, ${apartmentNumber}`.trim(),
+        loadCapacity,
+      });
+      
+      if (response.success && response.data) {
+        Alert.alert(
+          'Request Submitted ✅',
+          `Your hardware installation request has been submitted successfully.\n\nRequest ID: ${response.data.requestId}\n\nOur team will contact you within 24 hours.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } else {
+        // Fallback to mock in development
+        if (__DEV__) {
+          Alert.alert(
+            'Request Submitted (Mock)',
+            'Your hardware installation request has been submitted. A technician will contact you within 2-3 business days.',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+        } else {
+          throw new Error(response.error || 'Failed to submit request');
+        }
+      }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to submit request');
     } finally {

@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-// Victory Native imports - may need adjustment based on actual package exports
-// @ts-ignore - victory-native type definitions may be incomplete
-import { VictoryChart, VictoryLine, VictoryAxis, VictoryArea } from 'victory-native';
+import { LineChart } from 'react-native-chart-kit';
+import { Dimensions } from 'react-native';
 import { useMeterStore } from '@/store';
 import { EnergyData } from '@/types';
 import { formatEnergy } from '@/utils/helpers';
+
+const screenWidth = Dimensions.get('window').width;
 
 type TimeRange = 'day' | 'week' | 'month';
 
@@ -21,7 +22,17 @@ export default function EnergyChartScreen() {
   const [timeRange, setTimeRange] = useState<TimeRange>('day');
 
   const filteredData = useMemo(() => {
-    if (!energyData.length) return [];
+    if (!energyData.length) {
+      return {
+        labels: [],
+        datasets: [{
+          data: [],
+          color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+          strokeWidth: 2,
+        }],
+        timestamps: [],
+      };
+    }
 
     const now = new Date();
     const filterDate = new Date();
@@ -38,25 +49,33 @@ export default function EnergyChartScreen() {
         break;
     }
 
-    return energyData
+    const filtered = energyData
       .filter((data) => data.timestamp >= filterDate)
-      .map((data, index) => ({
-        x: index,
-        y: data.generation,
-        timestamp: data.timestamp,
-      }))
       .slice(-96); // Limit to last 96 data points (24 hours of 15-min intervals)
+    
+    return {
+      labels: filtered.map((data) => {
+        const date = data.timestamp;
+        return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+      }).filter((_, i) => i % 8 === 0), // Show every 8th label
+      datasets: [{
+        data: filtered.map((data) => data.generation),
+        color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+        strokeWidth: 2,
+      }],
+      timestamps: filtered.map((data) => data.timestamp),
+    };
   }, [energyData, timeRange]);
 
   const maxGeneration = useMemo(() => {
-    if (!filteredData.length) return 10;
-    return Math.max(...filteredData.map((d) => d.y), 10);
+    if (!filteredData.datasets[0]?.data.length) return 10;
+    return Math.max(...filteredData.datasets[0].data, 10);
   }, [filteredData]);
 
   const averageGeneration = useMemo(() => {
-    if (!filteredData.length) return 0;
-    const sum = filteredData.reduce((acc, d) => acc + d.y, 0);
-    return sum / filteredData.length;
+    if (!filteredData.datasets[0]?.data.length) return 0;
+    const sum = filteredData.datasets[0].data.reduce((acc: number, d: number) => acc + d, 0);
+    return sum / filteredData.datasets[0].data.length;
   }, [filteredData]);
 
   if (!energyData.length) {
@@ -119,98 +138,85 @@ export default function EnergyChartScreen() {
 
           {/* Chart */}
           <View style={styles.chartContainer}>
-            <VictoryChart
+            <LineChart
+              data={filteredData}
+              width={screenWidth - 80}
               height={300}
-              padding={{ left: 50, right: 20, top: 20, bottom: 40 }}
-              domain={{ y: [0, maxGeneration * 1.1] }}
-            >
-              <VictoryAxis
-                dependentAxis
-                style={{
-                  axis: { stroke: '#d1d5db' },
-                  tickLabels: { fill: '#6b7280', fontSize: 12 },
-                  grid: { stroke: '#e5e7eb', strokeDasharray: '4,4' },
-                }}
-                tickFormat={(t: number) => `${t}kW`}
-              />
-              <VictoryAxis
-                style={{
-                  axis: { stroke: '#d1d5db' },
-                  tickLabels: { fill: '#6b7280', fontSize: 12 },
-                }}
-                tickFormat={(t: number) => {
-                  if (filteredData[t]) {
-                    const date = filteredData[t].timestamp;
-                    return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-                  }
-                  return '';
-                }}
-              />
-              <VictoryArea
-                data={filteredData}
-                style={{
-                  data: {
-                    fill: '#10b981',
-                    fillOpacity: 0.3,
-                    stroke: '#10b981',
-                    strokeWidth: 2,
-                  },
-                }}
-                interpolation="natural"
-              />
-              <VictoryLine
-                data={filteredData}
-                style={{
-                  data: {
-                    stroke: '#10b981',
-                    strokeWidth: 2,
-                  },
-                }}
-                interpolation="natural"
-              />
-            </VictoryChart>
+              chartConfig={{
+                backgroundColor: '#ffffff',
+                backgroundGradientFrom: '#ffffff',
+                backgroundGradientTo: '#ffffff',
+                decimalPlaces: 2,
+                color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                style: {
+                  borderRadius: 16,
+                },
+                propsForDots: {
+                  r: '4',
+                  strokeWidth: '2',
+                  stroke: '#10b981',
+                },
+              }}
+              bezier
+              style={{
+                marginVertical: 8,
+                borderRadius: 16,
+              }}
+              withInnerLines={true}
+              withOuterLines={true}
+              withVerticalLines={true}
+              withHorizontalLines={true}
+              withDots={true}
+              withShadow={false}
+            />
           </View>
 
           {/* Comparison View */}
           <View style={styles.comparisonContainer}>
             <Text style={styles.comparisonTitle}>Generation vs Consumption</Text>
             <View style={styles.comparisonChart}>
-              <VictoryChart
+              <LineChart
+                data={{
+                  labels: filteredData.labels,
+                  datasets: [
+                    {
+                      data: filteredData.timestamps.map((ts: Date) => {
+                        const matchingData = energyData.find((ed) => ed.timestamp.getTime() === ts.getTime());
+                        return matchingData?.generation || 0;
+                      }),
+                      color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                      strokeWidth: 2,
+                    },
+                    {
+                      data: filteredData.timestamps.map((ts: Date) => {
+                        const matchingData = energyData.find((ed) => ed.timestamp.getTime() === ts.getTime());
+                        return matchingData?.consumption || 0;
+                      }),
+                      color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+                      strokeWidth: 2,
+                    },
+                  ],
+                }}
+                width={screenWidth - 80}
                 height={200}
-                padding={{ left: 50, right: 20, top: 20, bottom: 40 }}
-              >
-                <VictoryAxis
-                  dependentAxis
-                  style={{
-                    axis: { stroke: '#d1d5db' },
-                    tickLabels: { fill: '#6b7280', fontSize: 12 },
-                  }}
-                />
-                <VictoryLine
-                  data={filteredData.map((d, i) => {
-                    const matchingData = energyData.find((ed) => ed.timestamp.getTime() === d.timestamp.getTime());
-                    return {
-                      x: i,
-                      y: matchingData?.generation || 0,
-                    };
-                  })}
-                  style={{
-                    data: { stroke: '#10b981', strokeWidth: 2 },
-                  }}
-                />
-                <VictoryLine
-                  data={filteredData.map((d, i) => {
-                    const matchingData = energyData.find((ed) => ed.timestamp.getTime() === d.timestamp.getTime());
-                    return {
-                      x: i,
-                      y: -(matchingData?.consumption || 0),
-                    };
-                  })}
-                  style={{
-                    data: { stroke: '#ef4444', strokeWidth: 2 },
-                  }}
-                />
-              </VictoryChart>
+                chartConfig={{
+                  backgroundColor: '#f9fafb',
+                  backgroundGradientFrom: '#f9fafb',
+                  backgroundGradientTo: '#f9fafb',
+                  decimalPlaces: 2,
+                  color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                }}
+                bezier
+                style={{
+                  marginVertical: 8,
+                  borderRadius: 16,
+                }}
+                withInnerLines={true}
+                withOuterLines={true}
+                withDots={false}
+              />
             </View>
           </View>
         </View>

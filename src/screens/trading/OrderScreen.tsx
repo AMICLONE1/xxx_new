@@ -76,35 +76,36 @@ export default function OrderScreen({ navigation, route }: Props) {
 
     setIsSubmitting(true);
     try {
-      // TODO: Uncomment when backend is ready
-      // const response = await tradingService.createOrder({
-      //   sellerId,
-      //   energyAmount: energyValue,
-      //   pricePerUnit,
-      // });
-      // if (response.success && response.data) {
-      //   addOrder(response.data);
-      //   navigation.goBack();
-      //   Alert.alert('Success', 'Order placed successfully');
-      // } else {
-      //   throw new Error(response.error || 'Failed to place order');
-      // }
-
-      // Mock implementation
-      const mockOrder = {
-        id: `order_${Date.now()}`,
-        buyerId: 'current_user_id',
+      const response = await tradingService.createOrder({
         sellerId,
         energyAmount: energyValue,
         pricePerUnit,
-        totalPrice,
-        status: 'pending' as const,
-        createdAt: new Date(),
-      };
-
-      addOrder(mockOrder);
-      navigation.goBack();
-      Alert.alert('Success', 'Order placed successfully');
+      });
+      
+      if (response.success && response.data) {
+        addOrder(response.data);
+        navigation.goBack();
+        Alert.alert('Success ✅', 'Order placed successfully!');
+      } else {
+        // Fallback to mock if API fails (for development)
+        if (__DEV__) {
+          const mockOrder = {
+            id: `order_${Date.now()}`,
+            buyerId: 'current_user_id',
+            sellerId,
+            energyAmount: energyValue,
+            pricePerUnit,
+            totalPrice,
+            status: 'pending' as const,
+            createdAt: new Date(),
+          };
+          addOrder(mockOrder);
+          navigation.goBack();
+          Alert.alert('Success (Mock)', 'Order placed successfully (using mock data)');
+        } else {
+          throw new Error(response.error || 'Failed to place order');
+        }
+      }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to place order');
     } finally {

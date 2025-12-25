@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { useWalletStore } from '@/store';
 import { formatCurrency } from '@/utils/helpers';
+import { paymentService } from '@/services/payments/paymentService';
 
 type WithdrawScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -80,27 +81,34 @@ export default function WithdrawScreen({ navigation }: Props) {
 
     setIsProcessing(true);
     try {
-      // TODO: Integrate with actual withdrawal API
-      // const response = await paymentService.initiateWithdrawal({
-      //   amount: withdrawAmount,
-      //   accountNumber,
-      //   ifscCode,
-      //   accountHolderName,
-      // });
+      // Create bank account ID from account details (or use existing if saved)
+      // For now, we'll send account details directly
+      // In production, you'd save bank accounts and use bankAccountId
+      const bankAccountId = `${accountNumber}_${ifscCode}`; // Temporary ID
+      
+      const response = await paymentService.requestWithdrawal({
+        amount: withdrawAmount,
+        bankAccountId: bankAccountId,
+      });
 
-      // Mock implementation
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate API call
-
-      Alert.alert(
-        'Withdrawal Request Submitted',
-        `Your withdrawal request of ${formatCurrency(withdrawAmount)} has been submitted. It will be processed within 2-3 business days.`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      if (response.success && response.data) {
+        Alert.alert(
+          'Withdrawal Request Submitted ✅',
+          `Your withdrawal request of ${formatCurrency(withdrawAmount)} has been submitted successfully.\n\nRequest ID: ${response.data.requestId}\n\nIt will be processed within 2-3 business days.`,
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Withdrawal Failed',
+          response.error || 'Failed to submit withdrawal request. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to process withdrawal request');
     } finally {

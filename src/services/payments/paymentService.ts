@@ -1,4 +1,5 @@
 import { ApiResponse } from '@/types';
+import { apiClient } from '@/services/api/client';
 
 export interface TopUpRequest {
   amount: number;
@@ -21,11 +22,25 @@ export interface WithdrawalRequest {
 class PaymentService {
   /**
    * Initiate wallet top-up
+   * Note: Payment SDK (Razorpay/PhonePe) integration pending
+   * This will call the backend API which handles payment initiation
    */
   async initiateTopUp(data: TopUpRequest): Promise<ApiResponse<TopUpResponse>> {
-    // TODO: Implement with Razorpay/PhonePe SDK
-    // This is a placeholder structure
-    throw new Error('Payment service not yet implemented');
+    try {
+      const response = await apiClient.post<ApiResponse<TopUpResponse>>(
+        '/wallet/top-up',
+        {
+          amount: data.amount,
+          paymentMethod: data.paymentMethod,
+        }
+      );
+      return response;
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to initiate top-up',
+      };
+    }
   }
 
   /**
@@ -41,9 +56,22 @@ class PaymentService {
    */
   async requestWithdrawal(
     data: WithdrawalRequest
-  ): Promise<ApiResponse<{ requestId: string }>> {
-    // TODO: Implement withdrawal request
-    throw new Error('Withdrawal service not yet implemented');
+  ): Promise<ApiResponse<{ requestId: string; status: string }>> {
+    try {
+      const response = await apiClient.post<ApiResponse<{ requestId: string; status: string }>>(
+        '/wallet/withdraw',
+        {
+          amount: data.amount,
+          bankAccountId: data.bankAccountId,
+        }
+      );
+      return response;
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to request withdrawal',
+      };
+    }
   }
 
   /**
@@ -52,8 +80,17 @@ class PaymentService {
   async getWithdrawalStatus(
     requestId: string
   ): Promise<ApiResponse<{ status: string; amount: number }>> {
-    // TODO: Implement withdrawal status check
-    throw new Error('Withdrawal status check not yet implemented');
+    try {
+      const response = await apiClient.get<ApiResponse<{ status: string; amount: number }>>(
+        `/wallet/withdraw/${requestId}/status`
+      );
+      return response;
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to get withdrawal status',
+      };
+    }
   }
 
   /**

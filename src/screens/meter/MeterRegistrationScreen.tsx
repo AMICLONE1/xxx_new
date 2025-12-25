@@ -13,10 +13,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { DISCOM_NAMES } from '@/utils/constants';
-import { useMeterStore } from '@/store';
+import { useMeterStore, useAuthStore } from '@/store';
 import * as DocumentPicker from 'expo-document-picker';
 import { ocrService } from '@/services/mlkit/ocrService';
 import HardwareRequestScreen from './HardwareRequestScreen';
+import { getBackgroundDataGenerator } from '@/services/mock/backgroundDataGenerator';
+import { getMeterConfig } from '@/utils/meterConfig';
+import { supabaseDatabaseService } from '@/services/supabase/databaseService';
 
 type MeterRegistrationScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -34,7 +37,8 @@ interface Props {
 export default function MeterRegistrationScreen({ navigation, route }: Props) {
   // Check if this is a hardware request flow
   const isHardwareRequest = route?.params?.isHardwareRequest || false;
-  const { setCurrentMeter } = useMeterStore();
+  const { setCurrentMeter, setMeters, meters } = useMeterStore();
+  const { user } = useAuthStore();
   const [discomName, setDiscomName] = useState('');
   const [consumerNumber, setConsumerNumber] = useState('');
   const [meterSerialId, setMeterSerialId] = useState('');
@@ -92,31 +96,46 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
 
     setIsSubmitting(true);
     try {
-      // TODO: Implement API call to register meter
-      // const response = await meterService.registerMeter({
-      //   discomName,
-      //   consumerNumber,
-      //   meterSerialId,
-      //   billImageUri,
-      // });
+      // Get current user ID
+      if (!user?.id) {
+        Alert.alert('Error', 'Please log in to register a meter');
+        setIsSubmitting(false);
+        return;
+      }
 
-      // Mock implementation
-      const mockMeter = {
-        id: '1',
-        userId: 'current_user_id',
+      // Create meter in Supabase to get proper UUID
+      const createdMeter = await supabaseDatabaseService.createMeter({
+        userId: user.id,
         discomName,
         consumerNumber,
         meterSerialId,
-        verificationStatus: 'pending' as const,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+        verificationStatus: 'verified', // Auto-verify in development
+        address: undefined,
+      });
 
-      setCurrentMeter(mockMeter);
+      // Update meter store
+      setCurrentMeter(createdMeter);
+      setMeters([createdMeter, ...meters]); // Add to meters list
+
+      // Start fake energy meter data generation
+      const config = getMeterConfig(); // Use default config
+      const generator = getBackgroundDataGenerator(createdMeter.id, config);
+      
+      // Generate some historical data (last 24 hours)
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      generator.generateHistoricalData(yesterday, now).catch((error) => {
+        console.error('Failed to generate historical data:', error);
+      });
+
+      // Start real-time data generation
+      generator.start();
 
       Alert.alert(
-        'Meter Registered',
-        'Your meter has been registered and is pending verification. You will be notified once verification is complete.',
+        'Meter Registered Successfully! 🎉',
+        'Your meter has been registered and fake energy data generation has started. You can now view your energy dashboard.',
         [
           {
             text: 'OK',

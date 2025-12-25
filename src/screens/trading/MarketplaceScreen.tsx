@@ -194,7 +194,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
             }));
           } else if (apiResponse.error) {
             // API failed, use mock data for development
-            console.warn('Backend API unavailable, using mock data:', apiResponse.error);
+            // Silently fall back to mock data - no need to log as it's expected
             const mockSellers = generateMockSellers(userLocation);
             results = mockSellers.map((seller) => ({
               ...seller,
@@ -209,9 +209,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
             }));
           }
         } catch (apiError: any) {
-          console.error('API search failed:', apiError);
-          // Use mock data as fallback
-          console.warn('Using mock sellers data for development');
+          // Silently fall back to mock data - backend unavailable is expected in development
           const mockSellers = generateMockSellers(userLocation);
           results = mockSellers.map((seller) => ({
             ...seller,

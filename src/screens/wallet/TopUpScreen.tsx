@@ -47,29 +47,42 @@ export default function TopUpScreen({ navigation }: Props) {
 
     setIsProcessing(true);
     try {
-      // TODO: Uncomment when payment service is ready
-      // const response = await paymentService.initiateTopUp({
-      //   amount: topUpAmount,
-      //   paymentMethod: 'upi',
-      // });
-      // if (response.success && response.data) {
-      //   if (response.data.upiIntent) {
-      //     const opened = await paymentService.openUPIApp(response.data.upiIntent);
-      //     if (opened) {
-      //       // Monitor payment status
-      //       navigation.goBack();
-      //     }
-      //   }
-      // } else {
-      //   throw new Error(response.error || 'Failed to initiate payment');
-      // }
-
-      // Mock implementation
-      Alert.alert(
-        'Payment Initiated',
-        `Top-up of ${formatCurrency(topUpAmount)} has been initiated. Please complete the payment in the UPI app.`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      // Note: Payment SDK (Razorpay/PhonePe) integration pending
+      // For now, this will call the API which will return payment details
+      // When SDK is integrated, uncomment the UPI app opening logic
+      const response = await paymentService.initiateTopUp({
+        amount: topUpAmount,
+        paymentMethod: 'upi',
+      });
+      
+      if (response.success && response.data) {
+        // TODO: When Razorpay/PhonePe SDK is integrated:
+        // if (response.data.upiIntent) {
+        //   const opened = await paymentService.openUPIApp(response.data.upiIntent);
+        //   if (opened) {
+        //     // Monitor payment status
+        //     navigation.goBack();
+        //   }
+        // }
+        
+        // For now, show success message
+        Alert.alert(
+          'Payment Initiated ✅',
+          `Payment of ${formatCurrency(topUpAmount)} has been initiated.\n\nPayment ID: ${response.data.paymentId}\n\nPlease complete the payment in your UPI app.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } else {
+        // Fallback to mock in development
+        if (__DEV__) {
+          Alert.alert(
+            'Payment Initiated (Mock)',
+            `Top-up of ${formatCurrency(topUpAmount)} has been initiated. Please complete the payment in the UPI app.`,
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+        } else {
+          throw new Error(response.error || 'Failed to initiate payment');
+        }
+      }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to initiate payment');
     } finally {

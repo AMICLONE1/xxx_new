@@ -1,11 +1,9 @@
-import { MMKV } from 'react-native-mmkv';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EnergyData, Order } from '@/types';
 
-// Create MMKV storage instance
-// @ts-expect-error - MMKV type definitions may have issues with constructor
-const storage = new MMKV({
-  id: 'powernetpro-storage',
-});
+// Use AsyncStorage instead of MMKV for Expo Go compatibility
+// MMKV requires NitroModules which needs new architecture
+const STORAGE_PREFIX = 'powernetpro_';
 
 const KEYS = {
   ENERGY_DATA: 'energy_data',
@@ -18,10 +16,10 @@ class OfflineStorage {
   /**
    * Cache energy data (last 24 hours)
    */
-  cacheEnergyData(data: EnergyData[]): void {
+  async cacheEnergyData(data: EnergyData[]): Promise<void> {
     try {
       const dataToCache = data.slice(0, 96); // 24 hours * 4 (15-min intervals)
-      storage.set(KEYS.ENERGY_DATA, JSON.stringify(dataToCache));
+      await AsyncStorage.setItem(STORAGE_PREFIX + KEYS.ENERGY_DATA, JSON.stringify(dataToCache));
     } catch (error) {
       console.error('Failed to cache energy data:', error);
     }
@@ -30,9 +28,9 @@ class OfflineStorage {
   /**
    * Get cached energy data
    */
-  getCachedEnergyData(): EnergyData[] {
+  async getCachedEnergyData(): Promise<EnergyData[]> {
     try {
-      const cached = storage.getString(KEYS.ENERGY_DATA);
+      const cached = await AsyncStorage.getItem(STORAGE_PREFIX + KEYS.ENERGY_DATA);
       if (cached) {
         const data = JSON.parse(cached);
         // Convert timestamp strings back to Date objects
@@ -50,11 +48,11 @@ class OfflineStorage {
   /**
    * Queue order for sync when online
    */
-  queueOrder(order: Order): void {
+  async queueOrder(order: Order): Promise<void> {
     try {
-      const queue = this.getQueuedOrders();
+      const queue = await this.getQueuedOrders();
       queue.push(order);
-      storage.set(KEYS.OFFLINE_QUEUE, JSON.stringify(queue));
+      await AsyncStorage.setItem(STORAGE_PREFIX + KEYS.OFFLINE_QUEUE, JSON.stringify(queue));
     } catch (error) {
       console.error('Failed to queue order:', error);
     }
@@ -63,9 +61,9 @@ class OfflineStorage {
   /**
    * Get queued orders
    */
-  getQueuedOrders(): Order[] {
+  async getQueuedOrders(): Promise<Order[]> {
     try {
-      const queue = storage.getString(KEYS.OFFLINE_QUEUE);
+      const queue = await AsyncStorage.getItem(STORAGE_PREFIX + KEYS.OFFLINE_QUEUE);
       if (queue) {
         const orders = JSON.parse(queue);
         return orders.map((order: any) => ({
@@ -83,9 +81,9 @@ class OfflineStorage {
   /**
    * Clear queued orders after successful sync
    */
-  clearQueuedOrders(): void {
+  async clearQueuedOrders(): Promise<void> {
     try {
-      storage.delete(KEYS.OFFLINE_QUEUE);
+      await AsyncStorage.removeItem(STORAGE_PREFIX + KEYS.OFFLINE_QUEUE);
     } catch (error) {
       console.error('Failed to clear queued orders:', error);
     }
@@ -94,9 +92,9 @@ class OfflineStorage {
   /**
    * Set last sync timestamp
    */
-  setLastSync(timestamp: Date): void {
+  async setLastSync(timestamp: Date): Promise<void> {
     try {
-      storage.set(KEYS.LAST_SYNC, timestamp.toISOString());
+      await AsyncStorage.setItem(STORAGE_PREFIX + KEYS.LAST_SYNC, timestamp.toISOString());
     } catch (error) {
       console.error('Failed to set last sync:', error);
     }
@@ -105,9 +103,9 @@ class OfflineStorage {
   /**
    * Get last sync timestamp
    */
-  getLastSync(): Date | null {
+  async getLastSync(): Promise<Date | null> {
     try {
-      const timestamp = storage.getString(KEYS.LAST_SYNC);
+      const timestamp = await AsyncStorage.getItem(STORAGE_PREFIX + KEYS.LAST_SYNC);
       if (timestamp) {
         return new Date(timestamp);
       }
@@ -120,11 +118,13 @@ class OfflineStorage {
   /**
    * Clear all cached data
    */
-  clearAll(): void {
+  async clearAll(): Promise<void> {
     try {
-      Object.values(KEYS).forEach((key) => {
-        storage.delete(key);
-      });
+      await Promise.all(
+        Object.values(KEYS).map((key) =>
+          AsyncStorage.removeItem(STORAGE_PREFIX + key)
+        )
+      );
     } catch (error) {
       console.error('Failed to clear storage:', error);
     }

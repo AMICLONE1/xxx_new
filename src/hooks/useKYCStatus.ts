@@ -9,12 +9,11 @@ export const useKYCStatus = (pollInterval: number = 30000) => {
 
   const checkStatus = async () => {
     try {
-      // TODO: Uncomment when backend is ready
-      // const response = await kycService.getKYCStatus();
-      // if (response.success && response.data) {
-      //   setKYCData(response.data);
-      //   setStatus(response.data.status);
-      // }
+      const response = await kycService.getKYCStatus();
+      if (response.success && response.data) {
+        setKYCData(response.data);
+        setStatus(response.data.status);
+      }
     } catch (error) {
       console.error('Failed to check KYC status:', error);
     }

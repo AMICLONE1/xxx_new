@@ -50,13 +50,11 @@ class TradingService {
     try {
       return await apiClient.post('/trading/search', filters);
     } catch (error: any) {
-      // Enhanced error logging
-      console.error('API search failed:', {
-        error: error.message || error,
-        code: error.code,
-        url: '/trading/search',
-        filters,
-      });
+      // Only log in development mode, and use debug level instead of error
+      // The app gracefully falls back to mock data, so this isn't a critical error
+      if (__DEV__) {
+        console.log('[API] Backend unavailable, using mock data:', error.code || 'NETWORK_ERROR');
+      }
       
       // Return error response instead of throwing
       return {
