@@ -38,6 +38,15 @@ class ApiClient {
     retryCount: number = 0
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    
+    // Debug logging
+    if (__DEV__) {
+      console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+      if (options.body) {
+        console.log('📤 Request body:', options.body);
+      }
+    }
+    
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
@@ -87,7 +96,26 @@ class ApiClient {
         } as ApiError;
       }
 
-      return await response.json();
+      const responseData = await response.json();
+      
+      // Debug logging
+      if (__DEV__) {
+        console.log(`✅ API Response (${response.status}):`, JSON.stringify(responseData).substring(0, 200));
+      }
+      
+      // Check if we got the Expo manifest instead of API response
+      if (responseData.id && responseData.runtimeVersion && responseData.launchAsset) {
+        console.error('❌ ERROR: Received Expo manifest instead of API response!');
+        console.error('This means the request hit the Expo dev server instead of the backend.');
+        console.error('Check: 1) Backend URL is correct 2) Backend is running 3) Endpoint path is correct');
+        throw {
+          message: 'Backend API not accessible. Received Expo manifest instead of API response.',
+          code: 'WRONG_ENDPOINT',
+          status: response.status,
+        } as ApiError;
+      }
+      
+      return responseData;
     } catch (error: any) {
       clearTimeout(timeoutId);
       

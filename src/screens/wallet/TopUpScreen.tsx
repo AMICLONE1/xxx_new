@@ -60,9 +60,12 @@ export default function TopUpScreen({ navigation }: Props) {
         paymentMethod: 'upi',
       });
       
+      console.log('Top-up response:', JSON.stringify(response, null, 2));
+      
       if (response.success && response.data) {
         // Check if Razorpay is configured
         if (response.data.razorpayKeyId) {
+          console.log('Opening Razorpay checkout with key:', response.data.razorpayKeyId);
           // Open Razorpay checkout
           setRazorpayData({
             orderId: response.data.orderId,
@@ -71,27 +74,30 @@ export default function TopUpScreen({ navigation }: Props) {
           });
           setShowRazorpayCheckout(true);
         } else {
-          // Fallback: Show message (for development)
+          // No Razorpay key - backend might not have keys configured
+          console.warn('Razorpay key not found in response. Response data:', response.data);
           Alert.alert(
-            'Payment Initiated ✅',
-            `Payment of ${formatCurrency(topUpAmount)} has been initiated.\n\nPayment ID: ${response.data.paymentId}\n\nPlease complete the payment.`,
-            [{ text: 'OK', onPress: () => navigation.goBack() }]
+            'Payment Gateway Not Configured',
+            `Razorpay is not configured on the backend. Please check Railway environment variables.\n\nResponse: ${JSON.stringify(response.data)}`,
+            [{ text: 'OK' }]
           );
         }
       } else {
-        // Fallback to mock in development
-        if (__DEV__) {
-          Alert.alert(
-            'Payment Initiated (Mock)',
-            `Top-up of ${formatCurrency(topUpAmount)} has been initiated. Please complete the payment.`,
-            [{ text: 'OK', onPress: () => navigation.goBack() }]
-          );
-        } else {
-          throw new Error(response.error || 'Failed to initiate payment');
-        }
+        // API call failed or returned error
+        const errorMsg = response.error || 'Failed to initiate payment';
+        console.error('Top-up failed:', errorMsg);
+        Alert.alert(
+          'Payment Failed',
+          `${errorMsg}\n\nPlease check:\n1. Backend is running\n2. Razorpay keys are set in Railway\n3. Network connection`,
+          [{ text: 'OK' }]
+        );
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to initiate payment');
+      console.error('Top-up error:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to initiate payment. Please check your network connection and backend status.'
+      );
     } finally {
       setIsProcessing(false);
     }

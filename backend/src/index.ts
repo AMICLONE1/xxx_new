@@ -298,13 +298,15 @@ app.post('/wallet/top-up', verifyAuth, async (req, res) => {
     }
 
     if (!razorpay) {
+      console.error('❌ Razorpay not initialized. Check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.');
       return res.status(500).json({ 
         success: false, 
-        error: 'Payment gateway not configured. Please add Razorpay keys.' 
+        error: 'Payment gateway not configured. Please add Razorpay keys to Railway environment variables.' 
       });
     }
 
     // Create Razorpay order
+    console.log('📦 Creating Razorpay order for amount:', amount);
     const razorpayOrder = await razorpay.orders.create({
       amount: amount * 100, // Convert to paise
       currency: 'INR',
@@ -315,22 +317,28 @@ app.post('/wallet/top-up', verifyAuth, async (req, res) => {
       },
     });
 
+    console.log('✅ Razorpay order created:', razorpayOrder.id);
+
     // Generate Razorpay checkout URL
     // Note: Razorpay doesn't provide direct checkout URL, so we'll use their hosted checkout
     // For mobile, we'll use the order ID and key ID to open Razorpay checkout
-    const checkoutUrl = `https://checkout.razorpay.com/v1/checkout.js?key=${process.env.RAZORPAY_KEY_ID}`;
+    const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+    const checkoutUrl = `https://checkout.razorpay.com/v1/checkout.js?key=${razorpayKeyId}`;
 
-    res.json({
+    const response = {
       success: true,
       data: {
         paymentId: razorpayOrder.id,
         orderId: razorpayOrder.id,
         amount: amount,
         status: 'pending',
-        razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+        razorpayKeyId: razorpayKeyId,
         checkoutUrl: checkoutUrl,
       },
-    });
+    };
+
+    console.log('📤 Sending response:', JSON.stringify(response, null, 2));
+    res.json(response);
   } catch (error: any) {
     console.error('Top-up error:', error);
     res.status(500).json({ success: false, error: error.message });

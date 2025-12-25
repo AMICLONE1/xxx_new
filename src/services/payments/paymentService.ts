@@ -29,6 +29,7 @@ class PaymentService {
    */
   async initiateTopUp(data: TopUpRequest): Promise<ApiResponse<TopUpResponse>> {
     try {
+      console.log('🚀 Initiating top-up:', data);
       const response = await apiClient.post<ApiResponse<TopUpResponse>>(
         '/wallet/top-up',
         {
@@ -36,8 +37,10 @@ class PaymentService {
           paymentMethod: data.paymentMethod,
         }
       );
+      console.log('✅ Top-up response received:', JSON.stringify(response, null, 2));
       return response;
     } catch (error: any) {
+      console.error('❌ Top-up error:', error);
       return {
         success: false,
         error: error.message || 'Failed to initiate top-up',
