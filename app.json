@@ -53,7 +53,7 @@
       ]
     ],
     "extra": {
-         "apiBaseUrl": "https://ncejoqiddhaxuetjhjrs.supabase.co/rest/v1",
+      "apiBaseUrl": "https://xxxmapnp-production.up.railway.app",
       "becknGatewayUrl": "https://gateway.becknprotocol.io",
       "mapboxAccessToken": "pk.eyJ1IjoidXNlcjA1MTIiLCJhIjoiY21lZnE5YWtxMDg0YzJrcjZ1aWFuNDY0dSJ9.bM3DfPDdw5SJP32pj4S_NA",
       "becknDomain": "energy",
