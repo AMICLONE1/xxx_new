@@ -16,7 +16,8 @@
       "bundleIdentifier": "com.powernetpro.app",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to your camera to scan KYC documents and electricity bills.",
-        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to find nearby energy sellers."
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to find nearby energy sellers.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -30,7 +31,11 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -57,8 +62,11 @@
       "becknGatewayUrl": "https://gateway.becknprotocol.io",
       "mapboxAccessToken": "pk.eyJ1IjoidXNlcjA1MTIiLCJhIjoiY21lZnE5YWtxMDg0YzJrcjZ1aWFuNDY0dSJ9.bM3DfPDdw5SJP32pj4S_NA",
       "becknDomain": "energy",
-       "supabaseUrl": "https://ncejoqiddhaxuetjhjrs.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jZWpvcWlkZGhheHVldGpoanJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0MjA3ODQsImV4cCI6MjA4MTk5Njc4NH0.w9tsVgdxzb52_n58XUJ8i76u6Rm0cY_Pw_Q-vEc9T7I"
+      "supabaseUrl": "https://ncejoqiddhaxuetjhjrs.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jZWpvcWlkZGhheHVldGpoanJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0MjA3ODQsImV4cCI6MjA4MTk5Njc4NH0.w9tsVgdxzb52_n58XUJ8i76u6Rm0cY_Pw_Q-vEc9T7I",
+      "eas": {
+        "projectId": "25f0d5e8-ad58-4c08-8dbc-c5d17f3baa09"
+      }
     }
   }
 }
