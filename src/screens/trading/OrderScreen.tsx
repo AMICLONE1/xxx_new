@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { useTradingStore, useWalletStore } from '@/store';
@@ -117,7 +118,17 @@ export default function OrderScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
-          <Text style={styles.title}>Place Order</Text>
+          {/* Header with Back Button */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#374151" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Place Order</Text>
+          </View>
 
           <View style={styles.sellerInfo}>
             <Text style={styles.sellerLabel}>Seller</Text>
@@ -209,11 +220,19 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 12,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 24,
   },
   sellerInfo: {
     backgroundColor: '#ffffff',

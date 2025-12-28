@@ -662,6 +662,155 @@ class SupabaseAuthService {
       };
     }
   }
+
+  /**
+   * Send password reset email
+   * Sends an OTP code to the user's email for password reset
+   */
+  async resetPasswordForEmail(email: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      if (__DEV__) {
+        console.log('📧 Sending password reset email to:', email);
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.toLowerCase().trim(),
+        {
+          // No redirect needed for mobile app - we use OTP verification
+          redirectTo: undefined,
+        }
+      );
+
+      if (error) {
+        if (__DEV__) {
+          console.error('❌ Password reset email error:', error);
+        }
+        return {
+          success: false,
+          error: error.message || 'Failed to send password reset email.',
+        };
+      }
+
+      return {
+        success: true,
+        data: { message: 'Password reset code sent to your email.' },
+      };
+    } catch (error: any) {
+      if (__DEV__) {
+        console.error('❌ Password reset exception:', error);
+      }
+      return {
+        success: false,
+        error: error.message || 'Failed to send password reset email.',
+      };
+    }
+  }
+
+  /**
+   * Verify OTP for password recovery
+   * @param email - User's email
+   * @param token - The 6-digit OTP code
+   * @param type - The type of OTP ('email' | 'recovery' | 'signup')
+   */
+  async verifyOTP(
+    email: string,
+    token: string,
+    type: 'email' | 'recovery' | 'signup' = 'recovery'
+  ): Promise<ApiResponse<AuthResponse>> {
+    try {
+      if (__DEV__) {
+        console.log('🔐 Verifying OTP for password recovery:', email);
+      }
+
+      const { data: authData, error } = await supabase.auth.verifyOtp({
+        email: email.toLowerCase().trim(),
+        token: token,
+        type: type,
+      });
+
+      if (error) {
+        if (__DEV__) {
+          console.error('❌ OTP verification error:', error);
+        }
+        return {
+          success: false,
+          error: error.message || 'Invalid or expired verification code.',
+        };
+      }
+
+      if (!authData.user || !authData.session) {
+        return {
+          success: false,
+          error: 'Verification failed. Please try again.',
+        };
+      }
+
+      // Get user profile
+      const userProfile = await this.getOrCreateUserProfile(
+        authData.user.id,
+        email.toLowerCase().trim()
+      );
+
+      return {
+        success: true,
+        data: {
+          user: userProfile,
+          token: authData.session.access_token,
+        },
+      };
+    } catch (error: any) {
+      if (__DEV__) {
+        console.error('❌ OTP verification exception:', error);
+      }
+      return {
+        success: false,
+        error: error.message || 'Failed to verify code.',
+      };
+    }
+  }
+
+  /**
+   * Update user's password (requires authenticated session)
+   * Should be called after verifyOTP for password recovery
+   */
+  async updatePassword(newPassword: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      if (__DEV__) {
+        console.log('🔐 Updating password...');
+        // SECURITY: Never log password
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        if (__DEV__) {
+          console.error('❌ Password update error:', error);
+        }
+        return {
+          success: false,
+          error: error.message || 'Failed to update password.',
+        };
+      }
+
+      // Sign out after password change for security
+      await supabase.auth.signOut();
+
+      return {
+        success: true,
+        data: { message: 'Password updated successfully. Please sign in with your new password.' },
+      };
+    } catch (error: any) {
+      if (__DEV__) {
+        console.error('❌ Password update exception:', error);
+      }
+      return {
+        success: false,
+        error: error.message || 'Failed to update password.',
+      };
+    }
+  }
 }
 
 export const supabaseAuthService = new SupabaseAuthService();

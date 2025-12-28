@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 
@@ -25,6 +26,15 @@ export default function OnboardingScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      {/* Back Button */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="arrow-back" size={24} color="#374151" />
+      </TouchableOpacity>
+
       <View style={styles.content}>
         <Text style={styles.title}>Let's connect your energy source</Text>
         <Text style={styles.subtitle}>
@@ -52,6 +62,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 24,
+    left: 16,
+    zIndex: 10,
+    padding: 8,
   },
   content: {
     flex: 1,

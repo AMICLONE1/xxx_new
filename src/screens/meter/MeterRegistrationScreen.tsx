@@ -436,8 +436,8 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
         // Handle Expo Go detection
         if (ocrError instanceof ExpoGoDetectedError || ocrError?.message === 'EXPO_GO_DETECTED') {
           Alert.alert(
-            'Development Build Required',
-            'Document scanning requires a development build.\n\n' +
+            'OCR Not Available',
+            'Document scanning requires a development build or Cloud OCR API.\n\n' +
             'Please enter bill details manually.',
             [{ text: 'OK', style: 'default' }]
           );
@@ -556,12 +556,12 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
    * Handle bill upload button press
    */
   const handleBillUpload = async () => {
-    // If running in Expo Go, show warning
-    if (isExpoGo) {
+    // If running in Expo Go and Cloud OCR is not available, show warning
+    if (isExpoGo && !ocrService.isCloudOCRAvailable()) {
       Alert.alert(
-        'Development Build Required',
-        'Document scanning requires a development build.\n\n' +
-        'You can still upload the bill, but OCR extraction will be disabled.',
+        'OCR Not Available',
+        'Document scanning requires a development build or Cloud OCR API.\n\n' +
+        'You can still upload the bill and enter details manually.',
         [
           {
             text: 'Upload Anyway',
@@ -726,8 +726,11 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
         'Your meter has been registered and fake energy data generation has started. You can now view your energy dashboard.',
         [
           {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
+            text: 'Go to Dashboard',
+            onPress: () => navigation.reset({
+              index: 0,
+              routes: [{ name: 'Main' }],
+            }),
           },
         ]
       );

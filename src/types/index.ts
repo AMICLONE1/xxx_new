@@ -6,6 +6,10 @@ export interface User {
   name?: string;
   profilePictureUrl?: string; // URL to profile picture in Supabase storage
   kycStatus: KYCStatus;
+  // Energy asset configuration
+  hasSolar?: boolean; // User has solar panels
+  hasBattery?: boolean; // User has battery storage
+  hasGrid?: boolean; // User has grid connection
   createdAt: Date;
   updatedAt: Date;
 }
@@ -145,7 +149,11 @@ export type RootStackParamList = {
   Main: undefined;
   Login: undefined;
   SignUp: undefined;
+  TermsConditions: undefined;
   OTP: { email: string };
+  ForgotPassword: undefined;
+  VerifyResetCode: { email: string };
+  ResetPassword: { email: string; token: string };
   Onboarding: undefined;
   KYC: undefined;
   AadhaarScan: undefined;

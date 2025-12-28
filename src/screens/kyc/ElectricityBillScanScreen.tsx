@@ -337,13 +337,17 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
    * Handle image upload button press
    */
   const handleUploadImage = async () => {
-    // If running in Expo Go, show warning and offer manual entry
-    if (isExpoGo) {
+    // If running in Expo Go and Cloud OCR is not available, show warning
+    if (isExpoGo && !ocrService.isCloudOCRAvailable()) {
       Alert.alert(
-        'Development Build Required',
-        'Document scanning requires a development build.\n\n' +
-        'Please enter bill details manually.',
+        'OCR Not Available',
+        'Document scanning requires a development build or Cloud OCR API.\n\n' +
+        'You can upload an image or enter bill details manually.',
         [
+          {
+            text: 'Upload Anyway',
+            onPress: () => proceedWithUpload(),
+          },
           {
             text: 'Enter Manually',
             onPress: () => {
@@ -519,11 +523,10 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
         // Handle Expo Go detection
         if (ocrError instanceof ExpoGoDetectedError || ocrError?.message === 'EXPO_GO_DETECTED') {
           Alert.alert(
-            'Development Build Required',
-            'Document scanning requires a development build.\n\n' +
-            'Please use the PowerNetPro app or create a development build:\n\n' +
-            '1. Run: npx expo prebuild\n' +
-            '2. Run: npx expo run:android\n\n' +
+            'OCR Not Available',
+            'Document scanning requires either:\n\n' +
+            '• A development build (npx expo run:android)\n' +
+            '• Cloud OCR API key configured in app.json\n\n' +
             'You can manually enter your bill details below.',
             [{ text: 'Enter Manually', style: 'default' }]
           );

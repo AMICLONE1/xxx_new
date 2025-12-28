@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,74 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
-import { useMeterStore, useTradingStore, useWalletStore } from '@/store';
+import { useMeterStore, useTradingStore, useWalletStore, useAuthStore } from '@/store';
 import { formatEnergy, formatCurrency, calculateCarbonSaved } from '@/utils/helpers';
 
 const { width } = Dimensions.get('window');
+
+// ============================================
+// ENERGY FLOW TYPES
+// ============================================
+
+type EnergyNodeType = 'solar' | 'home' | 'battery' | 'grid';
+
+interface EnergyNodeConfig {
+  id: EnergyNodeType;
+  label: string;
+  icon: string;
+  iconFamily: 'MaterialCommunityIcons' | 'Ionicons';
+  gradientColors: [string, string];
+  getStatusText: (context: EnergyFlowContext) => string;
+}
+
+interface EnergyFlowContext {
+  currentGeneration: number;
+  isSelling: boolean;
+  batteryLevel?: number;
+  isCharging?: boolean;
+}
+
+// ============================================
+// ENERGY NODE CONFIGURATIONS
+// ============================================
+
+const ENERGY_NODE_CONFIGS: Record<EnergyNodeType, EnergyNodeConfig> = {
+  solar: {
+    id: 'solar',
+    label: 'Solar',
+    icon: 'solar-power',
+    iconFamily: 'MaterialCommunityIcons',
+    gradientColors: ['#fbbf24', '#f59e0b'],
+    getStatusText: (ctx) => ctx.currentGeneration > 0 ? formatEnergy(ctx.currentGeneration, 'kW') : 'Idle',
+  },
+  home: {
+    id: 'home',
+    label: 'Home',
+    icon: 'home',
+    iconFamily: 'Ionicons',
+    gradientColors: ['#3b82f6', '#2563eb'],
+    getStatusText: () => 'Consuming',
+  },
+  battery: {
+    id: 'battery',
+    label: 'Battery',
+    icon: 'battery-charging',
+    iconFamily: 'MaterialCommunityIcons',
+    gradientColors: ['#8b5cf6', '#7c3aed'],
+    getStatusText: (ctx) => ctx.isCharging ? 'Charging' : 'Stored',
+  },
+  grid: {
+    id: 'grid',
+    label: 'Grid',
+    icon: 'transmission-tower',
+    iconFamily: 'MaterialCommunityIcons',
+    gradientColors: ['#10b981', '#059669'],
+    getStatusText: (ctx) => ctx.isSelling ? 'Exporting' : 'Connected',
+  },
+};
+
+// Flow order for rendering
+const ENERGY_FLOW_ORDER: EnergyNodeType[] = ['solar', 'home', 'battery', 'grid'];
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -28,6 +92,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { currentMeter, energyData } = useMeterStore();
   const { activeOrders } = useTradingStore();
   const { wallet } = useWalletStore();
+  const { user } = useAuthStore();
   const [currentGeneration, setCurrentGeneration] = useState(0);
   const [dailyYield, setDailyYield] = useState(0);
   const [isSelling, setIsSelling] = useState(false);
@@ -35,6 +100,55 @@ export default function HomeScreen({ navigation }: Props) {
   
   // Animation values for energy flow
   const flowAnimation = React.useRef(new Animated.Value(0)).current;
+
+  // ============================================
+  // DYNAMIC ENERGY NODES
+  // ============================================
+  
+  // Determine which energy nodes to show based on user's assets
+  const visibleEnergyNodes = useMemo(() => {
+    // Default to showing all nodes if user data not available (for demo/dev)
+    const hasSolar = user?.hasSolar ?? true;
+    const hasBattery = user?.hasBattery ?? true;
+    const hasGrid = user?.hasGrid ?? true;
+
+    const nodeVisibility: Record<EnergyNodeType, boolean> = {
+      solar: hasSolar,
+      home: true, // Home is ALWAYS present
+      battery: hasBattery,
+      grid: hasGrid,
+    };
+
+    return ENERGY_FLOW_ORDER.filter((nodeId) => nodeVisibility[nodeId]);
+  }, [user?.hasSolar, user?.hasBattery, user?.hasGrid]);
+
+  // Animation opacities for each node type
+  const nodeAnimations = useMemo(() => ({
+    solar: flowAnimation.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0.3, 1, 0.3],
+    }),
+    home: flowAnimation.interpolate({
+      inputRange: [0, 0.3, 0.7, 1],
+      outputRange: [0.3, 1, 0.5, 0.3],
+    }),
+    battery: flowAnimation.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0.3, 0.8, 0.3],
+    }),
+    grid: flowAnimation.interpolate({
+      inputRange: [0, 0.7, 1],
+      outputRange: [0.3, 1, 0.3],
+    }),
+  }), [flowAnimation]);
+
+  // Context for status text
+  const energyFlowContext: EnergyFlowContext = useMemo(() => ({
+    currentGeneration,
+    isSelling,
+    batteryLevel: 75, // TODO: Get from real data
+    isCharging: currentGeneration > 0,
+  }), [currentGeneration, isSelling]);
 
   useEffect(() => {
     // Calculate current generation and daily yield from energy data
@@ -70,27 +184,6 @@ export default function HomeScreen({ navigation }: Props) {
   }, [energyData, flowAnimation]);
 
   const carbonSaved = calculateCarbonSaved(dailyYield);
-
-  // Energy flow animation interpolation
-  const solarOpacity = flowAnimation.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.3, 1, 0.3],
-  });
-
-  const houseOpacity = flowAnimation.interpolate({
-    inputRange: [0, 0.3, 0.7, 1],
-    outputRange: [0.3, 1, 0.5, 0.3],
-  });
-
-  const batteryOpacity = flowAnimation.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.3, 0.8, 0.3],
-  });
-
-  const gridOpacity = flowAnimation.interpolate({
-    inputRange: [0, 0.7, 1],
-    outputRange: [0.3, 1, 0.3],
-  });
 
   if (!currentMeter) {
     return (
@@ -351,74 +444,68 @@ export default function HomeScreen({ navigation }: Props) {
           <Ionicons name="chevron-forward" size={20} color="#6b7280" />
         </TouchableOpacity>
 
-        {/* Energy Flow Visualization - Compact Version at Bottom */}
+        {/* Energy Flow Visualization - Dynamic Version */}
         <View style={styles.energyFlowContainerCompact}>
           <View style={styles.energyFlowHeader}>
             <MaterialCommunityIcons name="transit-connection-variant" size={20} color="#10b981" />
             <Text style={styles.energyFlowTitleCompact}>Energy Flow</Text>
           </View>
           <View style={styles.energyFlowDiagramCompact}>
-            {/* Solar */}
-            <View style={styles.flowNodeCompact}>
-              <Animated.View style={[styles.flowIconContainerCompact, { opacity: solarOpacity }]}>
-                <LinearGradient
-                  colors={['#fbbf24', '#f59e0b']}
-                  style={styles.flowIconGradientCompact}
-                >
-                  <MaterialCommunityIcons name="solar-power" size={20} color="#ffffff" />
-                </LinearGradient>
-              </Animated.View>
-              <Text style={styles.flowLabelCompact}>Solar</Text>
-              <Text style={styles.flowValueCompact}>{formatEnergy(currentGeneration, 'kW')}</Text>
-            </View>
+            {visibleEnergyNodes.map((nodeId, index) => {
+              const config = ENERGY_NODE_CONFIGS[nodeId];
+              const isLastNode = index === visibleEnergyNodes.length - 1;
+              const nodeOpacity = nodeAnimations[nodeId];
 
-            <Ionicons name="arrow-forward" size={16} color="#10b981" style={styles.flowArrowCompact} />
+              // Render icon based on icon family
+              const renderIcon = () => {
+                if (config.iconFamily === 'MaterialCommunityIcons') {
+                  return (
+                    <MaterialCommunityIcons
+                      name={config.icon as any}
+                      size={20}
+                      color="#ffffff"
+                    />
+                  );
+                }
+                return (
+                  <Ionicons
+                    name={config.icon as any}
+                    size={20}
+                    color="#ffffff"
+                  />
+                );
+              };
 
-            {/* Home */}
-            <View style={styles.flowNodeCompact}>
-              <Animated.View style={[styles.flowIconContainerCompact, { opacity: houseOpacity }]}>
-                <LinearGradient
-                  colors={['#3b82f6', '#2563eb']}
-                  style={styles.flowIconGradientCompact}
-                >
-                  <Ionicons name="home" size={20} color="#ffffff" />
-                </LinearGradient>
-              </Animated.View>
-              <Text style={styles.flowLabelCompact}>Home</Text>
-              <Text style={styles.flowValueCompact}>Consuming</Text>
-            </View>
+              return (
+                <React.Fragment key={nodeId}>
+                  {/* Energy Node */}
+                  <View style={styles.flowNodeCompact}>
+                    <Animated.View style={[styles.flowIconContainerCompact, { opacity: nodeOpacity }]}>
+                      <LinearGradient
+                        colors={config.gradientColors}
+                        style={styles.flowIconGradientCompact}
+                      >
+                        {renderIcon()}
+                      </LinearGradient>
+                    </Animated.View>
+                    <Text style={styles.flowLabelCompact}>{config.label}</Text>
+                    <Text style={styles.flowValueCompact}>
+                      {config.getStatusText(energyFlowContext)}
+                    </Text>
+                  </View>
 
-            <Ionicons name="arrow-forward" size={16} color="#10b981" style={styles.flowArrowCompact} />
-
-            {/* Battery */}
-            <View style={styles.flowNodeCompact}>
-              <Animated.View style={[styles.flowIconContainerCompact, { opacity: batteryOpacity }]}>
-                <LinearGradient
-                  colors={['#8b5cf6', '#7c3aed']}
-                  style={styles.flowIconGradientCompact}
-                >
-                  <MaterialCommunityIcons name="battery-charging" size={20} color="#ffffff" />
-                </LinearGradient>
-              </Animated.View>
-              <Text style={styles.flowLabelCompact}>Battery</Text>
-              <Text style={styles.flowValueCompact}>Stored</Text>
-            </View>
-
-            <Ionicons name="arrow-forward" size={16} color="#10b981" style={styles.flowArrowCompact} />
-
-            {/* Grid/Neighbor */}
-            <View style={styles.flowNodeCompact}>
-              <Animated.View style={[styles.flowIconContainerCompact, { opacity: gridOpacity }]}>
-                <LinearGradient
-                  colors={['#10b981', '#059669']}
-                  style={styles.flowIconGradientCompact}
-                >
-                  <MaterialCommunityIcons name="transmission-tower" size={20} color="#ffffff" />
-                </LinearGradient>
-              </Animated.View>
-              <Text style={styles.flowLabelCompact}>{isSelling ? 'Selling' : 'Grid'}</Text>
-              <Text style={styles.flowValueCompact}>{isSelling ? 'Active' : 'Connected'}</Text>
-            </View>
+                  {/* Arrow between nodes (not after last node) */}
+                  {!isLastNode && (
+                    <Ionicons
+                      name="arrow-forward"
+                      size={16}
+                      color="#10b981"
+                      style={styles.flowArrowCompact}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
           </View>
         </View>
       </ScrollView>

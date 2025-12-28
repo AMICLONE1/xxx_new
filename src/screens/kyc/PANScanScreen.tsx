@@ -321,15 +321,12 @@ export default function PANScanScreen({ navigation }: Props) {
    * Handle image upload
    */
   const handleUploadImage = async () => {
-    // Check if running in Expo Go - show warning but still allow upload
-    if (isExpoGo) {
+    // Check if running in Expo Go and Cloud OCR is not available
+    if (isExpoGo && !ocrService.isCloudOCRAvailable()) {
       Alert.alert(
-        'Development Build Required',
-        'Document scanning requires a development build.\n\n' +
-        'OCR will not work in Expo Go, but you can still upload an image and enter details manually.\n\n' +
-        'To enable OCR:\n' +
-        '• Run: npx expo prebuild\n' +
-        '• Run: npx expo run:android',
+        'OCR Not Available',
+        'Document scanning requires a development build or Cloud OCR API.\n\n' +
+        'You can upload an image or enter details manually.',
         [
           {
             text: 'Upload Anyway',
@@ -498,11 +495,10 @@ export default function PANScanScreen({ navigation }: Props) {
         // Handle Expo Go detection
         if (ocrError instanceof ExpoGoDetectedError || ocrError?.message === 'EXPO_GO_DETECTED') {
           Alert.alert(
-            'Development Build Required',
-            'Document scanning requires a development build.\n\n' +
-            'Please use the PowerNetPro app or create a development build:\n\n' +
-            '1. Run: npx expo prebuild\n' +
-            '2. Run: npx expo run:android\n\n' +
+            'OCR Not Available',
+            'Document scanning requires either:\n\n' +
+            '• A development build (npx expo run:android)\n' +
+            '• Cloud OCR API key configured in app.json\n\n' +
             'You can manually enter your PAN details below.',
             [{ text: 'Enter Manually', style: 'default' }]
           );

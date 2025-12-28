@@ -83,7 +83,14 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
         style={styles.gradientHeader}
       >
         <View style={styles.header}>
-          <View>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Trading Bot (Auto-Pilot)</Text>
             <Text style={styles.headerSubtitle}>Set and forget rules for automated trading</Text>
           </View>
@@ -258,14 +265,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  backButton: {
+    padding: 4,
+    marginRight: 12,
+  },
+  headerContent: {
+    flex: 1,
+  },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#d1fae5',
     fontWeight: '500',
   },

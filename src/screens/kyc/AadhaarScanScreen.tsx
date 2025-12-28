@@ -726,13 +726,14 @@ export default function AadhaarScanScreen({ navigation }: Props) {
    */
   const handleUploadImage = async () => {
     // Check if running in Expo Go - show warning but still allow upload
-    // The OCR will fail gracefully and show manual entry form
-    if (isExpoGo) {
+    // Cloud OCR can work in Expo Go if configured
+    if (isExpoGo && !ocrService.isCloudOCRAvailable()) {
       Alert.alert(
         'Development Build Required',
-        'Document scanning requires a development build.\n\n' +
-        'OCR will not work in Expo Go, but you can still upload an image and enter details manually.\n\n' +
+        'Document scanning requires a development build or Cloud OCR.\n\n' +
+        'OCR will not work in Expo Go without Cloud API configured, but you can still upload an image and enter details manually.\n\n' +
         'To enable OCR:\n' +
+        '• Set googleCloudVisionApiKey in app.json, OR\n' +
         '• Run: npx expo prebuild\n' +
         '• Run: npx expo run:android',
         [
@@ -911,11 +912,10 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         // Handle Expo Go detection
         if (ocrError instanceof ExpoGoDetectedError || ocrError?.message === 'EXPO_GO_DETECTED') {
           Alert.alert(
-            'Development Build Required',
-            'Document scanning requires a development build.\n\n' +
-            'Please use the PowerNetPro app or create a development build:\n\n' +
-            '1. Run: npx expo prebuild\n' +
-            '2. Run: npx expo run:android\n\n' +
+            'OCR Not Available',
+            'Document scanning requires either:\n\n' +
+            '• A development build (npx expo run:android)\n' +
+            '• Cloud OCR API key configured in app.json\n\n' +
             'You can manually enter your Aadhaar details below.',
             [{ text: 'Enter Manually', style: 'default' }]
           );

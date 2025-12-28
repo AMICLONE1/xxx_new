@@ -9,8 +9,10 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { formatCurrency } from '@/utils/helpers';
@@ -145,6 +147,15 @@ export default function TopUpScreen({ navigation }: Props) {
   return (
     <>
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Back Button */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="arrow-back" size={24} color="#374151" />
+      </TouchableOpacity>
+
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
           <Text style={styles.title}>Top Up Wallet</Text>
@@ -256,8 +267,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f9fafb',
   },
+  backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 16,
+    left: 16,
+    zIndex: 10,
+    padding: 8,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   scrollView: {
     flex: 1,
+    marginTop: Platform.OS === 'ios' ? 50 : 60,
   },
   content: {
     padding: 24,

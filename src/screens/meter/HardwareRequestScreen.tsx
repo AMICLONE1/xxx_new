@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import * as Location from 'expo-location';
@@ -114,10 +115,22 @@ export default function HardwareRequestScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
-          <Text style={styles.title}>Request Smart Meter Installation</Text>
-          <Text style={styles.subtitle}>
-            Get a PowerNetPro-compatible Smart Meter installed at your location
-          </Text>
+          {/* Header with Back Button */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#374151" />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.title}>Request Smart Meter Installation</Text>
+              <Text style={styles.subtitle}>
+                Get a PowerNetPro-compatible Smart Meter installed at your location
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Address *</Text>
@@ -214,8 +227,21 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 12,
+    marginTop: 4,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#111827',
     marginBottom: 8,
@@ -224,7 +250,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     lineHeight: 20,
-    marginBottom: 24,
   },
   inputContainer: {
     marginBottom: 24,

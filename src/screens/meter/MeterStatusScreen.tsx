@@ -5,10 +5,16 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMeterStore } from '@/store';
-import { MeterVerificationStatus } from '@/types';
+import { MeterVerificationStatus, RootStackParamList } from '@/types';
+
+type MeterStatusScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MeterStatus'>;
 
 interface StatusStep {
   id: string;
@@ -17,6 +23,7 @@ interface StatusStep {
 }
 
 export default function MeterStatusScreen() {
+  const navigation = useNavigation<MeterStatusScreenNavigationProp>();
   const { currentMeter } = useMeterStore();
   const [steps, setSteps] = useState<StatusStep[]>([]);
 
@@ -102,7 +109,17 @@ export default function MeterStatusScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
-          <Text style={styles.title}>Meter Status</Text>
+          {/* Header with Back Button */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#374151" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Meter Status</Text>
+          </View>
 
           <View style={styles.meterInfo}>
             <View style={styles.infoRow}>
@@ -182,11 +199,19 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 12,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 24,
   },
   meterInfo: {
     backgroundColor: '#ffffff',

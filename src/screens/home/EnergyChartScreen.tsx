@@ -16,12 +16,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { useMeterStore } from '@/store';
-import { EnergyData } from '@/types';
+import { EnergyData, RootStackParamList } from '@/types';
 import { formatEnergy } from '@/utils/helpers';
 import * as FileSystem from 'expo-file-system';
 
 const screenWidth = Dimensions.get('window').width;
+
+type EnergyChartScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EnergyChart'>;
 
 type TimeRange = 'day' | 'week' | 'month';
 
@@ -41,6 +45,7 @@ interface TooltipData {
 }
 
 export default function EnergyChartScreen() {
+  const navigation = useNavigation<EnergyChartScreenNavigationProp>();
   const { energyData, currentMeter } = useMeterStore();
   const [timeRange, setTimeRange] = useState<TimeRange>('day');
   const [showLogModal, setShowLogModal] = useState(false);
@@ -342,6 +347,13 @@ export default function EnergyChartScreen() {
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#374151" />
+            </TouchableOpacity>
             <Text style={styles.title}>Energy Charts</Text>
             <View style={styles.headerActions}>
               <TouchableOpacity 
@@ -937,10 +949,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  backButton: {
+    padding: 4,
+    marginRight: 8,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#111827',
+    flex: 1,
   },
   headerActions: {
     flexDirection: 'row',

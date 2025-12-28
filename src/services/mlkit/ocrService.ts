@@ -1,5 +1,6 @@
 import TextRecognition from '@react-native-ml-kit/text-recognition';
 import Constants from 'expo-constants';
+import { cloudOCRService } from '../ocr/cloudOCRService';
 
 export interface OCRResult {
   text: string;
@@ -77,37 +78,94 @@ class OCRService {
   }
 
   /**
-   * Check if OCR is available
+   * Check if OCR is available (either native or cloud)
    */
   async isOCRAvailable(): Promise<boolean> {
-    if (this.isRunningInExpoGo()) {
-      return false;
+    // Native ML Kit available
+    if (!this.isRunningInExpoGo() && this.testMLKitFunctionality()) {
+      return true;
     }
-    return this.testMLKitFunctionality();
+    // Cloud OCR available
+    if (cloudOCRService.isConfigured()) {
+      return true;
+    }
+    return false;
   }
 
   /**
-   * Extract text from image using ML Kit
-   * CRITICAL: NO MOCK DATA - only real OCR or throws error
+   * Check if cloud OCR is available (for Expo Go)
+   */
+  isCloudOCRAvailable(): boolean {
+    return cloudOCRService.isConfigured();
+  }
+
+  /**
+   * Extract text from image using ML Kit or Cloud OCR fallback
+   * Uses Cloud OCR in Expo Go if configured, otherwise throws error
    */
   async recognizeText(imageUri: string): Promise<OCRResult> {
-    // STEP 1: Check if running in Expo Go - ALWAYS throw error
+    // STEP 1: Check if running in Expo Go
     if (this.isRunningInExpoGo()) {
+      // Try Cloud OCR as fallback
+      if (cloudOCRService.isConfigured()) {
+        if (__DEV__) {
+          console.log('☁️ Using Cloud OCR (Expo Go detected)...');
+        }
+        try {
+          const cloudResult = await cloudOCRService.recognizeText(imageUri);
+          return {
+            text: cloudResult.text,
+            blocks: cloudResult.blocks.map(block => ({
+              text: block.text,
+              boundingBox: block.boundingBox || { x: 0, y: 0, width: 0, height: 0 },
+            })),
+          };
+        } catch (cloudError: any) {
+          if (__DEV__) {
+            console.error('❌ Cloud OCR failed:', cloudError.message);
+          }
+          throw new OCRNotAvailableError(`Cloud OCR failed: ${cloudError.message}`);
+        }
+      }
+      
+      // No fallback available
       if (__DEV__) {
-        console.warn('📱 Running in Expo Go - OCR requires development build');
+        console.warn('📱 Running in Expo Go - OCR requires development build or Cloud API');
       }
       throw new ExpoGoDetectedError();
     }
 
     // STEP 2: Verify ML Kit is available
     if (!this.testMLKitFunctionality()) {
+      // Try Cloud OCR as fallback
+      if (cloudOCRService.isConfigured()) {
+        if (__DEV__) {
+          console.log('☁️ Using Cloud OCR (ML Kit not available)...');
+        }
+        try {
+          const cloudResult = await cloudOCRService.recognizeText(imageUri);
+          return {
+            text: cloudResult.text,
+            blocks: cloudResult.blocks.map(block => ({
+              text: block.text,
+              boundingBox: block.boundingBox || { x: 0, y: 0, width: 0, height: 0 },
+            })),
+          };
+        } catch (cloudError: any) {
+          if (__DEV__) {
+            console.error('❌ Cloud OCR failed:', cloudError.message);
+          }
+          throw new OCRNotAvailableError(`Cloud OCR failed: ${cloudError.message}`);
+        }
+      }
+      
       if (__DEV__) {
         console.warn('⚠️ ML Kit module not available');
       }
       throw new OCRNotAvailableError('ML Kit module not available');
     }
 
-    // STEP 3: Attempt actual OCR - NO FALLBACK TO MOCK DATA
+    // STEP 3: Attempt native ML Kit OCR
     try {
       let processedUri = imageUri;
       if (!imageUri.startsWith('file://') && !imageUri.startsWith('http://') && !imageUri.startsWith('https://')) {
@@ -115,7 +173,7 @@ class OCRService {
       }
 
       if (__DEV__) {
-        console.log('🔍 Starting OCR...');
+        console.log('🔍 Starting native OCR...');
       }
 
       const result = await TextRecognition.recognize(processedUri);

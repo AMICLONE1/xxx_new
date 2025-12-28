@@ -11,6 +11,10 @@ import LoginScreen from '@/screens/auth/LoginScreen';
 import SignUpScreen from '@/screens/auth/SignUpScreen';
 import OTPScreen from '@/screens/auth/OTPScreen';
 import OnboardingScreen from '@/screens/auth/OnboardingScreen';
+import TermsConditionsScreen from '@/screens/auth/TermsConditionsScreen';
+import ForgotPasswordScreen from '@/screens/auth/ForgotPasswordScreen';
+import VerifyResetCodeScreen from '@/screens/auth/VerifyResetCodeScreen';
+import ResetPasswordScreen from '@/screens/auth/ResetPasswordScreen';
 
 // Main Screens
 import HomeScreen from '@/screens/home/HomeScreen';
@@ -137,6 +141,10 @@ export const AppNavigator = () => {
           <>
             <RootStack.Screen name="Login" component={LoginScreen} />
             <RootStack.Screen name="SignUp" component={SignUpScreen} />
+            <RootStack.Screen name="TermsConditions" component={TermsConditionsScreen} />
+            <RootStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <RootStack.Screen name="VerifyResetCode" component={VerifyResetCodeScreen} />
+            <RootStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
             <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
           </>
         ) : (
