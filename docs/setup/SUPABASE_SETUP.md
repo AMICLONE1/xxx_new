@@ -268,6 +268,8 @@ CREATE TABLE public.kyc_documents (
   document_type TEXT NOT NULL CHECK (document_type IN ('aadhaar', 'pan', 'electricity_bill', 'gst', 'society_registration')),
   document_number TEXT,
   name TEXT,
+  date_of_birth TEXT,
+  address TEXT,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'verified', 'rejected')),
   rejection_reason TEXT,
   file_url TEXT, -- Supabase Storage URL

@@ -364,8 +364,58 @@ class SupabaseDatabaseService {
         rejectionReason: k.rejection_reason,
         submittedAt: new Date(k.submitted_at),
         verifiedAt: k.verified_at ? new Date(k.verified_at) : undefined,
+        dateOfBirth: k.date_of_birth,
+        address: k.address,
+        fileUrl: k.file_url,
       })) || []
     );
+  }
+
+  /**
+   * Submit KYC document with all details
+   */
+  async submitKYCDocument(
+    userId: string,
+    documentType: 'aadhaar' | 'pan' | 'electricity_bill' | 'gst' | 'society_registration',
+    data: {
+      documentNumber?: string;
+      name?: string;
+      dateOfBirth?: string;
+      address?: string;
+      fileUrl?: string;
+    }
+  ): Promise<KYCData> {
+    const { data: inserted, error } = await supabase
+      .from('kyc_documents')
+      .insert({
+        user_id: userId,
+        document_type: documentType,
+        document_number: data.documentNumber || null,
+        name: data.name || null,
+        date_of_birth: data.dateOfBirth || null,
+        address: data.address || null,
+        file_url: data.fileUrl || null,
+        status: 'pending',
+        submitted_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      userId: inserted.user_id,
+      documentType: inserted.document_type,
+      documentNumber: inserted.document_number,
+      name: inserted.name,
+      status: inserted.status,
+      rejectionReason: inserted.rejection_reason,
+      submittedAt: new Date(inserted.submitted_at),
+      verifiedAt: inserted.verified_at ? new Date(inserted.verified_at) : undefined,
+      dateOfBirth: inserted.date_of_birth,
+      address: inserted.address,
+      fileUrl: inserted.file_url,
+    };
   }
 
   /**

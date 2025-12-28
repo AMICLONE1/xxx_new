@@ -14,11 +14,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import Constants from 'expo-constants';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { ocrService } from '@/services/mlkit/ocrService';
 import { useKYCStore, useAuthStore } from '@/store';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { supabaseDatabaseService } from '@/services/supabase/databaseService';
+import { supabaseStorageService } from '@/services/supabase/storageService';
 
 type AadhaarScanScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AadhaarScan'>;
 
@@ -37,7 +40,9 @@ export default function AadhaarScanScreen({ navigation }: Props) {
   const { setKYCData } = useKYCStore();
   const { user } = useAuthStore();
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [backImageUri, setBackImageUri] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessingBack, setIsProcessingBack] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData>({
     fullName: '',
     aadhaarNumber: '',
@@ -46,22 +51,49 @@ export default function AadhaarScanScreen({ navigation }: Props) {
   });
   const [showForm, setShowForm] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const [isManualEntry, setIsManualEntry] = useState(false); // Track if entered manually
+  const [needsBackSide, setNeedsBackSide] = useState(false); // Track if back side is needed
 
   /**
    * Mask Aadhaar number: XXXX-XXXX-1234
+   * CRITICAL: Only mask if valid 12-digit number exists
+   * Returns empty string if input is invalid
    */
   const maskAadhaarNumber = (aadhaar: string): string => {
+    // CRITICAL: Return empty string if not valid
     if (!aadhaar || aadhaar.length !== 12) {
-      return aadhaar;
+      return '';
     }
     const last4 = aadhaar.slice(-4);
     return `XXXX-XXXX-${last4}`;
   };
 
   /**
-   * Extract Aadhaar data from OCR text
+   * Format DOB with slashes: DD/MM/YYYY
+   */
+  const formatDOB = (text: string): string => {
+    // Remove all non-digits
+    const digitsOnly = text.replace(/\D/g, '');
+    
+    // Limit to 8 digits (DDMMYYYY)
+    const limited = digitsOnly.slice(0, 8);
+    
+    // Add slashes automatically
+    if (limited.length <= 2) {
+      return limited;
+    } else if (limited.length <= 4) {
+      return `${limited.slice(0, 2)}/${limited.slice(2)}`;
+    } else {
+      return `${limited.slice(0, 2)}/${limited.slice(2, 4)}/${limited.slice(4)}`;
+    }
+  };
+
+  /**
+   * STRICT Aadhaar data extraction - ONLY fill if explicitly detected
+   * DO NOT guess, infer, or fabricate any data
    */
   const extractAadhaarData = (ocrText: string): ExtractedData => {
+    // Initialize with empty data - fields remain empty unless explicitly detected
     const data: ExtractedData = {
       fullName: '',
       aadhaarNumber: '',
@@ -69,79 +101,423 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       address: '',
     };
 
-    // Extract Aadhaar number (12 digits, may have spaces or dashes)
-    const aadhaarPattern = /\b(\d{4})\s*-?\s*(\d{4})\s*-?\s*(\d{4})\b/;
-    const aadhaarMatch = ocrText.match(aadhaarPattern);
-    if (aadhaarMatch) {
-      data.aadhaarNumber = aadhaarMatch[1] + aadhaarMatch[2] + aadhaarMatch[3];
+    // ============================================
+    // A. AADHAAR NUMBER - STRICT DETECTION ONLY
+    // ============================================
+    // Detect ONLY if a continuous 12-digit numeric sequence exists
+    // Must be on its own line OR with clear context (DOB/Address nearby)
+    const lines = ocrText.split('\n');
+    
+    // STEP 3: AADHAAR NUMBER DETECTION (REAL-WORLD FIX)
+    // Aadhaar numbers in OCR can be:
+    // - "8364 5789 2230" (on one line)
+    // - Split across multiple lines: "8364" on one line, "5789" on next, "2230" on next
+    // - "836457892230" (no spaces)
+    
+    // Strategy: Find ALL 4-digit groups and join consecutive ones
+    
+    // Priority 1: Try exact match on single line first (most reliable)
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Skip lines with labels
+      if (/VID|Aadhaar|Number|नंबर/i.test(trimmedLine) && !/^\d/.test(trimmedLine)) {
+        continue;
+      }
+      
+      // Match exact formats on single line
+      const exactPatterns = [
+        /^(\d{4})\s+(\d{4})\s+(\d{4})$/, // "8364 5789 2230"
+        /^(\d{4})-(\d{4})-(\d{4})$/, // "8364-5789-2230"
+        /^(\d{12})$/, // "836457892230"
+      ];
+      
+      for (const pattern of exactPatterns) {
+        const match = trimmedLine.match(pattern);
+        if (match) {
+          const digits = match[0].replace(/\D/g, '');
+          if (digits.length === 12) {
+            data.aadhaarNumber = digits;
+            break;
+          }
+        }
+      }
+      if (data.aadhaarNumber) break;
     }
-
-    // Extract Date of Birth (common formats: DD/MM/YYYY, DD-MM-YYYY, DD MMM YYYY)
-    const dobPatterns = [
-      /\b(\d{2})\/(\d{2})\/(\d{4})\b/, // DD/MM/YYYY
-      /\b(\d{2})-(\d{2})-(\d{4})\b/, // DD-MM-YYYY
-      /\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})\b/i, // DD MMM YYYY
-    ];
-
-    for (const pattern of dobPatterns) {
-      const dobMatch = ocrText.match(pattern);
-      if (dobMatch) {
-        if (pattern === dobPatterns[2]) {
-          // DD MMM YYYY format
-          const months: { [key: string]: string } = {
-            jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
-            jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
-          };
-          const month = months[dobMatch[2].toLowerCase().substring(0, 3)];
-          data.dateOfBirth = `${dobMatch[1].padStart(2, '0')}/${month}/${dobMatch[3]}`;
+    
+    // Priority 2: Handle digits split across multiple lines
+    // Look for consecutive lines with exactly 4 digits each
+    if (!data.aadhaarNumber) {
+      const digitGroups: string[] = [];
+      
+      for (let i = 0; i < lines.length; i++) {
+        const trimmedLine = lines[i].trim();
+        
+        // Match exactly 4 digits (may have spaces/dashes)
+        const fourDigitMatch = trimmedLine.match(/^(\d{4})[\s-]*$/);
+        if (fourDigitMatch) {
+          digitGroups.push(fourDigitMatch[1]);
+          
+          // If we have 3 groups of 4 digits, join them
+          if (digitGroups.length === 3) {
+            const joined = digitGroups.join('');
+            if (joined.length === 12) {
+              data.aadhaarNumber = joined;
+              break;
+            }
+          }
         } else {
-          data.dateOfBirth = `${dobMatch[1]}/${dobMatch[2]}/${dobMatch[3]}`;
+          // Reset if we hit a non-4-digit line (not consecutive)
+          if (digitGroups.length > 0 && digitGroups.length < 3) {
+            digitGroups.length = 0;
+          }
         }
-        break;
       }
     }
+    
+    // Priority 3: Find 12 digits anywhere (with separators)
+    if (!data.aadhaarNumber) {
+      // Match pattern: 4 digits, separator, 4 digits, separator, 4 digits
+      const pattern = /\b(\d{4})[\s-](\d{4})[\s-](\d{4})\b/;
+      const match = ocrText.match(pattern);
+      if (match) {
+        const digits = (match[1] + match[2] + match[3]).replace(/\D/g, '');
+        if (digits.length === 12) {
+          data.aadhaarNumber = digits;
+        }
+      }
+    }
+    
+    // CRITICAL: If total digits !== 12, leave empty
+    if (data.aadhaarNumber && data.aadhaarNumber.length !== 12) {
+      data.aadhaarNumber = '';
+    }
 
-    // Extract Name (look for text before "DOB" or "Year of Birth" or similar patterns)
-    const namePatterns = [
-      /(?:Name|नाम|NAME)\s*:?\s*([A-Z][A-Z\s]+?)(?:\s+(?:DOB|Year|Date|जन्म))/i,
-      /^([A-Z][A-Z\s]{3,30})(?:\s+(?:DOB|Year|Date))/i,
-      /(?:Government of India|भारत सरकार)\s+([A-Z][A-Z\s]+?)(?:\s+(?:DOB|Year|Date))/i,
+    // ============================================
+    // B. FULL NAME - STRICT DETECTION ONLY
+    // ============================================
+    // Detect ONLY if a clear name string exists with explicit label or context
+    // CRITICAL: Exclude "GOVERNMENT OF INDIA", "भारत सरकार", and other non-name text
+    // DO NOT infer from random uppercase words
+    
+    // List of text to EXCLUDE from name extraction
+    // CRITICAL: Use word boundaries to avoid false matches (e.g., "M" in "SAMARTH" or "F" in "SHARMA")
+    const excludePatterns = [
+      /GOVERNMENT OF INDIA/i,
+      /भारत सरकार/,
+      /GOVERNMENT/i,
+      /OF INDIA/i,
+      /UNIQUE IDENTIFICATION/i,
+      /AUTHORITY OF INDIA/i,
+      /UIDAI/i,
+      /VID:/i,
+      /DOB:/i,
+      /Date of Birth/i,
+      /जन्म तिथि/i,
+      /^(Male|Female|M|F)$/i, // CRITICAL: Match whole word only, not partial matches
     ];
-
-    for (const pattern of namePatterns) {
-      const nameMatch = ocrText.match(pattern);
-      if (nameMatch && nameMatch[1]) {
-        data.fullName = nameMatch[1].trim();
-        break;
+    
+    // Helper function to check if text should be excluded
+    // CRITICAL: Check if text matches any exclude pattern
+    // For whole-word patterns (like /^(Male|Female|M|F)$/i), they already use ^ and $ so no need to test upperText separately
+    const shouldExclude = (text: string): boolean => {
+      // First check if it's a known excluded word/phrase
+      const trimmedText = text.trim();
+      return excludePatterns.some(pattern => {
+        // Test both original and uppercase versions
+        return pattern.test(trimmedText) || pattern.test(trimmedText.toUpperCase());
+      });
+    };
+    
+    // Helper function to clean name - remove excluded text
+    const cleanName = (name: string): string => {
+      let cleaned = name.trim();
+      // Remove "GOVERNMENT OF INDIA" or "भारत सरकार" if present
+      cleaned = cleaned.replace(/(?:GOVERNMENT OF INDIA|भारत सरकार|GOVERNMENT|OF INDIA)\s*/gi, '').trim();
+      // Remove any remaining excluded patterns
+      for (const pattern of excludePatterns) {
+        cleaned = cleaned.replace(pattern, '').trim();
+      }
+      return cleaned;
+    };
+    
+    // Pattern 1: Explicit "Name" label (English or Hindi)
+    // Supports: Name, नाम, NAME (case insensitive)
+    const nameWithLabel = ocrText.match(/(?:Name|नाम|NAME)\s*:?\s*([^\n]{2,40}?)(?:\s+(?:DOB|Date|Year|Male|Female|M|F|जन्म|Gender))/i);
+    if (nameWithLabel && nameWithLabel[1]) {
+      let name = nameWithLabel[1].trim();
+      name = cleanName(name);
+      // Validate: must be meaningful (3+ chars, contains letters, not excluded text)
+      if (name.length >= 3 && !shouldExclude(name) && /[A-Za-z\u0900-\u097F]/.test(name) && !/^\d+$/.test(name)) {
+        data.fullName = name;
       }
     }
-
-    // If name not found, try to find the longest capitalized word sequence at the top
+    
+    // Pattern 2: Name on line after "Government of India" or "भारत सरकार" and before DOB/Gender
+    // CRITICAL: Must be on a SEPARATE line, not on the same line as government text
     if (!data.fullName) {
-      const lines = ocrText.split('\n').slice(0, 5); // First 5 lines
-      for (const line of lines) {
-        const words = line.trim().split(/\s+/);
-        if (words.length >= 2 && words.every(w => /^[A-Z][a-z]+$/.test(w))) {
-          data.fullName = words.join(' ');
-          break;
+      // Find all lines and look for name after government text
+      for (let i = 0; i < lines.length - 1; i++) {
+        const line = lines[i].trim();
+        
+        // Check if this line contains government text
+        if (/(?:Government of India|भारत सरकार)/i.test(line)) {
+          if (__DEV__) {
+            console.log('🔍 Found government text at line', i, ':', line);
+          }
+          // Look at next few lines for the name
+          for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
+            const nextLine = lines[j].trim();
+            
+            if (__DEV__) {
+              console.log('🔍 Checking line', j, ':', nextLine);
+            }
+            
+            // Skip empty lines, dates, numbers, gender markers
+            if (!nextLine) {
+              if (__DEV__) {
+                console.log('⏭️ Skipping line', j, '- empty line');
+              }
+              continue;
+            }
+            if (/^\d+$/.test(nextLine)) {
+              if (__DEV__) {
+                console.log('⏭️ Skipping line', j, '- all digits');
+              }
+              continue;
+            }
+            if (/\d{2}[-\/]\d{2}[-\/]\d{4}/.test(nextLine)) {
+              if (__DEV__) {
+                console.log('⏭️ Skipping line', j, '- date pattern');
+              }
+              continue;
+            }
+            if (/^(Male|Female|M|F|DOB|Date|Year)$/i.test(nextLine)) {
+              if (__DEV__) {
+                console.log('⏭️ Skipping line', j, '- gender/date marker');
+              }
+              continue;
+            }
+            if (shouldExclude(nextLine)) {
+              if (__DEV__) {
+                console.log('⏭️ Skipping line', j, '- excluded by pattern:', nextLine);
+              }
+              continue;
+            }
+            
+            // Match name pattern: 1-4 words, each 2+ characters (Latin or Devanagari)
+            // CRITICAL: Allow mixed-case (A-Za-z) - OCR commonly returns mixed-case names
+            // Allow single word names too (some names might be single word)
+            const namePattern = /^([A-Za-z\u0900-\u097F]{2,}(?:\s+[A-Za-z\u0900-\u097F]{2,}){0,3})$/;
+            const match = nextLine.match(namePattern);
+            if (match && match[1]) {
+              let name = match[1].trim();
+              name = cleanName(name);
+              // Final validation - must be meaningful name
+              if (name.length >= 3 && !shouldExclude(name) && /[A-Za-z\u0900-\u097F]/.test(name)) {
+                data.fullName = name;
+                if (__DEV__) {
+                  console.log('✅ Name found via Pattern 2:', name);
+                }
+                break;
+              } else {
+                if (__DEV__) {
+                  console.log('❌ Name pattern matched but validation failed:', {
+                    name,
+                    length: name.length,
+                    shouldExclude: shouldExclude(name),
+                    hasLetters: /[A-Za-z\u0900-\u097F]/.test(name),
+                  });
+                }
+              }
+            } else {
+              if (__DEV__) {
+                console.log('❌ Name pattern did not match:', nextLine);
+              }
+            }
+          }
+          if (data.fullName) break;
         }
       }
     }
-
-    // Extract Address (text after Aadhaar number, before end or other keywords)
-    const addressPattern = /(?:Address|पता|ADDRESS)[\s:]*([^\n]+(?:\n[^\n]+)*?)(?:\n\n|\n[A-Z]{2,}|$)/i;
-    const addressMatch = ocrText.match(addressPattern);
-    if (addressMatch && addressMatch[1]) {
-      data.address = addressMatch[1].trim().replace(/\s+/g, ' ');
-    } else {
-      // Fallback: get text after DOB line
-      const lines = ocrText.split('\n');
-      const dobIndex = lines.findIndex(line => /DOB|Date|Year/.test(line));
-      if (dobIndex >= 0 && dobIndex < lines.length - 1) {
-        const addressLines = lines.slice(dobIndex + 1, dobIndex + 5);
-        data.address = addressLines.join(' ').trim();
+    
+    // Pattern 3: All-caps name on its own line (fallback - improved detection)
+    // Only if not found by previous patterns
+    if (!data.fullName) {
+      if (__DEV__) {
+        console.log('🔍 Trying Pattern 3 - checking lines 2-10 for name');
+      }
+      // Check lines after government text (usually name is 2-4 lines after header)
+      for (let i = 2; i < Math.min(lines.length, 10); i++) {
+        const trimmedLine = lines[i].trim();
+        
+        if (__DEV__) {
+          console.log('🔍 Pattern 3 - Line', i, ':', trimmedLine);
+        }
+        
+        // Skip if excluded or clearly not a name
+        if (!trimmedLine) {
+          if (__DEV__) {
+            console.log('⏭️ Pattern 3 - Skipping line', i, '- empty');
+          }
+          continue;
+        }
+        if (shouldExclude(trimmedLine)) {
+          if (__DEV__) {
+            console.log('⏭️ Pattern 3 - Skipping line', i, '- excluded by pattern:', trimmedLine);
+          }
+          continue;
+        }
+        if (/^\d+$/.test(trimmedLine)) {
+          if (__DEV__) {
+            console.log('⏭️ Pattern 3 - Skipping line', i, '- all digits');
+          }
+          continue;
+        }
+        if (/\d{2}[-\/]\d{2}[-\/]\d{4}/.test(trimmedLine)) {
+          if (__DEV__) {
+            console.log('⏭️ Pattern 3 - Skipping line', i, '- date pattern');
+          }
+          continue;
+        }
+        if (/^(Male|Female|M|F|DOB|Date|Year|Gender)$/i.test(trimmedLine)) {
+          if (__DEV__) {
+            console.log('⏭️ Pattern 3 - Skipping line', i, '- gender/date marker');
+          }
+          continue;
+        }
+        if (trimmedLine.length < 3) {
+          if (__DEV__) {
+            console.log('⏭️ Pattern 3 - Skipping line', i, '- too short');
+          }
+          continue;
+        }
+        
+        // Match name pattern: 1-4 words, each 2+ characters (allow single word names)
+        // CRITICAL: Allow mixed-case (A-Za-z) - OCR commonly returns mixed-case names like "Nikhil Kumar"
+        const namePattern = /^([A-Za-z\u0900-\u097F]{2,}(?:\s+[A-Za-z\u0900-\u097F]{2,}){0,3})$/;
+        const match = trimmedLine.match(namePattern);
+        if (match && match[1]) {
+          let name = match[1].trim();
+          name = cleanName(name);
+          // Final validation - must be meaningful name
+          if (name.length >= 3 && !shouldExclude(name) && /[A-Za-z\u0900-\u097F]/.test(name)) {
+            data.fullName = name;
+            if (__DEV__) {
+              console.log('✅ Name found via Pattern 3:', name);
+            }
+            break;
+          } else {
+            if (__DEV__) {
+              console.log('❌ Pattern 3 - Name matched but validation failed:', {
+                name,
+                length: name.length,
+                shouldExclude: shouldExclude(name),
+                hasLetters: /[A-Za-z\u0900-\u097F]/.test(name),
+              });
+            }
+          }
+        } else {
+          if (__DEV__) {
+            console.log('❌ Pattern 3 - Name pattern did not match:', trimmedLine);
+          }
+        }
       }
     }
+    
+    // Final check - if still no name, log for debugging
+    if (!data.fullName && __DEV__) {
+      console.warn('⚠️ Name not detected after all patterns. OCR lines:', lines.slice(0, 10));
+    }
+    
+    // If not found, leave empty - DO NOT infer from random words
+
+    // STEP 4: DOB DETECTION (STRICT - NO REUSE OF OLD VALUES)
+    // Detect ONLY if a valid date exists (DD/MM/YYYY or DD-MM-YYYY)
+    // If NOT found: Leave DOB EMPTY
+    
+    // Pattern 1: Date with "DOB" or "Date of Birth" label
+    const dobWithLabel = ocrText.match(/(?:DOB|Date of Birth|जन्म तिथि)\s*:?\s*(\d{2})[-\/](\d{2})[-\/](\d{4})\b/i);
+    if (dobWithLabel) {
+      const day = dobWithLabel[1];
+      const month = dobWithLabel[2];
+      const year = dobWithLabel[3];
+      // Strict validation
+      if (parseInt(day) >= 1 && parseInt(day) <= 31 &&
+          parseInt(month) >= 1 && parseInt(month) <= 12 &&
+          parseInt(year) >= 1900 && parseInt(year) <= 2099) {
+        data.dateOfBirth = `${day}/${month}/${year}`;
+      }
+    }
+    
+    // Pattern 2: Date on its own line (DD-MM-YYYY or DD/MM/YYYY)
+    if (!data.dateOfBirth) {
+      for (const line of lines.slice(2, 15)) {
+        const trimmedLine = line.trim();
+        const dateMatch = trimmedLine.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})$/);
+        if (dateMatch) {
+          const day = dateMatch[1];
+          const month = dateMatch[2];
+          const year = dateMatch[3];
+          // Strict validation
+          if (parseInt(day) >= 1 && parseInt(day) <= 31 &&
+              parseInt(month) >= 1 && parseInt(month) <= 12 &&
+              parseInt(year) >= 1900 && parseInt(year) <= 2099) {
+            data.dateOfBirth = `${day}/${month}/${year}`;
+            break;
+          }
+        }
+      }
+    }
+    
+    // CRITICAL: If not found, leave empty - DO NOT reuse old values
+
+    // STEP 5: ADDRESS DETECTION (STRICT - NO GUESSING)
+    // Detect address ONLY if OCR text contains:
+    // - Street/locality text AND
+    // - City/state keyword AND
+    // - Pincode (6 digits)
+    // If any missing: Leave Address EMPTY
+    
+    // Pattern 1: Explicit "Address" label with multi-line content
+    const addressWithLabel = ocrText.match(/(?:Address|पता|ADDRESS|Address Line)[\s:]+([^\n]+(?:\n[^\n]+){1,4}?)(?:\n\n|\n[A-Z\u0900-\u097F]{2,}|$)/i);
+    if (addressWithLabel && addressWithLabel[1]) {
+      let address = addressWithLabel[1].trim().replace(/\s+/g, ' ');
+      // Remove excluded text
+      address = address.replace(/(?:GOVERNMENT OF INDIA|भारत सरकार|GOVERNMENT|OF INDIA|VID|Aadhaar)/gi, '').trim();
+      
+      // STRICT VALIDATION: Must have street + city/state + pincode
+      const hasStreet = /(?:Street|Road|Lane|Nagar|Colony|Village|Area|Locality|ST|ROAD|LANE)/i.test(address);
+      const hasCityState = /(?:Delhi|Mumbai|Bangalore|Chennai|Kolkata|Pune|Hyderabad|State|District|CITY)/i.test(address);
+      const hasPincode = /\b\d{6}\b/.test(address);
+      
+      // All three required for valid address
+      if (address.length >= 20 && hasStreet && hasCityState && hasPincode && 
+          /[A-Za-z\u0900-\u097F]/.test(address) && !/^\d+$/.test(address)) {
+        data.address = address;
+      }
+    }
+    
+    // Pattern 2: S/O or C/O pattern (only if Pattern 1 didn't find)
+    if (!data.address) {
+      const sOCoPattern = ocrText.match(/(?:S\/O|S\/O:|C\/O|C\/O:)\s+([^\n]+(?:\n[^\n]+){1,4}?)(?:\n[A-Z\u0900-\u097F]{2,}|$)/i);
+      if (sOCoPattern && sOCoPattern[1]) {
+        let address = sOCoPattern[1].trim().replace(/\s+/g, ' ');
+        address = address.replace(/(?:GOVERNMENT OF INDIA|भारत सरकार|GOVERNMENT|OF INDIA|VID|Aadhaar)/gi, '').trim();
+        
+        // Same strict validation
+        const hasStreet = /(?:Street|Road|Lane|Nagar|Colony|Village|Area|Locality)/i.test(address);
+        const hasCityState = /(?:Delhi|Mumbai|Bangalore|Chennai|Kolkata|Pune|Hyderabad|State|District)/i.test(address);
+        const hasPincode = /\b\d{6}\b/.test(address);
+        
+        if (address.length >= 20 && hasStreet && hasCityState && hasPincode && 
+            /[A-Za-z\u0900-\u097F]/.test(address) && !/^\d+$/.test(address)) {
+          data.address = address;
+        }
+      }
+    }
+    
+    // CRITICAL: If not clearly detected with all requirements, leave empty
 
     return data;
   };
@@ -151,10 +527,10 @@ export default function AadhaarScanScreen({ navigation }: Props) {
    */
   const handleUploadImage = async () => {
     try {
-      // Request permissions
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant camera roll permissions to upload Aadhaar image.');
+      // Request media library permissions first
+      const mediaLibraryStatus = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (mediaLibraryStatus.status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant media library permissions to upload Aadhaar image.');
         return;
       }
 
@@ -166,33 +542,41 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           {
             text: 'Camera',
             onPress: async () => {
-              const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
-              if (cameraStatus.status !== 'granted') {
-                Alert.alert('Permission Required', 'Please grant camera permissions.');
-                return;
-              }
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                quality: 0.8,
-              });
+              try {
+                const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
+                if (cameraStatus.status !== 'granted') {
+                  Alert.alert('Permission Required', 'Please grant camera permissions.');
+                  return;
+                }
+                const result = await ImagePicker.launchCameraAsync({
+                  mediaTypes: ['images'],
+                  allowsEditing: true,
+                  quality: 0.8,
+                });
 
-              if (!result.canceled && result.assets[0]) {
-                await processImage(result.assets[0].uri);
+                if (!result.canceled && result.assets && result.assets[0]) {
+                  await processImage(result.assets[0].uri);
+                }
+              } catch (error: any) {
+                Alert.alert('Error', `Failed to open camera: ${error.message || 'Unknown error'}`);
               }
             },
           },
           {
             text: 'Photo Library',
             onPress: async () => {
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                quality: 0.8,
-              });
+              try {
+                const result = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: ['images'],
+                  allowsEditing: true,
+                  quality: 0.8,
+                });
 
-              if (!result.canceled && result.assets[0]) {
-                await processImage(result.assets[0].uri);
+                if (!result.canceled && result.assets && result.assets[0]) {
+                  await processImage(result.assets[0].uri);
+                }
+              } catch (error: any) {
+                Alert.alert('Error', `Failed to open photo library: ${error.message || 'Unknown error'}`);
               }
             },
           },
@@ -200,13 +584,11 @@ export default function AadhaarScanScreen({ navigation }: Props) {
             text: 'Cancel',
             style: 'cancel',
           },
-        ]
+        ],
+        { cancelable: true }
       );
     } catch (error: any) {
-      if (__DEV__) {
-        console.error('Error picking image:', error);
-      }
-      Alert.alert('Error', 'Failed to open image picker. Please try again.');
+      Alert.alert('Error', `Failed to open image picker: ${error.message || 'Please try again.'}`);
     }
   };
 
@@ -214,98 +596,571 @@ export default function AadhaarScanScreen({ navigation }: Props) {
    * Process image with OCR
    */
   const processImage = async (uri: string) => {
-    setIsProcessing(true);
-    setImageUri(uri);
-    setShowForm(false);
-    setExtractedData({
+    // ============================================
+    // STEP 1: HARD RESET (MANDATORY)
+    // ============================================
+    // CRITICAL: Reset ALL Aadhaar-related state to EMPTY
+    // This MUST happen BEFORE any OCR processing
+    const emptyData: ExtractedData = {
       fullName: '',
       aadhaarNumber: '',
       dateOfBirth: '',
       address: '',
-    });
+    };
+    
+    // Reset ALL state variables
+    setExtractedData(emptyData);
+    setShowForm(false);
+    setIsConfirmed(false);
+    setIsManualEntry(false);
+    setNeedsBackSide(false);
+    setBackImageUri(null);
+    setIsProcessingBack(false);
+    setImageUri(null); // Clear previous image URI
+    
+    // Now start processing with fresh state
+    setIsProcessing(true);
+    setImageUri(uri);
 
     try {
-      // Perform OCR
-      const ocrResult = await ocrService.recognizeText(uri);
+      if (__DEV__) {
+        console.log('📸 Processing image for OCR:', uri.substring(0, 100));
+      }
+
+      // Try to perform OCR - check if ML Kit is available first
+      let ocrResult;
+      try {
+        // Ensure URI is accessible - copy to local file if needed
+        let processedUri = uri;
+        
+        // If URI is not a file:// URI, we might need to handle it differently
+        // For now, try with the original URI
+        if (__DEV__) {
+          console.log('🔍 Attempting OCR with URI:', processedUri.substring(0, 100));
+        }
+
+        ocrResult = await ocrService.recognizeText(processedUri);
+        
+        // DO NOT log OCR text (security requirement - contains sensitive data)
+        if (__DEV__) {
+          console.log('✅ OCR Success! Text extracted (length:', ocrResult.text.length, 'chars)');
+        }
+      } catch (ocrError: any) {
+        if (__DEV__) {
+          console.error('❌ OCR Error:', ocrError?.message || ocrError);
+          console.error('Error type:', ocrError?.code || 'Unknown');
+        }
+        
+        // If OCR is not available (ML Kit not linked), proceed with manual entry
+        if (ocrError?.message === 'OCR_REQUIRES_DEV_BUILD' ||
+            ocrError?.message?.includes('not available') || 
+            ocrError?.message?.includes('development build') ||
+            ocrError?.message?.includes('not linked') ||
+            ocrError?.code === 'MODULE_NOT_FOUND') {
+          // Check if mock OCR is enabled
+          const enableMockOCR = Constants.expoConfig?.extra?.enableMockOCR;
+          
+          if (enableMockOCR) {
+            // Mock OCR should have worked, but if we're here, something else failed
+            // Just show manual entry
+            setExtractedData(emptyData);
+            setShowForm(true);
+            setIsManualEntry(true);
+            setIsProcessing(false);
+            return;
+          }
+          
+          // OCR not available - show form for manual entry with helpful instructions
+          Alert.alert(
+            'OCR Not Available',
+            'OCR requires a development build to work.\n\n' +
+            'To enable OCR:\n' +
+            '1. Run: npx expo prebuild\n' +
+            '2. Run: npx expo run:android\n\n' +
+            'For now, you can manually enter the details below.',
+            [
+              {
+                text: 'Enter Manually',
+                style: 'default',
+              },
+              {
+                text: 'OK',
+                style: 'cancel',
+              },
+            ]
+          );
+          setExtractedData(emptyData);
+          setShowForm(true);
+          setIsManualEntry(true);
+          setIsProcessing(false);
+          return;
+        }
+        
+        // For other errors, show alert but still allow manual entry
+        const errorMessage = ocrError?.message || 'Unknown error';
+        const isNotLinkedError = errorMessage.includes('doesn\'t seem to be linked') ||
+                                 errorMessage.includes('not linked') ||
+                                 errorMessage.includes('Make sure:');
+        
+        Alert.alert(
+          'OCR Processing Failed',
+          isNotLinkedError
+            ? `ML Kit is not properly linked. This requires a development build.\n\n` +
+              `To enable OCR:\n` +
+              `1. Run: npx expo prebuild\n` +
+              `2. Run: npx expo run:android\n\n` +
+              `For now, you can manually enter the details below.`
+            : `Could not extract text from image.\n\nError: ${errorMessage}\n\nYou can manually enter the details below.`,
+          [
+            {
+              text: 'Enter Manually',
+              style: 'default',
+            },
+            {
+              text: 'OK',
+              style: 'cancel',
+            },
+          ]
+        );
+        setExtractedData(emptyData);
+        setShowForm(true);
+        setIsManualEntry(true);
+        setIsProcessing(false);
+        return;
+      }
+
+      // ============================================
+      // STEP 2: OCR EXECUTION
+      // ============================================
+      // Store OCR text in local variable (NOT state)
+      // DO NOT log OCR text (security requirement - contains sensitive data)
+      const ocrText = ocrResult.text;
       
       if (__DEV__) {
-        console.log('OCR Text:', ocrResult.text);
+        console.log('✅ OCR Success! Text extracted (length:', ocrText.length, 'chars)');
       }
-
-      // Extract Aadhaar data
-      const extracted = extractAadhaarData(ocrResult.text);
       
-      // Also try using the service's built-in extractor
-      const aadhaarNumber = ocrService.extractAadhaarNumber(ocrResult);
-      if (aadhaarNumber && !extracted.aadhaarNumber) {
-        extracted.aadhaarNumber = aadhaarNumber;
-      }
-
-      const name = ocrService.extractName(ocrResult);
-      if (name && !extracted.fullName) {
-        extracted.fullName = name;
-      }
-
-      setExtractedData(extracted);
-      setShowForm(true);
-
-      // Delete image file immediately after OCR
-      try {
-        await FileSystem.deleteAsync(uri, { idempotent: true });
-      } catch (deleteError) {
+      // ============================================
+      // STEP 3: DATA EXTRACTION (STRICT)
+      // ============================================
+      // CRITICAL: Extract from CURRENT OCR text only
+      // extractAadhaarData always starts with empty data object
+      // NEVER reuse old values - extraction function is stateless
+      const extracted = extractAadhaarData(ocrText);
+      
+      // CRITICAL: Do NOT use service extractor as fallback
+      // Service extractor might have cached or incorrect values
+      // ONLY use local extraction which is strict and fresh
+      if (extracted.aadhaarNumber && extracted.aadhaarNumber.length === 12) {
         if (__DEV__) {
-          console.warn('Failed to delete image:', deleteError);
+          console.log('✅ Aadhaar number extracted:', extracted.aadhaarNumber.substring(0, 4) + '****' + extracted.aadhaarNumber.substring(8));
+        }
+      } else {
+        // Ensure it's empty if not found
+        extracted.aadhaarNumber = '';
+        if (__DEV__) {
+          console.warn('⚠️ No Aadhaar number detected in OCR text');
         }
       }
+      
+      // CRITICAL: Do NOT use service extractor for name - it might include wrong text
+      // Only use local extraction which has strict exclusion rules
+      if (__DEV__) {
+        if (extracted.fullName) {
+          console.log('✅ Name extracted:', extracted.fullName);
+        } else {
+          console.warn('⚠️ No name detected in OCR text');
+        }
+      }
+      
+      // Log only extraction results (not OCR text) for debugging
+      if (__DEV__) {
+        console.log('📊 STRICT Extraction Results:', {
+          name: extracted.fullName ? 'Found' : 'Not detected',
+          aadhaar: extracted.aadhaarNumber ? 'Found (12 digits)' : 'Not detected',
+          dob: extracted.dateOfBirth ? 'Found' : 'Not detected',
+          address: extracted.address ? 'Found' : 'Not detected',
+        });
+      }
+
+      // Address check (for logging only - we don't prompt for back side anymore)
+      const hasAddress = extracted.address && extracted.address.trim().length >= 15;
+      
+      if (__DEV__) {
+        console.log('📍 Address check:', {
+          hasAddress,
+          addressLength: extracted.address?.length || 0,
+        });
+      }
+      
+      // Final validation - ensure we have at least some data
+      const hasData = extracted.fullName || extracted.aadhaarNumber || extracted.dateOfBirth;
+      
+      if (__DEV__) {
+        console.log('📊 Final extracted data:', {
+          name: extracted.fullName || 'Not found',
+          aadhaar: extracted.aadhaarNumber ? 'Found (12 digits)' : 'Not found',
+          dob: extracted.dateOfBirth || 'Not found',
+          address: extracted.address ? 'Found' : 'Not found',
+          hasAnyData: hasData,
+        });
+      }
+
+      // ============================================
+      // STEP 5: FORM BINDING (ATOMIC STATE UPDATE)
+      // ============================================
+      // CRITICAL: Set extracted data from CURRENT OCR scan only
+      // This replaces ALL previous values - no old data persists
+      // extracted object is guaranteed fresh (created from current ocrText)
+      // CRITICAL: This must happen BEFORE image deletion to prevent race conditions
+      setExtractedData(extracted);
+      setNeedsBackSide(false);
+      
+      // CRITICAL: Always show form after OCR (even if some fields are missing)
+      // Form inputs are bound to extractedData state - they will show current values
+      setShowForm(true);
+      
+      // Determine if manual entry based on whether Aadhaar number was found
+      const hasAadhaarNumber = extracted.aadhaarNumber && extracted.aadhaarNumber.length === 12;
+      setIsManualEntry(!hasAadhaarNumber); // Manual entry only if Aadhaar number not found
+      
+      // Store final Aadhaar number for alert (from current extraction only)
+      const finalAadhaarNumber = hasAadhaarNumber ? extracted.aadhaarNumber : '';
+      
+      // ============================================
+      // STEP 6: IMAGE DELETION (AFTER STATE UPDATE)
+      // ============================================
+      // CRITICAL: Delete image ONLY AFTER:
+      // 1) extractAadhaarData() completes
+      // 2) setExtractedData() is executed
+      // This prevents ML Kit race conditions and ensures extraction completes
+      try {
+        const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
+        const filePath = fileUri.replace('file://', '');
+        const fileInfo = await FileSystem.getInfoAsync(filePath);
+        if (fileInfo.exists) {
+          await FileSystem.deleteAsync(filePath, { idempotent: true });
+          if (__DEV__) {
+            console.log('🗑️ Image file deleted after extraction and state update');
+          }
+        }
+      } catch (deleteError) {
+        // Silently handle deletion errors - not critical
+        if (__DEV__) {
+          console.warn('⚠️ Could not delete image file:', deleteError);
+        }
+      }
+      
+      if (__DEV__) {
+        console.log('✅ Form displayed with extracted data');
+        console.log('📋 Final values for alert:', {
+          name: extracted.fullName || 'Not found',
+          aadhaar: finalAadhaarNumber ? maskAadhaarNumber(finalAadhaarNumber) : 'Not found',
+          dob: extracted.dateOfBirth || 'Not found',
+          address: extracted.address || 'Not found',
+        });
+      }
+      
+      // Show success message with extracted fields (no back side prompt, no mock warning)
+      setTimeout(() => {
+        // Build extraction summary
+        const extractedFields = [];
+        if (extracted.fullName) extractedFields.push('Name');
+        if (finalAadhaarNumber) extractedFields.push('Aadhaar Number');
+        if (extracted.dateOfBirth) extractedFields.push('Date of Birth');
+        if (extracted.address) extractedFields.push('Address');
+        
+        const summary = extractedFields.length > 0 
+          ? `Extracted: ${extractedFields.join(', ')}`
+          : 'Please enter details manually';
+        
+        // CRITICAL: Use finalAadhaarNumber (the actual extracted value) for alert
+        const maskedAadhaar = finalAadhaarNumber ? maskAadhaarNumber(finalAadhaarNumber) : 'Not found';
+        
+        // Simple success message - no back side prompt, no mock warning
+        Alert.alert(
+          'OCR Complete ✅',
+          `${summary}\nAadhaar: ${maskedAadhaar}\n\nPlease verify and edit if needed.`,
+          [{ text: 'OK' }]
+        );
+      }, 500);
+      
+      // Image file has been deleted after OCR (for security)
+      // Image URI is kept for preview only (file already deleted)
     } catch (error: any) {
       if (__DEV__) {
-        console.error('OCR Error:', error);
+        console.error('❌ Unexpected error in processImage:', error);
       }
-      Alert.alert('OCR Failed', error.message || 'Failed to extract text from image. Please try again with a clearer image.');
-      setImageUri(null);
+      
+      // If OCR completely fails, show form with empty fields for manual entry
+      Alert.alert(
+        'Processing Error',
+        'An error occurred while processing the image. You can manually enter the details below.',
+        [{ text: 'OK' }]
+      );
+      setExtractedData(emptyData);
+      setShowForm(true);
+      setIsManualEntry(true); // Allow editing all fields
     } finally {
       setIsProcessing(false);
     }
   };
 
   /**
+   * Process back side image for address extraction
+   */
+  const processBackImage = async (uri: string) => {
+    setIsProcessingBack(true);
+    setBackImageUri(uri);
+
+    try {
+      if (__DEV__) {
+        console.log('📸 Processing BACK side image for address extraction:', uri.substring(0, 100));
+      }
+
+      // Perform OCR on back side
+      let ocrResult;
+      try {
+        ocrResult = await ocrService.recognizeText(uri);
+        
+        // DO NOT log OCR text (security requirement)
+        if (__DEV__) {
+          console.log('✅ Back side OCR completed. Text extracted (length:', ocrResult.text.length, 'chars)');
+        }
+      } catch (ocrError: any) {
+        if (__DEV__) {
+          console.error('❌ Back side OCR Error:', ocrError?.message || ocrError);
+        }
+        Alert.alert(
+          'OCR Failed',
+          'Could not extract address from back side. You can enter it manually.',
+          [{ text: 'OK' }]
+        );
+        setIsProcessingBack(false);
+        return;
+      }
+
+      // Extract address from back side using STRICT detection
+      const backExtracted = extractAadhaarData(ocrResult.text);
+      
+      // Strict validation: address must be 20+ characters (meaningful address)
+      if (backExtracted.address && backExtracted.address.trim().length >= 20) {
+        // STEP 6: Update address from back side (only address, keep other fields from front)
+        // CRITICAL: Only update address, don't touch other fields
+        setExtractedData(prev => ({
+          fullName: prev.fullName, // Keep front side name
+          aadhaarNumber: prev.aadhaarNumber, // Keep front side Aadhaar
+          dateOfBirth: prev.dateOfBirth, // Keep front side DOB
+          address: backExtracted.address, // Update with back side address
+        }));
+        
+        setNeedsBackSide(false);
+        
+        Alert.alert(
+          'Address Extracted',
+          'Address has been extracted from the back side of your Aadhaar card.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Address Not Found',
+          'Could not extract address from back side. Please enter it manually.',
+          [{ text: 'OK' }]
+        );
+      }
+      
+      // Immediately delete the back side image file after OCR
+      try {
+        const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
+        const filePath = fileUri.replace('file://', '');
+        const fileInfo = await FileSystem.getInfoAsync(filePath);
+        if (fileInfo.exists) {
+          await FileSystem.deleteAsync(filePath, { idempotent: true });
+          if (__DEV__) {
+            console.log('🗑️ Back side image file deleted after OCR');
+          }
+        }
+      } catch (deleteError) {
+        // Silently handle deletion errors - not critical
+        if (__DEV__) {
+          console.warn('⚠️ Could not delete back side image file:', deleteError);
+        }
+      }
+    } catch (error: any) {
+      if (__DEV__) {
+        console.error('❌ Error processing back side:', error);
+      }
+      Alert.alert(
+        'Processing Error',
+        'An error occurred while processing the back side image.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsProcessingBack(false);
+    }
+  };
+
+  /**
+   * Handle back side image upload
+   */
+  const handleUploadBackImage = async () => {
+    try {
+      // Request media library permissions
+      const mediaLibraryStatus = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (mediaLibraryStatus.status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant media library permissions.');
+        return;
+      }
+
+      // Show image picker options
+      Alert.alert(
+        'Select Back Side of Aadhaar',
+        'Upload the back side to extract address',
+        [
+          {
+            text: 'Camera',
+            onPress: async () => {
+              try {
+                const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
+                if (cameraStatus.status !== 'granted') {
+                  Alert.alert('Permission Required', 'Please grant camera permissions.');
+                  return;
+                }
+                const result = await ImagePicker.launchCameraAsync({
+                  mediaTypes: ['images'],
+                  allowsEditing: true,
+                  quality: 0.8,
+                });
+
+                if (!result.canceled && result.assets && result.assets[0]) {
+                  await processBackImage(result.assets[0].uri);
+                }
+              } catch (error: any) {
+                Alert.alert('Error', `Failed to open camera: ${error.message || 'Unknown error'}`);
+              }
+            },
+          },
+          {
+            text: 'Photo Library',
+            onPress: async () => {
+              try {
+                const result = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: ['images'],
+                  allowsEditing: true,
+                  quality: 0.8,
+                });
+
+                if (!result.canceled && result.assets && result.assets[0]) {
+                  await processBackImage(result.assets[0].uri);
+                }
+              } catch (error: any) {
+                Alert.alert('Error', `Failed to open photo library: ${error.message || 'Unknown error'}`);
+              }
+            },
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ],
+        { cancelable: true }
+      );
+    } catch (error: any) {
+      Alert.alert('Error', `Failed to open image picker: ${error.message || 'Please try again.'}`);
+    }
+  };
+
+  /**
    * Handle form submission
    */
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isConfirmed) {
       Alert.alert('Confirmation Required', 'Please confirm that the Aadhaar details are correct.');
       return;
     }
 
     if (!extractedData.aadhaarNumber || extractedData.aadhaarNumber.length !== 12) {
-      Alert.alert('Invalid Aadhaar Number', 'Please ensure a valid 12-digit Aadhaar number is extracted.');
+      Alert.alert('Invalid Aadhaar Number', 'Please ensure a valid 12-digit Aadhaar number is entered.');
       return;
     }
 
-    // Set KYC data with pending status
     if (!user?.id) {
       Alert.alert('Error', 'User not found. Please sign in again.');
       return;
     }
 
-    setKYCData({
-      userId: user.id,
-      documentType: 'aadhaar',
-      documentNumber: extractedData.aadhaarNumber,
-      status: 'pending',
-      submittedAt: new Date(),
-    });
+    try {
+      setIsProcessing(true);
 
-    Alert.alert(
-      'Success',
-      'Your Aadhaar details have been submitted for verification. You will be notified once verification is complete.',
-      [
+      // Upload image to Supabase Storage if available
+      let fileUrl: string | undefined;
+      if (imageUri) {
+        try {
+          // Read image as blob
+          const response = await fetch(imageUri);
+          const blob = await response.blob();
+          
+          // Upload to Supabase Storage
+          fileUrl = await supabaseStorageService.uploadKYCDocument(
+            user.id,
+            'aadhaar',
+            blob
+          );
+        } catch (uploadError) {
+          // Continue even if upload fails
+          console.warn('Failed to upload image:', uploadError);
+        }
+      }
+
+      // Save to database with all fields
+      const kycData = await supabaseDatabaseService.submitKYCDocument(
+        user.id,
+        'aadhaar',
         {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]
-    );
+          documentNumber: extractedData.aadhaarNumber,
+          name: extractedData.fullName || undefined,
+          dateOfBirth: extractedData.dateOfBirth || undefined,
+          address: extractedData.address || undefined,
+          fileUrl: fileUrl,
+        }
+      );
+
+      // Update local store
+      setKYCData({
+        userId: kycData.userId,
+        documentType: kycData.documentType,
+        documentNumber: kycData.documentNumber,
+        name: kycData.name,
+        dateOfBirth: kycData.dateOfBirth,
+        address: kycData.address,
+        fileUrl: kycData.fileUrl,
+        status: kycData.status,
+        submittedAt: kycData.submittedAt,
+        verifiedAt: kycData.verifiedAt,
+      });
+
+      // Note: Image file cleanup is handled automatically by the OS
+      // Temporary files from expo-image-picker are automatically cleaned up
+      // No manual deletion needed - this avoids deprecated FileSystem API issues
+
+      Alert.alert(
+        'Success',
+        'Your Aadhaar details have been submitted for verification. You will be notified once verification is complete.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        `Failed to submit KYC data: ${error.message || 'Unknown error'}. Please try again.`
+      );
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -330,54 +1185,74 @@ export default function AadhaarScanScreen({ navigation }: Props) {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          {!showForm && (
-            <View style={styles.uploadSection}>
-              <View style={styles.uploadIconContainer}>
-                <MaterialCommunityIcons name="card-account-details" size={64} color="#10b981" />
+          {/* Upload Section - Always visible */}
+          <View style={styles.uploadSection}>
+            <View style={styles.uploadIconContainer}>
+              <MaterialCommunityIcons name="card-account-details" size={64} color="#10b981" />
+            </View>
+            <Text style={styles.uploadTitle}>Upload Aadhaar Image</Text>
+            <Text style={styles.uploadSubtitle}>
+              Take a clear photo or select from gallery. Ensure all text is visible.
+            </Text>
+
+            {imageUri && isProcessing && (
+              <View style={styles.processingContainer}>
+                <ActivityIndicator size="large" color="#10b981" />
+                <Text style={styles.processingText}>Processing image with OCR...</Text>
               </View>
-              <Text style={styles.uploadTitle}>Upload Aadhaar Image</Text>
-              <Text style={styles.uploadSubtitle}>
-                Take a clear photo or select from gallery. Ensure all text is visible.
-              </Text>
+            )}
 
-              {imageUri && isProcessing && (
-                <View style={styles.processingContainer}>
-                  <ActivityIndicator size="large" color="#10b981" />
-                  <Text style={styles.processingText}>Processing image with OCR...</Text>
-                </View>
-              )}
+            {imageUri && !isProcessing && (
+              <View style={styles.imagePreviewContainer}>
+                <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="contain" />
+              </View>
+            )}
 
-              {imageUri && !isProcessing && (
-                <View style={styles.imagePreviewContainer}>
-                  <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="contain" />
-                </View>
-              )}
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={handleUploadImage}
+              disabled={isProcessing}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={['#10b981', '#059669']}
+                style={styles.uploadButtonGradient}
+              >
+                <Ionicons name="camera" size={24} color="#ffffff" />
+                <Text style={styles.uploadButtonText}>
+                  {imageUri ? 'Upload Another Image' : 'Upload Aadhaar Image'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
+            {/* Back Side Upload - REMOVED: User can fill address manually */}
+
+            {/* Manual Entry Option */}
+            {!showForm && (
               <TouchableOpacity
-                style={styles.uploadButton}
-                onPress={handleUploadImage}
-                disabled={isProcessing}
+                style={styles.manualEntryButton}
+                onPress={() => {
+                  setExtractedData({
+                    fullName: '',
+                    aadhaarNumber: '',
+                    dateOfBirth: '',
+                    address: '',
+                  });
+                  setShowForm(true);
+                  setIsManualEntry(true); // Mark as manual entry
+                  setImageUri(null);
+                }}
                 activeOpacity={0.7}
               >
-                <LinearGradient
-                  colors={['#10b981', '#059669']}
-                  style={styles.uploadButtonGradient}
-                >
-                  <Ionicons name="camera" size={24} color="#ffffff" />
-                  <Text style={styles.uploadButtonText}>
-                    {imageUri ? 'Upload Another Image' : 'Upload Aadhaar Image'}
-                  </Text>
-                </LinearGradient>
+                <Text style={styles.manualEntryButtonText}>Enter Details Manually</Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+          </View>
 
+          {/* Form Section - Appears below upload button after OCR */}
           {showForm && (
             <View style={styles.formSection}>
-              <Text style={styles.formTitle}>Review Extracted Details</Text>
-              <Text style={styles.formSubtitle}>
-                Please review and edit the extracted information if needed.
-              </Text>
+              <Text style={styles.formHelperText}>Please verify your Aadhaar details</Text>
 
               {/* Full Name */}
               <View style={styles.inputContainer}>
@@ -391,17 +1266,37 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                 />
               </View>
 
-              {/* Aadhaar Number (Read-only, masked) */}
+              {/* Aadhaar Number (Read-only if from OCR, editable if manual) */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Aadhaar Number</Text>
                 <TextInput
-                  style={[styles.input, styles.readOnlyInput]}
-                  value={maskAadhaarNumber(extractedData.aadhaarNumber)}
-                  editable={false}
-                  placeholder="XXXX-XXXX-XXXX"
+                  style={[styles.input, !isManualEntry && styles.readOnlyInput]}
+                  value={
+                    isManualEntry
+                      ? extractedData.aadhaarNumber
+                      : extractedData.aadhaarNumber && extractedData.aadhaarNumber.length === 12
+                      ? maskAadhaarNumber(extractedData.aadhaarNumber)
+                      : ''
+                  }
+                  editable={isManualEntry}
+                  placeholder={isManualEntry ? "Enter 12-digit Aadhaar number" : "XXXX-XXXX-XXXX"}
                   placeholderTextColor="#9ca3af"
+                  keyboardType="numeric"
+                  maxLength={isManualEntry ? 12 : undefined}
+                  onChangeText={(text) => {
+                    // Only allow digits
+                    const digitsOnly = text.replace(/\D/g, '');
+                    if (digitsOnly.length <= 12) {
+                      setExtractedData({ ...extractedData, aadhaarNumber: digitsOnly });
+                    }
+                  }}
                 />
-                <Text style={styles.readOnlyHint}>This field cannot be edited</Text>
+                {!isManualEntry && (
+                  <Text style={styles.readOnlyHint}>This field cannot be edited (extracted from image)</Text>
+                )}
+                {isManualEntry && (
+                  <Text style={styles.readOnlyHint}>Enter your 12-digit Aadhaar number</Text>
+                )}
               </View>
 
               {/* Date of Birth */}
@@ -410,9 +1305,14 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                 <TextInput
                   style={styles.input}
                   value={extractedData.dateOfBirth}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, dateOfBirth: text })}
+                  onChangeText={(text) => {
+                    const formatted = formatDOB(text);
+                    setExtractedData({ ...extractedData, dateOfBirth: formatted });
+                  }}
                   placeholder="DD/MM/YYYY"
                   placeholderTextColor="#9ca3af"
+                  keyboardType="numeric"
+                  maxLength={10} // DD/MM/YYYY = 10 characters
                 />
               </View>
 
@@ -475,10 +1375,11 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                     address: '',
                   });
                   setIsConfirmed(false);
+                  setIsManualEntry(false);
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.retakeButtonText}>Retake Photo</Text>
+                <Text style={styles.retakeButtonText}>Scan Another Image</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -598,19 +1499,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   formSection: {
-    marginTop: 8,
+    marginTop: 32,
   },
-  formTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  formSubtitle: {
+  formHelperText: {
     fontSize: 14,
     color: '#6b7280',
-    marginBottom: 24,
-    lineHeight: 20,
+    marginBottom: 20,
+    fontWeight: '500',
   },
   inputContainer: {
     marginBottom: 20,
@@ -701,6 +1596,62 @@ const styles = StyleSheet.create({
   retakeButtonText: {
     color: '#10b981',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  manualEntryButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  manualEntryButtonText: {
+    color: '#10b981',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  backSideSection: {
+    marginTop: 24,
+    paddingTop: 24,
+    width: '100%',
+  },
+  backSideDivider: {
+    height: 1,
+    backgroundColor: '#e5e7eb',
+    marginBottom: 20,
+  },
+  backSideTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  backSideSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  backSideButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    width: '100%',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  backSideButtonGradient: {
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  backSideButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
     fontWeight: '600',
   },
 });

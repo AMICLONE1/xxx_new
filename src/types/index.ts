@@ -112,6 +112,9 @@ export interface KYCData {
   documentType: 'aadhaar' | 'pan' | 'electricity_bill' | 'gst' | 'society_registration';
   documentNumber?: string;
   name?: string;
+  dateOfBirth?: string;
+  address?: string;
+  fileUrl?: string;
   status: KYCStatus;
   rejectionReason?: string;
   submittedAt: Date;
