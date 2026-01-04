@@ -1,0 +1,21 @@
+[33md1cfd04[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmy-feature[m[33m, [m[1;31morigin/my-feature[m[33m)[m HEAD@{0}: commit: feat: implement theme-aware styles across profile, wallet, and top-up screens
+[33m8fee2f1[m HEAD@{1}: commit: feat: refactor KYC and profile management; add theme store and authentication validation utilities
+[33m96fd2bd[m HEAD@{2}: commit: feat: Enhance OCR functionality and user experience across KYC screens
+[33m8dc9892[m HEAD@{3}: commit: feat: document work done on December 28, 2025, including KYC enhancements, OCR improvements, and navigation updates
+[33mb65e8a8[m HEAD@{4}: commit (merge): Merge upstream/master and remove duplicate nested folder
+[33me17385f[m HEAD@{5}: commit: Refactor profile image upload process and enhance error handling
+[33m0f7cd9a[m HEAD@{6}: commit: feat: update navigation and styling for KYC and PAN screens
+[33m1272006[m HEAD@{7}: commit: feat: Add PANScan screen and integrate with KYC flow; update navigation and document handling
+[33m5dbeef4[m HEAD@{8}: commit: feat: Enhance OCR functionality with Expo Go detection and error handling; update dependencies and improve UI structure
+[33mbd13e0c[m HEAD@{9}: commit: feat: Enhance OCR functionality with mock data support and improved error handling
+[33m8168bf3[m HEAD@{10}: commit: Enhance KYC & Trust Layer documentation and features
+[33mcdc6203[m HEAD@{11}: pull --tags origin my-feature: Merge made by the 'ort' strategy.
+[33mdf38daf[m HEAD@{12}: commit: Add subproject for xxx_MA_PNP with initial commit
+[33me3b2970[m[33m ([m[1;32mmaster[m[33m)[m HEAD@{13}: reset: moving to HEAD~1
+[33m248d203[m HEAD@{14}: commit: Describe your changes clearly
+[33me3b2970[m[33m ([m[1;32mmaster[m[33m)[m HEAD@{15}: checkout: moving from master to my-feature
+[33me3b2970[m[33m ([m[1;32mmaster[m[33m)[m HEAD@{16}: commit: Update documentation to reflect readiness of profile picture features and error handling improvements
+[33m4aefdb5[m HEAD@{17}: pull --tags origin master: Merge made by the 'ort' strategy.
+[33ma69297d[m HEAD@{18}: commit: Implement comprehensive authentication fixes and profile picture feature
+[33m2c411e4[m HEAD@{19}: commit: Update package-lock.json files to add peer dependencies for various packages
+[33me222ddf[m HEAD@{20}: clone: from https://github.com/AMICLONE1/xxx_MA_PNP.git

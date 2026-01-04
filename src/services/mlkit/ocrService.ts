@@ -1,16 +1,17 @@
 /**
- * OCR Service - ML Kit Only
+ * OCR Service - ML Kit with Cloud Fallback
  * 
  * ARCHITECTURAL DECISION:
- * PowerNetPro uses ONLY on-device OCR via ML Kit.
- * Google Cloud Vision OCR is NOT used anywhere in this project.
+ * PowerNetPro uses on-device OCR via ML Kit (preferred).
+ * When ML Kit is not available (Expo Go), it falls back to Google Cloud Vision API.
  * 
- * OCR works ONLY in development builds or production apps.
- * In Expo Go, users must enter details manually.
+ * ML Kit OCR works ONLY in development builds or production apps.
+ * Cloud OCR works in Expo Go as a fallback.
  */
 
 import TextRecognition from '@react-native-ml-kit/text-recognition';
 import Constants from 'expo-constants';
+import { cloudOcrService } from '../cloudOcrService';
 
 export interface OCRResult {
   text: string;
@@ -91,32 +92,90 @@ class OCRService {
    * Check if OCR is available (ML Kit only - requires dev build)
    */
   async isOCRAvailable(): Promise<boolean> {
-    // OCR only available in development builds with ML Kit
+    // OCR only available in development builds with ML Kit OR via Cloud Vision
     if (!this.isRunningInExpoGo() && this.testMLKitFunctionality()) {
+      return true;
+    }
+    // Cloud OCR is also available if configured
+    if (cloudOcrService.isConfigured()) {
       return true;
     }
     return false;
   }
 
   /**
-   * Extract text from image using ML Kit
-   * ONLY works in development builds - throws ExpoGoDetectedError in Expo Go
+   * Extract text from image using ML Kit (preferred) or Cloud Vision (fallback)
+   * ML Kit works only in development builds
+   * Cloud Vision works in Expo Go as fallback
+   * Returns empty text if no OCR method is available (allows manual entry)
    */
   async recognizeText(imageUri: string): Promise<OCRResult> {
-    // STEP 1: Check if running in Expo Go
+    // STEP 1: Check if running in Expo Go - try cloud fallback
     if (this.isRunningInExpoGo()) {
       if (__DEV__) {
-        console.warn('📱 Running in Expo Go - OCR requires PowerNetPro app build');
+        console.log('📱 Running in Expo Go - attempting Cloud OCR fallback...');
       }
-      throw new ExpoGoDetectedError();
+      
+      // Try Cloud OCR fallback
+      if (cloudOcrService.isConfigured()) {
+        try {
+          const cloudResult = await cloudOcrService.recognizeText(imageUri);
+          if (cloudResult.success && cloudResult.text) {
+            if (__DEV__) {
+              console.log('✅ Cloud OCR succeeded');
+            }
+            return {
+              text: cloudResult.text,
+              blocks: [],
+            };
+          }
+        } catch (error: any) {
+          if (__DEV__) {
+            console.warn('☁️ Cloud OCR failed:', error?.message);
+          }
+        }
+      }
+      
+      // If cloud OCR is not configured or failed, use heuristic fallback
+      if (__DEV__) {
+        console.log('⚠️ Cloud OCR not available - using manual entry mode');
+      }
+      
+      // Return empty result to trigger manual entry - this is NOT an error
+      return {
+        text: '',
+        blocks: [],
+      };
     }
 
     // STEP 2: Verify ML Kit is available
     if (!this.testMLKitFunctionality()) {
       if (__DEV__) {
-        console.warn('⚠️ ML Kit module not available');
+        console.warn('⚠️ ML Kit module not available - trying Cloud OCR...');
       }
-      throw new OCRNotAvailableError('ML Kit module not available. Please use a development build.');
+      
+      // Try Cloud OCR fallback
+      if (cloudOcrService.isConfigured()) {
+        try {
+          const cloudResult = await cloudOcrService.recognizeText(imageUri);
+          if (cloudResult.success && cloudResult.text) {
+            return {
+              text: cloudResult.text,
+              blocks: [],
+            };
+          }
+        } catch (error: any) {
+          if (__DEV__) {
+            console.warn('☁️ Cloud OCR failed:', error?.message);
+          }
+        }
+      }
+      
+      // Fall back to empty result (manual entry mode)
+      return {
+        text: '',
+        blocks: [],
+      };
     }
 
     // STEP 3: Attempt native ML Kit OCR

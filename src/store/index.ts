@@ -9,4 +9,5 @@ export { useThemeStore, lightTheme, darkTheme, getThemeColors } from './themeSto
 export type { ThemeMode } from './themeStore';
 export { useProfileStore } from './profileStore';
 export type { UserLocation, ProfileDraft } from './profileStore';
+export { useTransactionStore } from './transactionStore';
 

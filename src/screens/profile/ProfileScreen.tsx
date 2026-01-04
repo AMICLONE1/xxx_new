@@ -258,6 +258,13 @@ export default function ProfileScreen({ navigation }: Props) {
       onPress: () => navigation.navigate('EditProfile'),
     },
     {
+      id: 'history',
+      title: 'Transaction History',
+      subtitle: 'View all your trades and analytics',
+      icon: <MaterialCommunityIcons name="history" size={24} color="#10b981" />,
+      onPress: () => navigation.navigate('History'),
+    },
+    {
       id: 'tradingBot',
       title: 'Trading Bot Settings',
       subtitle: 'Configure auto-selling rules',

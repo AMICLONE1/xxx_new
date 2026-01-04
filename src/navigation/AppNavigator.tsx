@@ -18,7 +18,9 @@ import ResetPasswordScreen from '@/screens/auth/ResetPasswordScreen';
 
 // Main Screens
 import HomeScreen from '@/screens/home/HomeScreen';
+import AnalyticsScreen from '@/screens/analytics/AnalyticsScreen';
 import MarketplaceScreen from '@/screens/trading/MarketplaceScreen';
+import HistoryScreen from '@/screens/history/HistoryScreen';
 import WalletScreen from '@/screens/wallet/WalletScreen';
 import ProfileScreen from '@/screens/profile/ProfileScreen';
 
@@ -36,6 +38,8 @@ import OrderScreen from '@/screens/trading/OrderScreen';
 
 // Home Screens
 import EnergyChartScreen from '@/screens/home/EnergyChartScreen';
+import TradeAnalyticsScreen from '@/screens/analytics/TradeAnalyticsScreen';
+import AgreementScreen from '@/screens/analytics/AgreementScreen';
 
 // Profile Screens
 import TradingBotScreen from '@/screens/profile/TradingBotScreen';
@@ -84,6 +88,20 @@ const MainTabNavigator = () => {
             />
           ),
           tabBarLabel: 'Home',
+        }}
+      />
+      <MainTabs.Screen 
+        name="Analytics" 
+        component={AnalyticsScreen}
+        options={{
+          tabBarIcon: ({ color, size, focused }) => (
+            <MaterialCommunityIcons 
+              name={focused ? 'chart-line' : 'chart-line'} 
+              size={size} 
+              color={color} 
+            />
+          ),
+          tabBarLabel: 'Analytics',
         }}
       />
       <MainTabs.Screen 
@@ -199,6 +217,21 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="EnergyChart"
               component={EnergyChartScreen}
+              options={{ presentation: 'modal' }}
+            />
+            <RootStack.Screen
+              name="TradeAnalytics"
+              component={TradeAnalyticsScreen}
+              options={{ presentation: 'modal' }}
+            />
+            <RootStack.Screen
+              name="Agreement"
+              component={AgreementScreen}
+              options={{ presentation: 'modal' }}
+            />
+            <RootStack.Screen
+              name="History"
+              component={HistoryScreen}
               options={{ presentation: 'modal' }}
             />
             <RootStack.Screen

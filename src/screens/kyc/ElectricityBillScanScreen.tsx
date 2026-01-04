@@ -513,7 +513,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
         ocrResult = await ocrService.recognizeText(uri);
         
         if (__DEV__) {
-          console.log('✅ Bill OCR Success! Text extracted (length:', ocrResult.text.length, 'chars)');
+          console.log('✅ Bill OCR completed! Text extracted (length:', ocrResult.text.length, 'chars)');
         }
       } catch (ocrError: any) {
         // CRITICAL: Delete image before showing error
@@ -523,28 +523,8 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
           console.error('❌ Bill OCR Error:', ocrError?.name || 'Unknown');
         }
         
-        // Handle Expo Go detection - silently fall back to manual entry
-        if (ocrError instanceof ExpoGoDetectedError || ocrError?.message === 'EXPO_GO_DETECTED') {
-          console.log('[ElectricityBillScan] Expo Go detected during OCR - using manual entry');
-          setExtractedData(emptyData);
-          setShowForm(true);
-          setIsManualEntry(true);
-          setIsProcessing(false);
-          return;
-        }
-        
-        // Handle OCR not available error - silently fall back to manual entry
-        if (ocrError instanceof OCRNotAvailableError) {
-          console.log('[ElectricityBillScan] OCR not available - using manual entry');
-          setExtractedData(emptyData);
-          setShowForm(true);
-          setIsManualEntry(true);
-          setIsProcessing(false);
-          return;
-        }
-        
-        // Handle generic OCR errors - silently fall back to manual entry
-        console.log('[ElectricityBillScan] OCR processing error - using manual entry');
+        // Any OCR error - silently fall back to manual entry
+        console.log('[ElectricityBillScan] OCR unavailable - using manual entry');
         setExtractedData(emptyData);
         setShowForm(true);
         setIsManualEntry(true);
@@ -558,7 +538,11 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
       const ocrText = ocrResult.text;
       
       if (__DEV__) {
-        console.log('✅ Bill OCR Success! Text extracted (length:', ocrText.length, 'chars)');
+        if (ocrText.length > 0) {
+          console.log('✅ OCR text extracted (length:', ocrText.length, 'chars)');
+        } else {
+          console.log('ℹ️ No OCR text detected - using manual entry mode');
+        }
       }
       
       const extracted = extractBillData(ocrText);
@@ -704,6 +688,16 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
+          {/* Expo Go Warning Banner */}
+          {isExpoGo && (
+            <View style={styles.expoGoWarning}>
+              <Ionicons name="information-circle" size={20} color="#92400e" />
+              <Text style={styles.expoGoWarningText}>
+                Auto text extraction unavailable. You can upload an image or enter details manually.
+              </Text>
+            </View>
+          )}
+
           {/* Upload Section - Always visible */}
           <View style={styles.uploadSection}>
             <View style={styles.uploadIconContainer}>
@@ -1037,6 +1031,21 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  expoGoWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  expoGoWarningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400e',
+    lineHeight: 18,
   },
   uploadSection: {
     alignItems: 'center',

@@ -45,50 +45,75 @@ A React Native mobile application for PowerNetPro, enabling P2P energy trading w
 
 ## 📚 Documentation
 
-**All documentation is now organized in the [`docs/`](docs/) directory.**
+### 🎯 Start Here (New Team Members)
+
+- **[⚡ QUICK START GUIDE](QUICK_START_GUIDE.md)** - Get up and running in 15 minutes!
+- **[📖 COMPLETE SETUP GUIDE](COMPLETE_SETUP_GUIDE.md)** - Comprehensive setup from scratch (15,000+ words)
+  - Prerequisites & system requirements
+  - Installation steps for frontend, backend, database
+  - OCR installation & configuration
+  - Known issues, bugs, and security concerns
+  - Complete troubleshooting guide
+- **[🗺️ DEVELOPMENT ROADMAP](DEVELOPMENT_ROADMAP.md)** - Future improvements & feature roadmap
+
+### 📁 Additional Documentation
+
+**All legacy documentation is organized in the [`docs/`](docs/) directory:**
 
 - **[📖 Documentation Index](docs/README.md)** - Complete documentation guide
-- **[🚀 Setup Guide](docs/setup/SETUP_GUIDE.md)** - Complete setup instructions
+- **[🚀 Setup Guide](docs/setup/SETUP_GUIDE.md)** - Original setup instructions
 - **[⚙️ Supabase Setup](docs/setup/SUPABASE_SETUP.md)** - Supabase configuration
 - **[🔧 Troubleshooting](docs/troubleshooting/COMMON_ISSUES.md)** - Common issues and solutions
 - **[📊 Implementation Status](docs/development/IMPLEMENTATION_STATUS.md)** - Feature completion status
 
 ## Getting Started
 
+### 🚀 Quick Setup (15 minutes)
+
+**For experienced developers, follow these steps:**
+
+```bash
+# 1. Clone and install
+git clone https://github.com/YOUR_USERNAME/xxx_MA_PNP.git
+cd xxx_MA_PNP
+npm install
+cd backend && npm install && cd ..
+
+# 2. Setup environment files
+# Copy .env.example to .env (root and backend/)
+# Fill in Supabase credentials
+
+# 3. Start backend (Terminal 1)
+cd backend && npm run dev
+
+# 4. Start mobile app (Terminal 2)
+npm start
+# Press 'a' for Android or 'i' for iOS
+```
+
+**👉 For detailed instructions, see [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md)**
+
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Expo CLI
-- iOS Simulator (for iOS development) or Android Emulator (for Android development)
-- Expo Go app on your physical device (optional)
+- Expo CLI (`npm install -g expo-cli`)
+- Android Studio (for Android) or Xcode (for iOS)
+- Supabase account (free tier works)
 
-### Quick Start
+### Full Setup Guide
 
-1. **Clone the repository**
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+**If you're new to the project or encounter issues, follow the comprehensive guide:**
 
-3. **Set up environment variables:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+📖 **[COMPLETE_SETUP_GUIDE.md](COMPLETE_SETUP_GUIDE.md)** covers:
+- Prerequisites & system requirements
+- Step-by-step installation
+- Database setup (Supabase)
+- OCR configuration (ML Kit)
+- Known issues & troubleshooting
+- Security concerns
+- All environment variables
 
-4. **Start the development server:**
-   ```bash
-   npm start
-   ```
-
-5. **Run on your preferred platform:**
-   ```bash
-   npm run android  # For Android
-   npm run ios      # For iOS
-   npm run web      # For Web
-   ```
-
-**For detailed setup instructions, see [Setup Guide](docs/setup/SETUP_GUIDE.md)**
+**Estimated setup time:** 1-2 hours for first-time setup
 
 ## Development
 
@@ -112,66 +137,112 @@ This project uses:
 
 ## Features
 
-### Phase 1: Foundation & Core Infrastructure ✅
-- [x] Project setup and configuration
-- [x] Authentication module (Phone OTP)
-- [x] Navigation setup
-- [x] State management (Zustand)
-- [x] Local database setup (WatermelonDB)
+### ✅ Implemented Features
+- **Authentication**: Phone/Email OTP via Supabase
+- **KYC Verification**: Aadhaar, PAN, Electricity Bill OCR scanning (ML Kit)
+- **Meter Registration**: DISCOM integration with verification
+- **Energy Marketplace**: Map-based seller discovery (Mapbox)
+- **Trading**: Buy/sell energy with transaction recording
+- **Wallet System**: Energy credits and cash balance management
+- **Transaction History**: Complete history with charts (Line, Bar, Pie)
+- **Real-time Updates**: Auto-refresh sellers and location (30s/60s)
+- **Profile Management**: User info, KYC status, settings
 
-### Phase 2: KYC & Trust Layer ✅
-- [x] Document scanning (Aadhaar, PAN, Electricity Bill)
-  - [x] OCR-based Aadhaar card scanning with ML Kit
-  - [x] Automatic data extraction (Name, Aadhaar Number, DOB, Address)
-  - [x] Aadhaar number masking and security
-  - [x] User confirmation flow
-- [x] Liveness check
-- [x] Business verification
-- [x] KYC status tracking
+### ⚠️ Partially Implemented
+- **Payments**: Razorpay integrated but flow incomplete
+- **Energy Data**: Using mock data, not real meters yet
+- **Trading Bot**: UI exists, logic not implemented
+- **Beckn Protocol**: Stub implementation
 
-### Phase 3: Meter-First Onboarding (Planned)
-- [ ] Meter registration flow
-- [ ] Remote meter verification
-- [ ] Data ingestion
-- [ ] Smart meter provisioning
+### 📋 Roadmap
 
-### Phase 4: Solar Site Intelligence (Planned)
-- [ ] Live dashboard
-- [ ] Energy data visualization
-- [ ] Fault detection
+See **[DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md)** for detailed implementation plan.
 
-### Phase 5: P2P Energy Trading (Planned)
-- [ ] Beckn protocol integration
-- [ ] Marketplace discovery
-- [ ] Order placement
-- [ ] Transaction settlement
+**Phase 1 (6 weeks)**: Security hardening, bug fixes, database optimization  
+**Phase 2 (10 weeks)**: Complete Razorpay, real meter data, WebSocket  
+**Phase 3 (8 weeks)**: Offline mode, performance optimization  
+**Phase 4 (16 weeks)**: AI trading bot, blockchain, advanced analytics
 
-### Phase 6: Wallet & Payments (Planned)
-- [ ] Dual-balance wallet
-- [ ] UPI integration
-- [ ] Auto-withdrawal
+## 📊 Project Status
 
-### Phase 7: Trading Bot (Planned)
-- [ ] Auto-sell configuration
-- [ ] Trading bot logic engine
-- [ ] Dashboard integration
+**Current Status**: 🟡 Development (70% MVP complete)
 
-## Environment Variables
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Authentication | ✅ Complete | Phone/Email OTP working |
+| KYC | ✅ Complete | OCR scanning functional |
+| Trading | 🟡 Partial | Backend stub, needs completion |
+| Payments | 🟡 Partial | Razorpay SDK added, flow incomplete |
+| Real-time Data | ✅ Complete | Auto-refresh implemented |
+| Security | 🔴 Needs Work | 13 vulnerabilities documented |
 
-See `.env.example` for required environment variables.
+**See [PROJECT_STATUS.md](PROJECT_STATUS.md) for detailed status.**
 
-## Building for Production
+## 🐛 Known Issues
 
-### Using EAS Build
+**15 documented issues** including:
+- API hardcoded to localhost (use environment variables)
+- OCR only works in dev builds (not Expo Go)
+- Razorpay integration incomplete
+- No real-time meter data (using mock data)
+- Location fallback to Pune (silent)
 
-1. Install EAS CLI:
-   ```bash
-   npm install -g eas-cli
-   ```
+**See [COMPLETE_SETUP_GUIDE.md](COMPLETE_SETUP_GUIDE.md#-known-issues--limitations) for full list and workarounds.**
 
-2. Login to Expo:
-   ```bash
-   eas login
+## 🔒 Security
+
+**13 security concerns documented**, including:
+- API keys exposed in source code
+- No rate limiting
+- CORS allows all origins
+- RLS policies not fully tested
+
+**See [COMPLETE_SETUP_GUIDE.md](COMPLETE_SETUP_GUIDE.md#-security-concerns) for mitigation strategies.**
+
+## Contributing
+
+We welcome contributions! Please see **[CONTRIBUTING.md](CONTRIBUTING.md)** for:
+- Code of conduct
+- Development workflow
+- Coding standards
+- Commit guidelines
+- Pull request process
+- Testing guidelines
+
+**Quick Start for Contributors:**
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run linter: `npm run lint:fix`
+5. Commit: `git commit -m "feat(scope): add amazing feature"`
+6. Push and create Pull Request
+
+**First-time contributors:** Look for issues labeled `good first issue`.
+
+## License
+
+MIT License - See [LICENSE](LICENSE) file for details.
+
+## Support
+
+- **Documentation**: See files listed above
+- **Issues**: [GitHub Issues](https://github.com/YOUR_USERNAME/xxx_MA_PNP/issues)
+- **Email**: support@powernetpro.com
+
+## Acknowledgments
+
+- Built with [Expo](https://expo.dev/)
+- Maps by [Mapbox](https://www.mapbox.com/)
+- OCR by [Google ML Kit](https://developers.google.com/ml-kit)
+- Backend by [Supabase](https://supabase.com/)
+- Charts by [react-native-chart-kit](https://github.com/indiespirit/react-native-chart-kit)
+
+---
+
+**⚡ PowerNetPro** - Making renewable energy trading accessible to everyone.
+
+**Last Updated:** January 5, 2026  
+**Maintained by:** PowerNetPro Development Team
    ```
 
 3. Configure the project:

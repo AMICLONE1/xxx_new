@@ -177,7 +177,10 @@ class LocationService {
         resolve(location);
       } catch (error: any) {
         clearTimeout(timeoutId);
-        console.error('[LocationService] getCurrentPositionAsync error:', error.message);
+        // Silently handle GPS errors - fallback location will be used
+        if (__DEV__) {
+          console.log('[LocationService] GPS unavailable, using fallback location');
+        }
         resolve(null);
       }
     });

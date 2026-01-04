@@ -14,6 +14,9 @@ interface MapboxWebViewProps {
     name: string;
     location: { lat: number; lng: number };
     pricePerUnit: number;
+    availableEnergy?: number;
+    rating?: number;
+    distance?: number;
     greenEnergy?: boolean;
   }>;
   userLocation?: { lat: number; lng: number };
@@ -41,6 +44,9 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
         lat: seller.location.lat,
         lng: seller.location.lng,
         price: seller.pricePerUnit,
+        availableEnergy: seller.availableEnergy || 0,
+        rating: seller.rating || 0,
+        distance: seller.distance || 0,
         greenEnergy: seller.greenEnergy || false,
       }));
 
@@ -52,6 +58,19 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
       );
     }
   }, [sellers]);
+
+  // Update user location when it changes
+  useEffect(() => {
+    if (webViewRef.current && userLocation) {
+      webViewRef.current.postMessage(
+        JSON.stringify({
+          type: 'UPDATE_USER_LOCATION',
+          lat: userLocation.lat,
+          lng: userLocation.lng,
+        })
+      );
+    }
+  }, [userLocation]);
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -136,22 +155,89 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
         el.style.alignItems = 'center';
         el.style.justifyContent = 'center';
         el.style.cursor = 'pointer';
+        el.style.transition = 'transform 0.2s';
         
         // Add icon (using Unicode or emoji)
         el.innerHTML = seller.greenEnergy ? '☀️' : '⚡';
         el.style.fontSize = '20px';
         
+        // Hover effect
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'scale(1.2)';
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'scale(1)';
+        });
+        
+        // Create detailed popup
+        const popupContent = \`
+          <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 200px;">
+            <h3 style="margin: 0 0 8px 0; color: #111827; font-size: 16px; font-weight: 600;">
+              \${seller.name}
+            </h3>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px;">
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="color: #6b7280;">💰 Price:</span>
+                <span style="color: #111827; font-weight: 600;">₹\${seller.price}/kWh</span>
+              </div>
+              \${seller.availableEnergy ? \`
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="color: #6b7280;">⚡ Available:</span>
+                <span style="color: #111827; font-weight: 600;">\${seller.availableEnergy} kWh</span>
+              </div>
+              \` : ''}
+              \${seller.rating ? \`
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="color: #6b7280;">⭐ Rating:</span>
+                <span style="color: #111827; font-weight: 600;">\${seller.rating.toFixed(1)}</span>
+              </div>
+              \` : ''}
+              \${seller.distance ? \`
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="color: #6b7280;">📍 Distance:</span>
+                <span style="color: #111827; font-weight: 600;">\${seller.distance.toFixed(1)} km</span>
+              </div>
+              \` : ''}
+            </div>
+            <button 
+              onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type: 'MARKER_CLICK', sellerId: '\${seller.id}'}))"
+              style="
+                margin-top: 12px;
+                width: 100%;
+                padding: 8px 16px;
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-weight: 600;
+                font-size: 14px;
+                cursor: pointer;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              "
+              onmouseover="this.style.opacity='0.9'"
+              onmouseout="this.style.opacity='1'"
+            >
+              View Details
+            </button>
+          </div>
+        \`;
+        
+        const popup = new mapboxgl.Popup({
+          offset: 25,
+          closeButton: true,
+          closeOnClick: false,
+          maxWidth: '300px',
+        }).setHTML(popupContent);
+        
         const marker = new mapboxgl.Marker(el)
           .setLngLat([seller.lng, seller.lat])
+          .setPopup(popup)
           .addTo(map);
 
         el.addEventListener('click', () => {
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'MARKER_CLICK',
-              sellerId: seller.id,
-            }));
-          }
+          // Open popup on click
+          popup.addTo(map);
+          marker.togglePopup();
         });
 
         markers.push(marker);
@@ -169,6 +255,7 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
         map.fitBounds(bounds, {
           padding: 50,
           maxZoom: 15,
+          duration: 1000,
         });
       }
     }
@@ -199,6 +286,9 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
       lat: s.location.lat,
       lng: s.location.lng,
       price: s.pricePerUnit,
+      availableEnergy: s.availableEnergy || 0,
+      rating: s.rating || 0,
+      distance: s.distance || 0,
       greenEnergy: s.greenEnergy || false,
     })))};
 

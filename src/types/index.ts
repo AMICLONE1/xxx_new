@@ -98,7 +98,14 @@ export interface Transaction {
   currency: 'INR' | 'kWh';
   status: TransactionStatus;
   description?: string;
-  createdAt: Date;
+  // Enhanced fields for history tracking
+  energyAmount?: number; // kWh
+  pricePerUnit?: number; // INR per kWh
+  counterPartyId?: string;
+  counterPartyName?: string;
+  tradeType?: 'buy' | 'sell';
+  timestamp?: Date;
+  createdAt?: Date;
 }
 
 export type TransactionType =
@@ -167,6 +174,9 @@ export type RootStackParamList = {
   Marketplace: undefined;
   Wallet: undefined;
   Profile: undefined;
+  History: undefined;
+  TradeAnalytics: { mode: 'buyer' | 'seller' };
+  Agreement: { mode: 'buyer' | 'seller'; entityName?: string; amount?: number; rate?: number };
   EditProfile: undefined;
   Order: {
     sellerId: string;
@@ -182,6 +192,7 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
+  Analytics: undefined;
   Marketplace: undefined;
   Wallet: undefined;
   Profile: undefined;

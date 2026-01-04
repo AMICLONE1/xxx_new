@@ -54,7 +54,11 @@ export default function MarketplaceScreen({ navigation }: Props) {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
+  const [showTradeModal, setShowTradeModal] = useState(false);
+  const [selectedTradeOption, setSelectedTradeOption] = useState<'buy' | 'sell' | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const autoRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   // Removed native map refs - using WebView now
   const [filters, setFilters] = useState<Filters>({
     minPrice: MIN_SELL_PRICE.toString(),
@@ -73,6 +77,38 @@ export default function MarketplaceScreen({ navigation }: Props) {
   // Get user location using cached locationService
   useEffect(() => {
     getLocation();
+  }, []);
+
+  // Auto-refresh sellers every 30 seconds when enabled
+  useEffect(() => {
+    if (autoRefreshEnabled && userLocation) {
+      // Initial load
+      searchSellers();
+      
+      // Set up interval for auto-refresh
+      autoRefreshIntervalRef.current = setInterval(() => {
+        console.log('[MarketplaceScreen] Auto-refreshing sellers...');
+        searchSellers();
+      }, 30000); // 30 seconds
+      
+      return () => {
+        if (autoRefreshIntervalRef.current) {
+          clearInterval(autoRefreshIntervalRef.current);
+        }
+      };
+    }
+  }, [autoRefreshEnabled, userLocation, filters]);
+
+  // Refresh location every minute
+  useEffect(() => {
+    const locationRefreshInterval = setInterval(() => {
+      console.log('[MarketplaceScreen] Refreshing location...');
+      getLocation(true);
+    }, 60000); // 60 seconds
+    
+    return () => {
+      clearInterval(locationRefreshInterval);
+    };
   }, []);
 
   const getLocation = async (forceRefresh: boolean = false) => {
@@ -296,12 +332,14 @@ export default function MarketplaceScreen({ navigation }: Props) {
   }, [searchSellers]);
 
   const handleSellerPress = (seller: Seller) => {
-    navigation.navigate('Order', {
-      sellerId: seller.id,
-      sellerName: seller.name,
-      pricePerUnit: seller.pricePerUnit,
-      availableEnergy: seller.availableEnergy,
-    });
+    setSelectedSeller(seller);
+    setShowTradeModal(true);
+  };
+
+  const handleTradeOptionSelect = (option: 'buy' | 'sell') => {
+    setShowTradeModal(false);
+    // Navigate to analytics with the selected mode
+    navigation.navigate('TradeAnalytics', { mode: option === 'buy' ? 'seller' : 'buyer' });
   };
 
   const handleMarkerPress = (seller: Seller) => {
@@ -408,10 +446,20 @@ export default function MarketplaceScreen({ navigation }: Props) {
         {/* Map Controls */}
         <View style={styles.mapControls}>
           <TouchableOpacity
+            style={[styles.mapControlButton, autoRefreshEnabled && styles.mapControlButtonActive]}
+            onPress={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+          >
+            <MaterialCommunityIcons 
+              name={autoRefreshEnabled ? "refresh" : "refresh-off"} 
+              size={20} 
+              color={autoRefreshEnabled ? "#10b981" : "#6b7280"} 
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.mapControlButton}
             onPress={() => {
-              // Map will center on user location automatically via WebView
-              // This button can be used to trigger a refresh if needed
+              getLocation(true);
+              searchSellers();
             }}
           >
             <Ionicons name="locate" size={20} color="#10b981" />
@@ -693,6 +741,75 @@ export default function MarketplaceScreen({ navigation }: Props) {
           )}
         </ScrollView>
       )}
+
+      {/* Trade Modal */}
+      <Modal
+        visible={showTradeModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowTradeModal(false)}
+      >
+        <View style={styles.tradeModalOverlay}>
+          <View style={styles.tradeModalContainer}>
+            {selectedSeller && (
+              <>
+                <View style={styles.tradeModalHeader}>
+                  <Text style={styles.tradeModalTitle}>{selectedSeller.name}</Text>
+                  <TouchableOpacity onPress={() => setShowTradeModal(false)}>
+                    <Ionicons name="close" size={24} color="#6b7280" />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.tradeModalInfo}>
+                  <View style={styles.tradeModalInfoRow}>
+                    <Text style={styles.tradeModalInfoLabel}>Price per kWh</Text>
+                    <Text style={styles.tradeModalInfoValue}>{formatCurrency(selectedSeller.pricePerUnit)}</Text>
+                  </View>
+                  <View style={styles.tradeModalInfoRow}>
+                    <Text style={styles.tradeModalInfoLabel}>Available</Text>
+                    <Text style={styles.tradeModalInfoValue}>{formatEnergy(selectedSeller.availableEnergy)}</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.tradeModalQuestion}>What would you like to do?</Text>
+
+                <TouchableOpacity
+                  style={styles.tradeModalButton}
+                  onPress={() => handleTradeOptionSelect('buy')}
+                >
+                  <LinearGradient
+                    colors={['#10b981', '#059669']}
+                    style={styles.tradeModalButtonGradient}
+                  >
+                    <Ionicons name="cart" size={24} color="#ffffff" />
+                    <Text style={styles.tradeModalButtonText}>Buy Electricity</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.tradeModalButton}
+                  onPress={() => handleTradeOptionSelect('sell')}
+                >
+                  <LinearGradient
+                    colors={['#f59e0b', '#d97706']}
+                    style={styles.tradeModalButtonGradient}
+                  >
+                    <Ionicons name="cash" size={24} color="#ffffff" />
+                    <Text style={styles.tradeModalButtonText}>Sell Electricity</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.tradeModalCancelButton}
+                  onPress={() => setShowTradeModal(false)}
+                >
+                  <Text style={styles.tradeModalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1080,6 +1197,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  mapControlButtonActive: {
+    backgroundColor: '#d1fae5',
+    borderWidth: 2,
+    borderColor: '#10b981',
+  },
   sellerModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1155,5 +1277,98 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     textAlign: 'center',
+  },
+  // Trade Modal Styles
+  tradeModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  tradeModalContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  tradeModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  tradeModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    flex: 1,
+  },
+  tradeModalInfo: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  tradeModalInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  tradeModalInfoLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  tradeModalInfoValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  tradeModalQuestion: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  tradeModalButton: {
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tradeModalButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  tradeModalButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  tradeModalCancelButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  tradeModalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6b7280',
   },
 });
