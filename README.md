@@ -54,17 +54,30 @@ A React Native mobile application for PowerNetPro, enabling P2P energy trading w
   - OCR installation & configuration
   - Known issues, bugs, and security concerns
   - Complete troubleshooting guide
-- **[🗺️ DEVELOPMENT ROADMAP](DEVELOPMENT_ROADMAP.md)** - Future improvements & feature roadmap
+- **[🗺️ DEVELOPMENT ROADMAP](docs/project/DEVELOPMENT_ROADMAP.md)** - Future improvements & feature roadmap
 
-### 📁 Additional Documentation
+### 📁 Documentation Structure
 
-**All legacy documentation is organized in the [`docs/`](docs/) directory:**
+**All documentation is organized in the [`docs/`](docs/) directory:**
 
-- **[📖 Documentation Index](docs/README.md)** - Complete documentation guide
-- **[🚀 Setup Guide](docs/setup/SETUP_GUIDE.md)** - Original setup instructions
-- **[⚙️ Supabase Setup](docs/setup/SUPABASE_SETUP.md)** - Supabase configuration
-- **[🔧 Troubleshooting](docs/troubleshooting/COMMON_ISSUES.md)** - Common issues and solutions
-- **[📊 Implementation Status](docs/development/IMPLEMENTATION_STATUS.md)** - Feature completion status
+- **[📑 Documentation Index](docs/DOCUMENTATION_INDEX.md)** - Complete documentation guide and navigation
+- **[📋 Requirements](docs/requirements/)** - Feature requirements and specifications
+  - [VPPA Requirements](docs/requirements/VPPA_REQUIREMENTS.md) - Virtual Power Purchase Agreement
+- **[🚀 Setup Guides](docs/setup/)** - Setup and installation documentation
+  - [Setup Guide](docs/setup/SETUP_GUIDE.md) - Complete setup instructions
+  - [Supabase Setup](docs/setup/SUPABASE_SETUP.md) - Supabase configuration
+  - [Backend Setup](docs/setup/BACKEND_QUICK_START.md) - Backend configuration
+- **[🔧 Troubleshooting](docs/troubleshooting/)** - Troubleshooting guides
+  - [Common Issues](docs/troubleshooting/COMMON_ISSUES.md) - Common problems and solutions
+  - [Known Issues](docs/troubleshooting/KNOWN_ISSUES.md) - Known issues list
+- **[💻 Development](docs/development/)** - Development guides and plans
+  - [Implementation Status](docs/development/IMPLEMENTATION_STATUS.md) - Feature completion status
+  - [Implementation Plan](docs/development/IMPLEMENTATION_PLAN.md) - Development plans
+- **[📊 Project](docs/project/)** - Project-level documentation
+  - [Architecture](docs/project/ARCHITECTURE.md) - System architecture
+  - [Project Status](docs/project/PROJECT_STATUS.md) - Current project status
+- **[✨ Features](docs/features/)** - Feature implementation guides
+- **[👨‍💼 Admin](docs/admin/)** - Admin panel documentation
 
 ## Getting Started
 
