@@ -3,6 +3,7 @@ import { Meter, EnergyData } from '@/types';
 import { supabaseDatabaseService } from '@/services/supabase/databaseService';
 import { getBackgroundDataGenerator, stopBackgroundDataGenerator } from '@/services/mock/backgroundDataGenerator';
 import { getMeterConfig } from '@/utils/meterConfig';
+import { isErrorWithCode, logError } from '@/utils/errorUtils';
 
 interface MeterState {
   meters: Meter[];
@@ -87,10 +88,10 @@ export const useMeterStore = create<MeterState>((set, get) => ({
       );
 
       set({ energyData });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle known Supabase RLS policy error for admin_users
       // This is a database configuration issue, not a code bug
-      if (error?.code === '42P17' || error?.message?.includes('admin_users')) {
+      if (isErrorWithCode(error) && (error.code === '42P17' || error.message?.includes('admin_users'))) {
         // Silently ignore - this is expected if admin_users RLS is misconfigured
         // App continues to work with locally generated data
         if (__DEV__) {
@@ -99,9 +100,7 @@ export const useMeterStore = create<MeterState>((set, get) => ({
         return;
       }
       // Log other errors normally
-      if (__DEV__) {
-        console.error('Error loading energy data:', error);
-      }
+      logError('loadEnergyData', error);
     }
   },
 

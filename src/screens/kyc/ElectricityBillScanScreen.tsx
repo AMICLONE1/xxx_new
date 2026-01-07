@@ -18,6 +18,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { ocrService, ExpoGoDetectedError, OCRNotAvailableError } from '@/services/mlkit/ocrService';
 import { useKYCStore, useAuthStore } from '@/store';
+import { getErrorMessage } from '@/utils/errorUtils';
 import * as FileSystem from 'expo-file-system/legacy';
 
 type ElectricityBillScanScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ElectricityBillScan'>;
@@ -417,8 +418,8 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                 if (!result.canceled && result.assets && result.assets[0]) {
                   await processImage(result.assets[0].uri);
                 }
-              } catch (error: any) {
-                Alert.alert('Error', `Failed to open camera: ${error.message || 'Unknown error'}`);
+              } catch (error: unknown) {
+                Alert.alert('Error', `Failed to open camera: ${getErrorMessage(error) || 'Unknown error'}`);
               }
             },
           },
@@ -435,8 +436,8 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                 if (!result.canceled && result.assets && result.assets[0]) {
                   await processImage(result.assets[0].uri);
                 }
-              } catch (error: any) {
-                Alert.alert('Error', `Failed to open photo library: ${error.message || 'Unknown error'}`);
+              } catch (error: unknown) {
+                Alert.alert('Error', `Failed to open photo library: ${getErrorMessage(error) || 'Unknown error'}`);
               }
             },
           },
@@ -447,8 +448,8 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
         ],
         { cancelable: true }
       );
-    } catch (error: any) {
-      Alert.alert('Error', `Failed to open image picker: ${error.message || 'Please try again.'}`);
+    } catch (error: unknown) {
+      Alert.alert('Error', `Failed to open image picker: ${getErrorMessage(error) || 'Please try again.'}`);
     }
   };
 
@@ -515,12 +516,12 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
         if (__DEV__) {
           console.log('✅ Bill OCR completed! Text extracted (length:', ocrResult.text.length, 'chars)');
         }
-      } catch (ocrError: any) {
+      } catch (ocrError: unknown) {
         // CRITICAL: Delete image before showing error
         await deleteImage();
 
         if (__DEV__) {
-          console.error('❌ Bill OCR Error:', ocrError?.name || 'Unknown');
+          console.error('❌ Bill OCR Error:', ocrError instanceof Error ? ocrError.name : 'Unknown');
         }
         
         // Any OCR error - silently fall back to manual entry
@@ -595,7 +596,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
         );
       }, 500);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       // CRITICAL: Always delete image on error
       await deleteImage();
 
@@ -656,10 +657,10 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
           },
         ]
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       Alert.alert(
         'Error',
-        `Failed to submit bill data: ${error.message || 'Unknown error'}. Please try again.`
+        `Failed to submit bill data: ${getErrorMessage(error) || 'Unknown error'}. Please try again.`
       );
     } finally {
       setIsProcessing(false);

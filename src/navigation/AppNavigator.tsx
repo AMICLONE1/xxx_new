@@ -35,6 +35,7 @@ import MeterRegistrationScreen from '@/screens/meter/MeterRegistrationScreen';
 
 // Trading Screens
 import OrderScreen from '@/screens/trading/OrderScreen';
+import SellEnergyScreen from '@/screens/trading/SellEnergyScreen';
 
 // Home Screens
 import EnergyChartScreen from '@/screens/home/EnergyChartScreen';
@@ -212,6 +213,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="Order"
               component={OrderScreen}
+              options={{ presentation: 'modal' }}
+            />
+            <RootStack.Screen
+              name="SellEnergy"
+              component={SellEnergyScreen}
               options={{ presentation: 'modal' }}
             />
             <RootStack.Screen

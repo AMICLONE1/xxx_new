@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
+import { getErrorMessage, logError } from '@/utils/errorUtils';
 import {
   validateIdentifier,
   validateTermsAccepted,
@@ -168,11 +169,9 @@ export default function LoginScreen({ navigation }: Props) {
         }
         setServerError(response.error || 'Invalid credentials. Please try again.');
       }
-    } catch (error: any) {
-      if (__DEV__) {
-        console.error('❌ Sign in exception:', error);
-      }
-      setServerError(error.message || 'Failed to sign in. Please try again.');
+    } catch (error: unknown) {
+      logError('LoginScreen.handleSignIn', error);
+      setServerError(getErrorMessage(error));
     } finally {
       setIsLoading(false);
     }

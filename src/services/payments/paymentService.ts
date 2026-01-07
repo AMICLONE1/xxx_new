@@ -1,5 +1,6 @@
 import { ApiResponse } from '@/types';
 import { apiClient } from '@/services/api/client';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 export interface TopUpRequest {
   amount: number;
@@ -39,11 +40,11 @@ class PaymentService {
       );
       console.log('✅ Top-up response received:', JSON.stringify(response, null, 2));
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Top-up error:', error);
       return {
         success: false,
-        error: error.message || 'Failed to initiate top-up',
+        error: getErrorMessage(error) || 'Failed to initiate top-up',
       };
     }
   }
@@ -58,10 +59,10 @@ class PaymentService {
         { paymentId }
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message || 'Failed to verify payment',
+        error: getErrorMessage(error) || 'Failed to verify payment',
       };
     }
   }
@@ -81,10 +82,10 @@ class PaymentService {
         }
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message || 'Failed to request withdrawal',
+        error: getErrorMessage(error) || 'Failed to request withdrawal',
       };
     }
   }
@@ -100,10 +101,10 @@ class PaymentService {
         `/wallet/withdraw/${requestId}/status`
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message || 'Failed to get withdrawal status',
+        error: getErrorMessage(error) || 'Failed to get withdrawal status',
       };
     }
   }

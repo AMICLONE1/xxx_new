@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { locationService } from '@/services/locationService';
 import { meterService } from '@/services/api/meterService';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 type HardwareRequestScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -64,9 +65,9 @@ export default function HardwareRequestScreen({ navigation }: Props) {
           'Could not determine your address. Please enter it manually.'
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[HardwareRequest] Location error:', error);
-      Alert.alert('Error', error.message || 'Failed to get location');
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to get location');
     } finally {
       setIsGettingLocation(false);
     }
@@ -103,8 +104,8 @@ export default function HardwareRequestScreen({ navigation }: Props) {
           throw new Error(response.error || 'Failed to submit request');
         }
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to submit request');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to submit request');
     } finally {
       setIsSubmitting(false);
     }

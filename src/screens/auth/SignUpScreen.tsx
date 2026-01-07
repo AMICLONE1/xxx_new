@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
+import { getErrorMessage, logError } from '@/utils/errorUtils';
 import {
   validateEmail,
   validateMobileNumber,
@@ -174,11 +175,9 @@ export default function SignUpScreen({ navigation }: Props) {
         }
         setServerError(response.error || 'Failed to create account. Please try again.');
       }
-    } catch (error: any) {
-      if (__DEV__) {
-        console.error('❌ Sign up exception:', error);
-      }
-      setServerError(error.message || 'Failed to sign up. Please try again.');
+    } catch (error: unknown) {
+      logError('SignUpScreen.handleSignUp', error);
+      setServerError(getErrorMessage(error));
     } finally {
       setIsLoading(false);
     }

@@ -20,6 +20,7 @@ import {
 import { supabaseAuthService } from '@/services/supabase/authService';
 import { useTheme } from '@/contexts';
 import { getThemedColors } from '@/utils/themedStyles';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -121,11 +122,11 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
       } else {
         setError('Please enter a valid email or mobile number');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (__DEV__) {
-        console.error('❌ Password reset error:', err);
+        console.error('❌ Password reset error:', getErrorMessage(err));
       }
-      setError(err.message || 'An unexpected error occurred. Please try again.');
+      setError(getErrorMessage(err) || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -18,6 +18,7 @@ import { RootStackParamList } from '@/types';
 import { formatCurrency } from '@/utils/helpers';
 import { paymentService } from '@/services/payments/paymentService';
 import { RazorpayCheckout } from '@/components/payments/RazorpayCheckout';
+import { getErrorMessage } from '@/utils/errorUtils';
 import { useTheme } from '@/contexts';
 import { getThemedColors } from '@/utils/themedStyles';
 
@@ -99,11 +100,11 @@ export default function TopUpScreen({ navigation }: Props) {
           [{ text: 'OK' }]
         );
       }
-    } catch (error: any) {
-      console.error('Top-up error:', error);
+    } catch (error: unknown) {
+      console.error('Top-up error:', getErrorMessage(error));
       Alert.alert(
         'Error',
-        error.message || 'Failed to initiate payment. Please check your network connection and backend status.'
+        getErrorMessage(error) || 'Failed to initiate payment. Please check your network connection and backend status.'
       );
     } finally {
       setIsProcessing(false);
@@ -133,8 +134,8 @@ export default function TopUpScreen({ navigation }: Props) {
       } else {
         throw new Error(verifyResponse.error || 'Payment verification failed');
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to verify payment');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to verify payment');
     }
   };
 

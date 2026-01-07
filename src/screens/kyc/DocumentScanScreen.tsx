@@ -10,6 +10,7 @@ import {
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ocrService, OCRResult } from '@/services/mlkit/ocrService';
+import { getErrorMessage } from '@/utils/errorUtils';
 import { KYC_DOCUMENT_TYPES } from '@/utils/constants';
 
 type DocumentType = (typeof KYC_DOCUMENT_TYPES)[number];
@@ -60,8 +61,8 @@ export default function DocumentScanScreen({
         'Info',
         'Camera capture will be implemented with expo-camera API. For now, please use the image picker.'
       );
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to capture image');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to capture image');
     } finally {
       setIsScanning(false);
     }
@@ -99,8 +100,8 @@ export default function DocumentScanScreen({
         text: ocrResult.text,
         extractedData,
       });
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to process document');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to process document');
     } finally {
       setIsScanning(false);
     }

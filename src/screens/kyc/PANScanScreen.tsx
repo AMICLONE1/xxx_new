@@ -18,6 +18,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { ocrService, ExpoGoDetectedError, OCRNotAvailableError } from '@/services/mlkit/ocrService';
 import { useKYCStore, useAuthStore } from '@/store';
+import { getErrorMessage } from '@/utils/errorUtils';
 import * as FileSystem from 'expo-file-system/legacy';
 
 type PANScanScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PANScan'>;
@@ -395,8 +396,8 @@ export default function PANScanScreen({ navigation }: Props) {
                 if (!result.canceled && result.assets && result.assets[0]) {
                   await processImage(result.assets[0].uri);
                 }
-              } catch (error: any) {
-                Alert.alert('Error', `Failed to open camera: ${error.message || 'Unknown error'}`);
+              } catch (error: unknown) {
+                Alert.alert('Error', `Failed to open camera: ${getErrorMessage(error) || 'Unknown error'}`);
               }
             },
           },
@@ -413,8 +414,8 @@ export default function PANScanScreen({ navigation }: Props) {
                 if (!result.canceled && result.assets && result.assets[0]) {
                   await processImage(result.assets[0].uri);
                 }
-              } catch (error: any) {
-                Alert.alert('Error', `Failed to open photo library: ${error.message || 'Unknown error'}`);
+              } catch (error: unknown) {
+                Alert.alert('Error', `Failed to open photo library: ${getErrorMessage(error) || 'Unknown error'}`);
               }
             },
           },
@@ -425,8 +426,8 @@ export default function PANScanScreen({ navigation }: Props) {
         ],
         { cancelable: true }
       );
-    } catch (error: any) {
-      Alert.alert('Error', `Failed to open image picker: ${error.message || 'Please try again.'}`);
+    } catch (error: unknown) {
+      Alert.alert('Error', `Failed to open image picker: ${getErrorMessage(error) || 'Please try again.'}`);
     }
   };
 
@@ -487,16 +488,16 @@ export default function PANScanScreen({ navigation }: Props) {
         if (__DEV__) {
           console.log('✅ PAN OCR Success! Text extracted (length:', ocrResult.text.length, 'chars)');
         }
-      } catch (ocrError: any) {
+      } catch (ocrError: unknown) {
         // CRITICAL: Delete image before showing error
         await deleteImage();
 
         if (__DEV__) {
-          console.error('❌ PAN OCR Error:', ocrError?.name || 'Unknown');
+          console.error('❌ PAN OCR Error:', ocrError instanceof Error ? ocrError.name : 'Unknown');
         }
         
         // Handle Expo Go detection - silently fall back to manual entry
-        if (ocrError instanceof ExpoGoDetectedError || ocrError?.message === 'EXPO_GO_DETECTED') {
+        if (ocrError instanceof ExpoGoDetectedError || getErrorMessage(ocrError) === 'EXPO_GO_DETECTED') {
           console.log('[PANScan] Expo Go detected during OCR - using manual entry');
           setExtractedData(emptyData);
           setShowForm(true);
@@ -591,7 +592,7 @@ export default function PANScanScreen({ navigation }: Props) {
         );
       }, 500);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       // CRITICAL: Always delete image on error
       await deleteImage();
 
@@ -653,10 +654,10 @@ export default function PANScanScreen({ navigation }: Props) {
           },
         ]
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       Alert.alert(
         'Error',
-        `Failed to submit PAN data: ${error.message || 'Unknown error'}. Please try again.`
+        `Failed to submit PAN data: ${getErrorMessage(error) || 'Unknown error'}. Please try again.`
       );
     } finally {
       setIsProcessing(false);

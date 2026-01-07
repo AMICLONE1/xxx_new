@@ -105,8 +105,8 @@ class LocationService {
           const cachedLoc = await this.createCachedLocation(lastKnown);
           return cachedLoc;
         }
-      } catch (lastKnownError: any) {
-        console.log('[LocationService] Last known position not available:', lastKnownError.message);
+      } catch (lastKnownError: unknown) {
+        console.log('[LocationService] Last known position not available:', lastKnownError instanceof Error ? lastKnownError.message : 'Unknown error');
       }
 
       // Get fresh GPS with timeout
@@ -128,8 +128,8 @@ class LocationService {
       // Final fallback: use default location
       console.log('[LocationService] GPS failed, using default location (Pune)');
       return this.getDefaultLocation();
-    } catch (error: any) {
-      console.error('[LocationService] Error getting location:', error.message);
+    } catch (error: unknown) {
+      console.error('[LocationService] Error getting location:', error instanceof Error ? error.message : 'Unknown error');
       // Return cached location if available, otherwise default
       return this.cachedLocation || this.getDefaultLocation();
     } finally {
@@ -175,7 +175,7 @@ class LocationService {
         });
         clearTimeout(timeoutId);
         resolve(location);
-      } catch (error: any) {
+      } catch (error: unknown) {
         clearTimeout(timeoutId);
         // Silently handle GPS errors - fallback location will be used
         if (__DEV__) {

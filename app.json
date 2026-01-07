@@ -58,7 +58,7 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:3000",
+      "apiBaseUrl": "http://10.0.2.2:5000",
       "becknGatewayUrl": "https://gateway.becknprotocol.io",
       "mapboxAccessToken": "pk.eyJ1IjoidXNlcjA1MTIiLCJhIjoiY21lZnE5YWtxMDg0YzJrcjZ1aWFuNDY0dSJ9.bM3DfPDdw5SJP32pj4S_NA",
       "becknDomain": "energy",

@@ -21,7 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useMeterStore } from '@/store';
 import { EnergyData, RootStackParamList } from '@/types';
 import { formatEnergy } from '@/utils/helpers';
-import * as FileSystem from 'expo-file-system';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -199,14 +199,6 @@ export default function EnergyChartScreen() {
 
       const csvContent = headers + rows;
 
-      // Save to file
-      const fileName = `energy_data_${timeRange}_${Date.now()}.csv`;
-      const filePath = `${FileSystem.documentDirectory}${fileName}`;
-      
-      await FileSystem.writeAsStringAsync(filePath, csvContent, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-
       // Share the data using built-in Share API
       const result = await Share.share({
         message: csvContent,
@@ -216,8 +208,8 @@ export default function EnergyChartScreen() {
       if (result.action === Share.sharedAction) {
         setExportMessage('CSV exported successfully!');
       }
-    } catch (error: any) {
-      setExportMessage(`Export failed: ${error.message || 'Unknown error'}`);
+    } catch (error: unknown) {
+      setExportMessage(`Export failed: ${getErrorMessage(error) || 'Unknown error'}`);
     } finally {
       setIsExporting(false);
       setTimeout(() => setExportMessage(''), 3000);
@@ -251,13 +243,6 @@ export default function EnergyChartScreen() {
 
       const jsonContent = JSON.stringify(exportData, null, 2);
 
-      const fileName = `energy_data_${timeRange}_${Date.now()}.json`;
-      const filePath = `${FileSystem.documentDirectory}${fileName}`;
-      
-      await FileSystem.writeAsStringAsync(filePath, jsonContent, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-
       // Share the data using built-in Share API
       const result = await Share.share({
         message: jsonContent,
@@ -267,8 +252,8 @@ export default function EnergyChartScreen() {
       if (result.action === Share.sharedAction) {
         setExportMessage('JSON exported successfully!');
       }
-    } catch (error: any) {
-      setExportMessage(`Export failed: ${error.message || 'Unknown error'}`);
+    } catch (error: unknown) {
+      setExportMessage(`Export failed: ${getErrorMessage(error) || 'Unknown error'}`);
     } finally {
       setIsExporting(false);
       setTimeout(() => setExportMessage(''), 3000);
@@ -885,7 +870,7 @@ export default function EnergyChartScreen() {
             </Text>
             
             <TouchableOpacity 
-              style={styles.exportButton}
+              style={styles.exportModalButton}
               onPress={exportToCSV}
               disabled={isExporting}
             >
@@ -898,7 +883,7 @@ export default function EnergyChartScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={styles.exportButton}
+              style={styles.exportModalButton}
               onPress={exportToJSON}
               disabled={isExporting}
             >
@@ -1252,6 +1237,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#111827',
   },
+  // Modal Overlay (shared)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
   // Data Point Modal
   dataPointModalOverlay: {
     flex: 1,
@@ -1371,7 +1364,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: 'center',
   },
-  exportButton: {
+  exportModalButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f9fafb',

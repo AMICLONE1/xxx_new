@@ -23,6 +23,7 @@ import { supabaseStorageService } from '@/services/supabase/storageService';
 import { supabaseAuthService } from '@/services/supabase/authService';
 import { useTheme } from '@/contexts';
 import { getThemedColors } from '@/utils/themedStyles';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
@@ -74,7 +75,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const colors = getThemedColors(isDark);
   const { logout, user, setUser } = useAuthStore();
   const { currentMeter, removeMeter } = useMeterStore();
-  const { status: kycStatus } = useKYCStore();
+  const { overallStatus: kycStatus } = useKYCStore();
   const { themeMode, setThemeMode, restoreTheme } = useThemeStore();
   
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -136,8 +137,8 @@ export default function ProfileScreen({ navigation }: Props) {
             try {
               await removeMeter(currentMeter.id, user.id);
               Alert.alert('Success', 'Meter deleted successfully');
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete meter. Please try again.');
+            } catch (error: unknown) {
+              Alert.alert('Error', getErrorMessage(error) || 'Failed to delete meter. Please try again.');
             }
           },
         },
@@ -205,7 +206,7 @@ export default function ProfileScreen({ navigation }: Props) {
           },
         ]
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (__DEV__) {
         console.error('Error picking image:', error);
       }
@@ -230,11 +231,11 @@ export default function ProfileScreen({ navigation }: Props) {
       } else {
         throw new Error(response.error || 'Failed to update profile');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (__DEV__) {
-        console.error('❌ Upload error:', error.message);
+        console.error('❌ Upload error:', getErrorMessage(error));
       }
-      Alert.alert('Upload Failed', error.message || 'Failed to upload profile picture. Please try again.');
+      Alert.alert('Upload Failed', getErrorMessage(error) || 'Failed to upload profile picture. Please try again.');
     } finally {
       setIsUploadingImage(false);
     }

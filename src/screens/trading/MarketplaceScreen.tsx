@@ -27,6 +27,10 @@ import { SEARCH_RADIUS_KM, MIN_SELL_PRICE, MAX_SELL_PRICE } from '@/utils/consta
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { generateMockSellers } from '@/services/mock/mockSellers';
 import { MapboxWebView } from '@/components/mapbox/MapboxWebView';
+import { BuySellToggle } from '@/components/marketplace/BuySellToggle';
+import { buyersService } from '@/services/api/buyersService';
+import { Buyer } from '@/types';
+import { logError } from '@/utils/errorUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,13 +51,16 @@ interface Filters {
 export default function MarketplaceScreen({ navigation }: Props) {
   const { isConnected } = useNetworkStatus();
   const isOnline = isConnected;
+  const [mode, setMode] = useState<'buy' | 'sell'>('buy');
   const [sellers, setSellers] = useState<Seller[]>([]);
+  const [buyers, setBuyers] = useState<Buyer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
+  const [selectedBuyer, setSelectedBuyer] = useState<Buyer | null>(null);
   const [showTradeModal, setShowTradeModal] = useState(false);
   const [selectedTradeOption, setSelectedTradeOption] = useState<'buy' | 'sell' | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -79,35 +86,80 @@ export default function MarketplaceScreen({ navigation }: Props) {
     getLocation();
   }, []);
 
-  // Auto-refresh sellers every 30 seconds when enabled
-  useEffect(() => {
-    if (autoRefreshEnabled && userLocation) {
-      // Initial load
-      searchSellers();
-      
-      // Set up interval for auto-refresh
-      autoRefreshIntervalRef.current = setInterval(() => {
-        console.log('[MarketplaceScreen] Auto-refreshing sellers...');
-        searchSellers();
-      }, 30000); // 30 seconds
-      
-      return () => {
-        if (autoRefreshIntervalRef.current) {
-          clearInterval(autoRefreshIntervalRef.current);
-        }
-      };
+  // Search buyers when in sell mode
+  const searchBuyers = useCallback(async () => {
+    if (!isOnline || mode !== 'sell') {
+      return;
     }
-  }, [autoRefreshEnabled, userLocation, filters]);
 
-  // Refresh location every minute
+    setLoading(true);
+    try {
+      let results: Buyer[] = [];
+
+      if (userLocation) {
+        try {
+          const response = await buyersService.getBuyers({
+            location: {
+              lat: userLocation.lat,
+              lng: userLocation.lng,
+              radius: parseFloat(filters.radius) || SEARCH_RADIUS_KM,
+            },
+            maxPrice: parseFloat(filters.maxPrice) || undefined,
+            status: 'active',
+          });
+
+          if (response.success && response.data) {
+            results = response.data;
+          }
+        } catch (error: unknown) {
+          logError('searchBuyers API', error);
+          // Fall back to empty array - buyers are optional
+        }
+      }
+
+      // Apply filters
+      let filteredResults = results;
+      if (filters.minPrice) {
+        filteredResults = filteredResults.filter(
+          (b) => b.maxPricePerUnit >= parseFloat(filters.minPrice)
+        );
+      }
+
+      filteredResults.sort((a, b) => {
+        if (a.distance !== undefined && b.distance !== undefined) {
+          return a.distance - b.distance;
+        }
+        return b.maxPricePerUnit - a.maxPricePerUnit; // Higher price first
+      });
+
+      setBuyers(filteredResults);
+    } catch (error: unknown) {
+      logError('searchBuyers', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [userLocation, filters, isOnline, mode]);
+
+  // Refresh location every minute - Added ref for proper cleanup
+  const locationRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
-    const locationRefreshInterval = setInterval(() => {
-      console.log('[MarketplaceScreen] Refreshing location...');
+    // Clear existing interval first
+    if (locationRefreshIntervalRef.current) {
+      clearInterval(locationRefreshIntervalRef.current);
+    }
+
+    locationRefreshIntervalRef.current = setInterval(() => {
+      if (__DEV__) console.log('[MarketplaceScreen] Refreshing location...');
       getLocation(true);
     }, 60000); // 60 seconds
     
     return () => {
-      clearInterval(locationRefreshInterval);
+      if (locationRefreshIntervalRef.current) {
+        clearInterval(locationRefreshIntervalRef.current);
+        locationRefreshIntervalRef.current = null;
+      }
     };
   }, []);
 
@@ -127,8 +179,8 @@ export default function MarketplaceScreen({ navigation }: Props) {
         console.log('[MarketplaceScreen] No location available, using default (Pune)');
         setUserLocation(DEFAULT_LOCATION);
       }
-    } catch (error: any) {
-      console.error('[MarketplaceScreen] Error getting location:', error);
+    } catch (error: unknown) {
+      logError('getLocation', error);
       // Use default location (Pune) on error
       setUserLocation(DEFAULT_LOCATION);
     }
@@ -241,7 +293,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                 : undefined,
             }));
           }
-        } catch (apiError: any) {
+        } catch (apiError: unknown) {
           // Silently fall back to mock data - backend unavailable is expected in development
           const mockSellers = generateMockSellers(userLocation);
           results = mockSellers.map((seller) => ({
@@ -311,8 +363,8 @@ export default function MarketplaceScreen({ navigation }: Props) {
       setSellers(filteredResults);
 
       // Map will auto-fit to show all sellers (handled by WebView)
-    } catch (error: any) {
-      console.error('Error searching sellers:', error);
+    } catch (error: unknown) {
+      logError('searchSellers', error);
       Alert.alert('Error', 'Failed to search sellers. Please try again.');
     } finally {
       setLoading(false);
@@ -320,16 +372,53 @@ export default function MarketplaceScreen({ navigation }: Props) {
     }
   }, [userLocation, filters, isOnline, viewMode, mapReady]);
 
+  // Auto-refresh based on mode - Fixed memory leak by clearing existing interval before creating new one
+  useEffect(() => {
+    // Always clear existing interval first to prevent stacking
+    if (autoRefreshIntervalRef.current) {
+      clearInterval(autoRefreshIntervalRef.current);
+      autoRefreshIntervalRef.current = null;
+    }
+
+    if (autoRefreshEnabled && userLocation) {
+      const searchFn = mode === 'buy' ? searchSellers : searchBuyers;
+      
+      // Initial load
+      searchFn();
+      
+      // Set up interval for auto-refresh
+      autoRefreshIntervalRef.current = setInterval(() => {
+        if (__DEV__) console.log(`[MarketplaceScreen] Auto-refreshing ${mode === 'buy' ? 'sellers' : 'buyers'}...`);
+        searchFn();
+      }, 30000); // 30 seconds
+    }
+    
+    return () => {
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current);
+        autoRefreshIntervalRef.current = null;
+      }
+    };
+  }, [autoRefreshEnabled, userLocation, filters, mode, searchSellers, searchBuyers]);
+
   useEffect(() => {
     if (userLocation) {
-      searchSellers();
+      if (mode === 'buy') {
+        searchSellers();
+      } else {
+        searchBuyers();
+      }
     }
-  }, [userLocation, searchSellers]);
+  }, [userLocation, mode, searchSellers, searchBuyers]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    searchSellers();
-  }, [searchSellers]);
+    if (mode === 'buy') {
+      searchSellers();
+    } else {
+      searchBuyers();
+    }
+  }, [searchSellers, searchBuyers, mode]);
 
   const handleSellerPress = (seller: Seller) => {
     setSelectedSeller(seller);
@@ -338,8 +427,23 @@ export default function MarketplaceScreen({ navigation }: Props) {
 
   const handleTradeOptionSelect = (option: 'buy' | 'sell') => {
     setShowTradeModal(false);
-    // Navigate to analytics with the selected mode
-    navigation.navigate('TradeAnalytics', { mode: option === 'buy' ? 'seller' : 'buyer' });
+    if (option === 'buy' && selectedSeller) {
+      // Navigate to order screen for buying
+      navigation.navigate('Order', {
+        sellerId: selectedSeller.id,
+        sellerName: selectedSeller.name,
+        pricePerUnit: selectedSeller.pricePerUnit,
+        availableEnergy: selectedSeller.availableEnergy,
+      });
+    } else if (option === 'sell' && selectedBuyer) {
+      // Navigate to sell energy screen
+      navigation.navigate('SellEnergy', {
+        buyerId: selectedBuyer.id,
+        buyerName: selectedBuyer.name,
+        maxPricePerUnit: selectedBuyer.maxPricePerUnit,
+        energyNeeded: selectedBuyer.energyNeeded,
+      });
+    }
   };
 
   const handleMarkerPress = (seller: Seller) => {
@@ -401,6 +505,66 @@ export default function MarketplaceScreen({ navigation }: Props) {
     </TouchableOpacity>
   );
 
+  const handleBuyerPress = (buyer: Buyer) => {
+    setSelectedBuyer(buyer);
+    setShowTradeModal(true);
+  };
+
+  const renderBuyerCard = (buyer: Buyer) => (
+    <TouchableOpacity
+      key={buyer.id}
+      style={styles.buyerCard}
+      onPress={() => handleBuyerPress(buyer)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.buyerCardHeader}>
+        <View style={styles.buyerInfo}>
+          <View style={styles.buyerNameRow}>
+            <MaterialCommunityIcons name="account-arrow-down" size={20} color="#f59e0b" />
+            <Text style={styles.buyerName}>{buyer.name}</Text>
+          </View>
+          {buyer.distance !== undefined && (
+            <View style={styles.distanceRow}>
+              <Ionicons name="location" size={14} color="#6b7280" />
+              <Text style={styles.buyerDistance}>{buyer.distance.toFixed(1)} km away</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.buyerDetails}>
+        <View style={styles.detailRow}>
+          <View style={styles.detailItem}>
+            <MaterialCommunityIcons name="currency-inr" size={18} color="#6b7280" />
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Max Price</Text>
+              <Text style={styles.detailValue}>{formatCurrency(buyer.maxPricePerUnit)}/kWh</Text>
+            </View>
+          </View>
+          <View style={styles.detailItem}>
+            <MaterialCommunityIcons name="lightning-bolt" size={18} color="#6b7280" />
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Needed</Text>
+              <Text style={styles.detailValue}>{formatEnergy(buyer.energyNeeded, 'kWh')}</Text>
+            </View>
+          </View>
+        </View>
+        {buyer.preferredDeliveryWindow && (
+          <View style={styles.deliveryWindowRow}>
+            <MaterialCommunityIcons name="clock-outline" size={16} color="#6b7280" />
+            <Text style={styles.deliveryWindowText}>{buyer.preferredDeliveryWindow}</Text>
+          </View>
+        )}
+        {buyer.rating !== undefined && (
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={16} color="#fbbf24" />
+            <Text style={styles.ratingText}>{buyer.rating.toFixed(1)}</Text>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
   const renderMapView = () => {
     const MAPBOX_TOKEN = Constants.expoConfig?.extra?.mapboxAccessToken || process.env.MAPBOX_ACCESS_TOKEN || '';
     
@@ -432,12 +596,22 @@ export default function MarketplaceScreen({ navigation }: Props) {
           accessToken={MAPBOX_TOKEN}
           center={centerLocation}
           zoom={12}
-          sellers={sellers}
+          sellers={mode === 'buy' ? sellers : []}
+          buyers={mode === 'sell' ? buyers : []}
           userLocation={userLocation || undefined}
-          onMarkerClick={(sellerId) => {
-            const seller = sellers.find(s => s.id === sellerId);
-            if (seller) {
-              handleMarkerPress(seller);
+          showBuyers={mode === 'sell'}
+          showSellers={mode === 'buy'}
+          onMarkerClick={(id, type) => {
+            if (type === 'seller') {
+              const seller = sellers.find(s => s.id === id);
+              if (seller) {
+                handleMarkerPress(seller);
+              }
+            } else if (type === 'buyer') {
+              const buyer = buyers.find(b => b.id === id);
+              if (buyer) {
+                setSelectedBuyer(buyer);
+              }
             }
           }}
           onMapReady={() => setMapReady(true)}
@@ -450,7 +624,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
             onPress={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
           >
             <MaterialCommunityIcons 
-              name={autoRefreshEnabled ? "refresh" : "refresh-off"} 
+              name={autoRefreshEnabled ? "autorenew" : "autorenew-off"} 
               size={20} 
               color={autoRefreshEnabled ? "#10b981" : "#6b7280"} 
             />
@@ -542,13 +716,31 @@ export default function MarketplaceScreen({ navigation }: Props) {
         )}
 
         {/* Results Count Overlay */}
-        {sellers.length > 0 && (
+        {(mode === 'buy' ? sellers.length > 0 : buyers.length > 0) && (
           <View style={styles.mapResultsOverlay}>
             <Text style={styles.mapResultsText}>
-              {sellers.length} seller{sellers.length !== 1 ? 's' : ''} found
+              {mode === 'buy'
+                ? `${sellers.length} seller${sellers.length !== 1 ? 's' : ''} found`
+                : `${buyers.length} buyer${buyers.length !== 1 ? 's' : ''} found`}
             </Text>
           </View>
         )}
+
+        {/* Map Legend */}
+        <View style={styles.mapLegend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendMarker, { backgroundColor: '#10b981' }]} />
+            <Text style={styles.legendText}>Sellers</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendMarker, { backgroundColor: '#f59e0b' }]} />
+            <Text style={styles.legendText}>Buyers</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendMarker, { backgroundColor: '#3b82f6' }]} />
+            <Text style={styles.legendText}>Your Location</Text>
+          </View>
+        </View>
       </View>
     );
   };
@@ -563,7 +755,9 @@ export default function MarketplaceScreen({ navigation }: Props) {
       <View style={styles.modalOverlay}>
         <View style={styles.filtersContainer}>
           <View style={styles.filtersHeader}>
-            <Text style={styles.filtersTitle}>Filter Sellers</Text>
+            <Text style={styles.filtersTitle}>
+              Filter {mode === 'buy' ? 'Sellers' : 'Buyers'}
+            </Text>
             <TouchableOpacity onPress={() => setShowFilters(false)}>
               <Ionicons name="close" size={24} color="#111827" />
             </TouchableOpacity>
@@ -574,7 +768,9 @@ export default function MarketplaceScreen({ navigation }: Props) {
               <Text style={styles.filterSectionTitle}>Price Range</Text>
               <View style={styles.filterRow}>
                 <View style={styles.filterInputContainer}>
-                  <Text style={styles.filterLabel}>Min Price (₹/kWh)</Text>
+                  <Text style={styles.filterLabel}>
+                    {mode === 'buy' ? 'Min Price' : 'Min Max Price'} (₹/kWh)
+                  </Text>
                   <TextInput
                     style={styles.filterInput}
                     value={filters.minPrice}
@@ -584,7 +780,9 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   />
                 </View>
                 <View style={styles.filterInputContainer}>
-                  <Text style={styles.filterLabel}>Max Price (₹/kWh)</Text>
+                  <Text style={styles.filterLabel}>
+                    {mode === 'buy' ? 'Max Price' : 'Max Price'} (₹/kWh)
+                  </Text>
                   <TextInput
                     style={styles.filterInput}
                     value={filters.maxPrice}
@@ -594,6 +792,11 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   />
                 </View>
               </View>
+              {mode === 'sell' && (
+                <Text style={styles.filterHint}>
+                  Filter buyers by their maximum price range
+                </Text>
+              )}
             </View>
 
             <View style={styles.filterSection}>
@@ -623,18 +826,20 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     placeholder="0"
                   />
                 </View>
-                <View style={styles.switchRow}>
-                  <View style={styles.switchLabelContainer}>
-                    <Text style={styles.filterLabel}>Green Energy Only</Text>
-                    <Text style={styles.filterHint}>Show only renewable energy sources</Text>
+                {mode === 'buy' && (
+                  <View style={styles.switchRow}>
+                    <View style={styles.switchLabelContainer}>
+                      <Text style={styles.filterLabel}>Green Energy Only</Text>
+                      <Text style={styles.filterHint}>Show only renewable energy sources</Text>
+                    </View>
+                    <Switch
+                      value={filters.greenEnergyOnly}
+                      onValueChange={(value) => setFilters({ ...filters, greenEnergyOnly: value })}
+                      trackColor={{ false: '#d1d5db', true: '#10b981' }}
+                      thumbColor="#ffffff"
+                    />
                   </View>
-                  <Switch
-                    value={filters.greenEnergyOnly}
-                    onValueChange={(value) => setFilters({ ...filters, greenEnergyOnly: value })}
-                    trackColor={{ false: '#d1d5db', true: '#10b981' }}
-                    thumbColor="#ffffff"
-                  />
-                </View>
+                )}
               </View>
             </View>
 
@@ -642,7 +847,11 @@ export default function MarketplaceScreen({ navigation }: Props) {
               style={styles.applyButton}
               onPress={() => {
                 setShowFilters(false);
-                searchSellers();
+                if (mode === 'buy') {
+                  searchSellers();
+                } else {
+                  searchBuyers();
+                }
               }}
             >
               <LinearGradient
@@ -667,7 +876,9 @@ export default function MarketplaceScreen({ navigation }: Props) {
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Marketplace</Text>
-            <Text style={styles.subtitle}>Find Energy Near Me</Text>
+            <Text style={styles.subtitle}>
+              {mode === 'buy' ? 'Find Energy Sellers' : 'Find Energy Buyers'}
+            </Text>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -688,6 +899,9 @@ export default function MarketplaceScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
         </View>
+        <View style={styles.toggleContainer}>
+          <BuySellToggle mode={mode} onModeChange={setMode} />
+        </View>
       </LinearGradient>
 
       {renderFilters()}
@@ -707,10 +921,16 @@ export default function MarketplaceScreen({ navigation }: Props) {
               <ActivityIndicator size="large" color="#10b981" />
               <Text style={styles.loadingText}>Searching for sellers...</Text>
             </View>
-          ) : sellers.length === 0 ? (
+          ) : (mode === 'buy' ? sellers.length === 0 : buyers.length === 0) ? (
             <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="store-off" size={64} color="#d1d5db" />
-              <Text style={styles.emptyText}>No sellers found</Text>
+              <MaterialCommunityIcons 
+                name={mode === 'buy' ? 'store-off' : 'account-off'} 
+                size={64} 
+                color="#d1d5db" 
+              />
+              <Text style={styles.emptyText}>
+                No {mode === 'buy' ? 'sellers' : 'buyers'} found
+              </Text>
               <Text style={styles.emptySubtext}>
                 Try adjusting your filters or search radius
               </Text>
@@ -730,24 +950,31 @@ export default function MarketplaceScreen({ navigation }: Props) {
             <>
               <View style={styles.resultsHeader}>
                 <Text style={styles.resultsCount}>
-                  {sellers.length} seller{sellers.length !== 1 ? 's' : ''} found
+                  {mode === 'buy' 
+                    ? `${sellers.length} seller${sellers.length !== 1 ? 's' : ''} found`
+                    : `${buyers.length} buyer${buyers.length !== 1 ? 's' : ''} found`}
                 </Text>
                 <TouchableOpacity onPress={() => setShowFilters(true)}>
                   <Text style={styles.filterLink}>Filter</Text>
                 </TouchableOpacity>
               </View>
-              {sellers.map(renderSellerCard)}
+              {mode === 'buy' 
+                ? sellers.map(renderSellerCard)
+                : buyers.map(renderBuyerCard)}
             </>
           )}
         </ScrollView>
       )}
 
-      {/* Trade Modal */}
+      {/* Trade Modal - For Sellers (Buy Mode) */}
       <Modal
-        visible={showTradeModal}
+        visible={showTradeModal && mode === 'buy' && !!selectedSeller}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowTradeModal(false)}
+        onRequestClose={() => {
+          setShowTradeModal(false);
+          setSelectedSeller(null);
+        }}
       >
         <View style={styles.tradeModalOverlay}>
           <View style={styles.tradeModalContainer}>
@@ -755,7 +982,10 @@ export default function MarketplaceScreen({ navigation }: Props) {
               <>
                 <View style={styles.tradeModalHeader}>
                   <Text style={styles.tradeModalTitle}>{selectedSeller.name}</Text>
-                  <TouchableOpacity onPress={() => setShowTradeModal(false)}>
+                  <TouchableOpacity onPress={() => {
+                    setShowTradeModal(false);
+                    setSelectedSeller(null);
+                  }}>
                     <Ionicons name="close" size={24} color="#6b7280" />
                   </TouchableOpacity>
                 </View>
@@ -769,9 +999,19 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     <Text style={styles.tradeModalInfoLabel}>Available</Text>
                     <Text style={styles.tradeModalInfoValue}>{formatEnergy(selectedSeller.availableEnergy)}</Text>
                   </View>
+                  {selectedSeller.distance !== undefined && (
+                    <View style={styles.tradeModalInfoRow}>
+                      <Text style={styles.tradeModalInfoLabel}>Distance</Text>
+                      <Text style={styles.tradeModalInfoValue}>{selectedSeller.distance.toFixed(1)} km</Text>
+                    </View>
+                  )}
+                  {selectedSeller.rating !== undefined && (
+                    <View style={styles.tradeModalInfoRow}>
+                      <Text style={styles.tradeModalInfoLabel}>Rating</Text>
+                      <Text style={styles.tradeModalInfoValue}>⭐ {selectedSeller.rating.toFixed(1)}</Text>
+                    </View>
+                  )}
                 </View>
-
-                <Text style={styles.tradeModalQuestion}>What would you like to do?</Text>
 
                 <TouchableOpacity
                   style={styles.tradeModalButton}
@@ -787,6 +1027,74 @@ export default function MarketplaceScreen({ navigation }: Props) {
                 </TouchableOpacity>
 
                 <TouchableOpacity
+                  style={styles.tradeModalCancelButton}
+                  onPress={() => {
+                    setShowTradeModal(false);
+                    setSelectedSeller(null);
+                  }}
+                >
+                  <Text style={styles.tradeModalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Trade Modal - For Buyers (Sell Mode) */}
+      <Modal
+        visible={showTradeModal && mode === 'sell' && !!selectedBuyer}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          setShowTradeModal(false);
+          setSelectedBuyer(null);
+        }}
+      >
+        <View style={styles.tradeModalOverlay}>
+          <View style={styles.tradeModalContainer}>
+            {selectedBuyer && (
+              <>
+                <View style={styles.tradeModalHeader}>
+                  <Text style={styles.tradeModalTitle}>{selectedBuyer.name}</Text>
+                  <TouchableOpacity onPress={() => {
+                    setShowTradeModal(false);
+                    setSelectedBuyer(null);
+                  }}>
+                    <Ionicons name="close" size={24} color="#6b7280" />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.tradeModalInfo}>
+                  <View style={styles.tradeModalInfoRow}>
+                    <Text style={styles.tradeModalInfoLabel}>Max Price per kWh</Text>
+                    <Text style={styles.tradeModalInfoValue}>{formatCurrency(selectedBuyer.maxPricePerUnit)}</Text>
+                  </View>
+                  <View style={styles.tradeModalInfoRow}>
+                    <Text style={styles.tradeModalInfoLabel}>Energy Needed</Text>
+                    <Text style={styles.tradeModalInfoValue}>{formatEnergy(selectedBuyer.energyNeeded)}</Text>
+                  </View>
+                  {selectedBuyer.distance !== undefined && (
+                    <View style={styles.tradeModalInfoRow}>
+                      <Text style={styles.tradeModalInfoLabel}>Distance</Text>
+                      <Text style={styles.tradeModalInfoValue}>{selectedBuyer.distance.toFixed(1)} km</Text>
+                    </View>
+                  )}
+                  {selectedBuyer.preferredDeliveryWindow && (
+                    <View style={styles.tradeModalInfoRow}>
+                      <Text style={styles.tradeModalInfoLabel}>Delivery Window</Text>
+                      <Text style={styles.tradeModalInfoValue}>{selectedBuyer.preferredDeliveryWindow}</Text>
+                    </View>
+                  )}
+                  {selectedBuyer.rating !== undefined && (
+                    <View style={styles.tradeModalInfoRow}>
+                      <Text style={styles.tradeModalInfoLabel}>Rating</Text>
+                      <Text style={styles.tradeModalInfoValue}>⭐ {selectedBuyer.rating.toFixed(1)}</Text>
+                    </View>
+                  )}
+                </View>
+
+                <TouchableOpacity
                   style={styles.tradeModalButton}
                   onPress={() => handleTradeOptionSelect('sell')}
                 >
@@ -795,13 +1103,16 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     style={styles.tradeModalButtonGradient}
                   >
                     <Ionicons name="cash" size={24} color="#ffffff" />
-                    <Text style={styles.tradeModalButtonText}>Sell Electricity</Text>
+                    <Text style={styles.tradeModalButtonText}>Sell Energy</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.tradeModalCancelButton}
-                  onPress={() => setShowTradeModal(false)}
+                  onPress={() => {
+                    setShowTradeModal(false);
+                    setSelectedBuyer(null);
+                  }}
                 >
                   <Text style={styles.tradeModalCancelText}>Cancel</Text>
                 </TouchableOpacity>
@@ -821,10 +1132,13 @@ const styles = StyleSheet.create({
   },
   gradientHeader: {
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 20,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
+  },
+  toggleContainer: {
+    marginTop: 16,
   },
   header: {
     flexDirection: 'row',
@@ -1016,6 +1330,56 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+  },
+  buyerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+  },
+  buyerCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  buyerInfo: {
+    flex: 1,
+  },
+  buyerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  buyerName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  buyerDistance: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  buyerDetails: {
+    gap: 12,
+  },
+  deliveryWindowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  deliveryWindowText: {
+    fontSize: 12,
+    color: '#6b7280',
   },
   sellerCardHeader: {
     flexDirection: 'row',
@@ -1277,6 +1641,37 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     textAlign: 'center',
+  },
+  mapLegend: {
+    position: 'absolute',
+    bottom: 80,
+    left: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    gap: 8,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendMarker: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  legendText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#374151',
   },
   // Trade Modal Styles
   tradeModalOverlay: {

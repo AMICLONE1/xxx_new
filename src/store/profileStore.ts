@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { getErrorMessage, logError } from '@/utils/errorUtils';
 
 export interface UserLocation {
   type: 'gps' | 'manual';
@@ -77,9 +78,9 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       
       set({ hasChanges: false, isSaving: false });
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       set({ isSaving: false });
-      return { success: false, error: error.message || 'Failed to save profile' };
+      return { success: false, error: getErrorMessage(error) };
     }
   },
 
@@ -90,8 +91,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         return JSON.parse(stored) as UserLocation;
       }
       return null;
-    } catch (error) {
-      console.error('Error restoring location:', error);
+    } catch (error: unknown) {
+      logError('restoreLocation', error);
       return null;
     }
   },

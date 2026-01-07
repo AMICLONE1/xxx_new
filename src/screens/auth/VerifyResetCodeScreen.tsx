@@ -16,6 +16,7 @@ import { RootStackParamList } from '@/types';
 import { supabaseAuthService } from '@/services/supabase/authService';
 import { useTheme } from '@/contexts';
 import { getThemedColors } from '@/utils/themedStyles';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 type VerifyResetCodeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -109,7 +110,7 @@ export default function VerifyResetCodeScreen({ navigation, route }: Props) {
         console.log('🔐 Verifying OTP code for:', email);
       }
 
-      const response = await supabaseAuthService.verifyOTP(email, verificationCode, 'recovery');
+      const response = await supabaseAuthService.verifyRecoveryOTP(email, verificationCode, 'recovery');
 
       if (response.success) {
         if (__DEV__) {
@@ -123,11 +124,11 @@ export default function VerifyResetCodeScreen({ navigation, route }: Props) {
         setCode(Array(CODE_LENGTH).fill(''));
         inputRefs.current[0]?.focus();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (__DEV__) {
-        console.error('❌ OTP verification error:', err);
+        console.error('❌ OTP verification error:', getErrorMessage(err));
       }
-      setError(err.message || 'An unexpected error occurred. Please try again.');
+      setError(getErrorMessage(err) || 'An unexpected error occurred. Please try again.');
       setCode(Array(CODE_LENGTH).fill(''));
       inputRefs.current[0]?.focus();
     } finally {
@@ -151,8 +152,8 @@ export default function VerifyResetCodeScreen({ navigation, route }: Props) {
       } else {
         setError(response.error || 'Failed to resend code. Please try again.');
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || 'An unexpected error occurred.');
     } finally {
       setIsLoading(false);
     }

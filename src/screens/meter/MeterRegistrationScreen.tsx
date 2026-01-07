@@ -22,6 +22,8 @@ import { getBackgroundDataGenerator } from '@/services/mock/backgroundDataGenera
 import { getMeterConfig } from '@/utils/meterConfig';
 import { supabaseDatabaseService } from '@/services/supabase/databaseService';
 import * as FileSystem from 'expo-file-system/legacy';
+import { MeterManagement } from '@/components/meter/MeterManagement';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 type MeterRegistrationScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -51,7 +53,7 @@ interface ExtractedBillData {
 export default function MeterRegistrationScreen({ navigation, route }: Props) {
   // Check if this is a hardware request flow
   const isHardwareRequest = route?.params?.isHardwareRequest || false;
-  const { setCurrentMeter, setMeters, meters } = useMeterStore();
+  const { setCurrentMeter, setMeters, meters, removeMeter } = useMeterStore();
   const { user } = useAuthStore();
   
   // Form state
@@ -73,15 +75,69 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
   const [showDiscomPicker, setShowDiscomPicker] = useState(false);
   const [showHardwareRequest, setShowHardwareRequest] = useState(false);
   const [isExpoGo, setIsExpoGo] = useState(false);
+  const [showManagement, setShowManagement] = useState(false);
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
 
-  // Check if running in Expo Go on mount
+  // Check if running in Expo Go on mount and if we should show management view
   useEffect(() => {
     const checkExpoGo = ocrService.isRunningInExpoGo();
     setIsExpoGo(checkExpoGo);
     if (checkExpoGo && __DEV__) {
       console.log('📱 Running in Expo Go - OCR disabled');
     }
-  }, []);
+    
+    // Show management view if user already has meters
+    if (meters.length > 0 && !showRegistrationForm) {
+      setShowManagement(true);
+    }
+  }, [meters.length, showRegistrationForm]);
+
+  // If user has meters and not explicitly adding new one, show management view
+  if (showManagement && meters.length > 0 && !showRegistrationForm) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.headerBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.headerBarTitle}>Meter Management</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <MeterManagement
+          meters={meters}
+          onAddMeter={() => {
+            setShowRegistrationForm(true);
+            setShowManagement(false);
+          }}
+          onToggleMeter={(meterId, enabled) => {
+            console.log(`Toggle meter ${meterId}: ${enabled ? 'ON' : 'OFF'}`);
+            // TODO: Implement meter toggle logic
+            if (!enabled) {
+              Alert.alert(
+                'Meter Turned Off',
+                'Data collection has been paused for this meter.'
+              );
+            }
+          }}
+          onDisableMeter={async (meterId) => {
+            if (!user?.id) return;
+            await removeMeter(meterId, user.id);
+            Alert.alert('Success', 'Meter has been disabled and removed.');
+          }}
+          onViewDetails={(meter) => {
+            Alert.alert(
+              'Meter Details',
+              `DISCOM: ${meter.discomName}\n` +
+              `Consumer Number: ${meter.consumerNumber}\n` +
+              `Serial ID: ${meter.id}\n` +
+              `Address: ${meter.address || 'Not available'}`,
+              [{ text: 'OK' }]
+            );
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
 
   if (isHardwareRequest || showHardwareRequest) {
     return <HardwareRequestScreen navigation={navigation} />;
@@ -425,16 +481,16 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
         if (__DEV__) {
           console.log('✅ Bill OCR Success! Text extracted (length:', ocrResult.text.length, 'chars)');
         }
-      } catch (ocrError: any) {
+      } catch (ocrError: unknown) {
         // Delete image before showing error
         await deleteImageFile(uri);
 
         if (__DEV__) {
-          console.error('❌ Bill OCR Error:', ocrError?.name || 'Unknown');
+          console.error('❌ Bill OCR Error:', ocrError instanceof Error ? ocrError.name : 'Unknown');
         }
         
         // Handle Expo Go detection - silently fall back to manual entry
-        if (ocrError instanceof ExpoGoDetectedError || ocrError?.message === 'EXPO_GO_DETECTED') {
+        if (ocrError instanceof ExpoGoDetectedError || (ocrError instanceof Error && ocrError.message === 'EXPO_GO_DETECTED')) {
           console.log('[MeterRegistration] Expo Go detected during OCR - using manual entry');
           setIsProcessing(false);
           // Keep the bill as "uploaded" for manual entry
@@ -497,8 +553,8 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
       setExtractedBillData(extracted);
 
       // Auto-fill form fields if detected
-      if (extracted.discomName && DISCOM_NAMES.includes(extracted.discomName)) {
-        setDiscomName(extracted.discomName);
+      if (extracted.discomName && (DISCOM_NAMES as readonly string[]).includes(extracted.discomName)) {
+        setDiscomName(extracted.discomName as typeof DISCOM_NAMES[number]);
       }
       
       if (extracted.consumerNumber) {
@@ -535,9 +591,9 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
         );
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       await deleteImageFile(uri);
-      Alert.alert('Error', error.message || 'Failed to process bill image');
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to process bill image');
     } finally {
       setIsProcessing(false);
     }
@@ -591,8 +647,8 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
                 if (!result.canceled && result.assets && result.assets[0]) {
                   await processImage(result.assets[0].uri);
                 }
-              } catch (error: any) {
-                Alert.alert('Error', `Failed to open camera: ${error.message || 'Unknown error'}`);
+              } catch (error: unknown) {
+                Alert.alert('Error', `Failed to open camera: ${getErrorMessage(error) || 'Unknown error'}`);
               }
             },
           },
@@ -609,8 +665,8 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
                 if (!result.canceled && result.assets && result.assets[0]) {
                   await processImage(result.assets[0].uri);
                 }
-              } catch (error: any) {
-                Alert.alert('Error', `Failed to open photo library: ${error.message || 'Unknown error'}`);
+              } catch (error: unknown) {
+                Alert.alert('Error', `Failed to open photo library: ${getErrorMessage(error) || 'Unknown error'}`);
               }
             },
           },
@@ -621,8 +677,8 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
         ],
         { cancelable: true }
       );
-    } catch (error: any) {
-      Alert.alert('Error', `Failed to open image picker: ${error.message || 'Please try again.'}`);
+    } catch (error: unknown) {
+      Alert.alert('Error', `Failed to open image picker: ${getErrorMessage(error) || 'Please try again.'}`);
     }
   };
 
@@ -703,6 +759,26 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
         'Your meter has been registered and fake energy data generation has started. You can now view your energy dashboard.',
         [
           {
+            text: 'Add Another Meter',
+            onPress: () => {
+              // Reset form
+              setDiscomName('');
+              setConsumerNumber('');
+              setMeterSerialId('');
+              setBillImageUri(null);
+              setExtractedBillData(null);
+              setShowRegistrationForm(true);
+              setShowManagement(false);
+            },
+          },
+          {
+            text: 'View My Meters',
+            onPress: () => {
+              setShowRegistrationForm(false);
+              setShowManagement(true);
+            },
+          },
+          {
             text: 'Go to Dashboard',
             onPress: () => navigation.reset({
               index: 0,
@@ -711,8 +787,8 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
           },
         ]
       );
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to register meter');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to register meter');
     } finally {
       setIsSubmitting(false);
     }
@@ -905,6 +981,25 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerBarTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
   container: {
     flex: 1,
     backgroundColor: '#ffffff',

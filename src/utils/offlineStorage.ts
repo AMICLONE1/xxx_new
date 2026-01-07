@@ -1,5 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EnergyData, Order } from '@/types';
+import { logError } from '@/utils/errorUtils';
+
+// Interfaces for cached data with string timestamps
+interface CachedEnergyData extends Omit<EnergyData, 'timestamp'> {
+  timestamp: string;
+}
+
+interface CachedOrder extends Omit<Order, 'createdAt' | 'completedAt'> {
+  createdAt: string;
+  completedAt?: string;
+}
 
 // Use AsyncStorage instead of MMKV for Expo Go compatibility
 // MMKV requires NitroModules which needs new architecture
@@ -32,15 +43,15 @@ class OfflineStorage {
     try {
       const cached = await AsyncStorage.getItem(STORAGE_PREFIX + KEYS.ENERGY_DATA);
       if (cached) {
-        const data = JSON.parse(cached);
+        const data: CachedEnergyData[] = JSON.parse(cached);
         // Convert timestamp strings back to Date objects
-        return data.map((item: any) => ({
+        return data.map((item) => ({
           ...item,
           timestamp: new Date(item.timestamp),
         }));
       }
-    } catch (error) {
-      console.error('Failed to get cached energy data:', error);
+    } catch (error: unknown) {
+      logError('getCachedEnergyData', error);
     }
     return [];
   }
@@ -65,15 +76,15 @@ class OfflineStorage {
     try {
       const queue = await AsyncStorage.getItem(STORAGE_PREFIX + KEYS.OFFLINE_QUEUE);
       if (queue) {
-        const orders = JSON.parse(queue);
-        return orders.map((order: any) => ({
+        const orders: CachedOrder[] = JSON.parse(queue);
+        return orders.map((order) => ({
           ...order,
           createdAt: new Date(order.createdAt),
           completedAt: order.completedAt ? new Date(order.completedAt) : undefined,
         }));
       }
-    } catch (error) {
-      console.error('Failed to get queued orders:', error);
+    } catch (error: unknown) {
+      logError('getQueuedOrders', error);
     }
     return [];
   }

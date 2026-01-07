@@ -3,6 +3,20 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import Razorpay from 'razorpay';
+import {
+  getSiteProfiles,
+  getSiteProfile,
+  generateSiteAnalytics,
+  generateAggregatedAnalytics,
+  SITE_PROFILES,
+} from './utils/analyticsDataGenerator';
+
+// Helper function to safely extract error messages
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Unknown error occurred';
+}
 
 // Load environment variables
 dotenv.config();
@@ -53,8 +67,8 @@ async function verifyAuth(req: express.Request, res: express.Response, next: exp
     // Attach user to request
     (req as any).user = user;
     next();
-  } catch (error: any) {
-    return res.status(401).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    return res.status(401).json({ success: false, error: getErrorMessage(error) });
   }
 }
 
@@ -122,9 +136,9 @@ app.post('/trading/search', verifyAuth, async (req, res) => {
     }) || [];
 
     res.json({ success: true, data: sellers });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Trading search error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 
@@ -164,9 +178,9 @@ app.post('/trading/orders', verifyAuth, async (req, res) => {
     if (error) throw error;
 
     res.json({ success: true, data: order });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Create order error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 
@@ -204,9 +218,9 @@ app.get('/trading/orders/:id/status', verifyAuth, async (req, res) => {
         },
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get order status error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 
@@ -228,9 +242,9 @@ app.get('/trading/orders/active', verifyAuth, async (req, res) => {
     if (error) throw error;
 
     res.json({ success: true, data: orders || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get active orders error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 
@@ -276,9 +290,9 @@ app.post('/trading/orders/:id/cancel', verifyAuth, async (req, res) => {
     if (error) throw error;
 
     res.json({ success: true, data: updatedOrder });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Cancel order error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 
@@ -339,9 +353,9 @@ app.post('/wallet/top-up', verifyAuth, async (req, res) => {
 
     console.log('📤 Sending response:', JSON.stringify(response, null, 2));
     res.json(response);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Top-up error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 
@@ -405,9 +419,9 @@ app.post('/wallet/withdraw', verifyAuth, async (req, res) => {
         status: 'pending',
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Withdrawal error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 
@@ -438,9 +452,9 @@ app.get('/wallet/withdraw/:id/status', verifyAuth, async (req, res) => {
         amount: withdrawal.amount,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get withdrawal status error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 
@@ -498,9 +512,9 @@ app.post('/payments/verify', verifyAuth, async (req, res) => {
         },
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Payment verification error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 
@@ -533,9 +547,9 @@ app.post('/kyc/documents', verifyAuth, async (req, res) => {
     if (error) throw error;
 
     res.json({ success: true, data: kycData });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('KYC document submission error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 
@@ -567,9 +581,564 @@ app.get('/kyc/status', verifyAuth, async (req, res) => {
         documents: [],
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get KYC status error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
+  }
+});
+
+// ==================== BUYERS ENDPOINTS ====================
+
+/**
+ * GET /marketplace/buyers
+ * Get list of buyers
+ */
+app.get('/marketplace/buyers', verifyAuth, async (req, res) => {
+  try {
+    const { location, maxPrice, minEnergy, status } = req.query;
+    const user = (req as any).user;
+
+    let query = supabase
+      .from('buyers')
+      .select('*')
+      .eq('status', status || 'active');
+
+    // Apply filters
+    if (maxPrice) {
+      query = query.lte('max_price_per_unit', parseFloat(maxPrice as string));
+    }
+    if (minEnergy) {
+      query = query.gte('energy_needed', parseFloat(minEnergy as string));
+    }
+
+    const { data: buyers, error } = await query;
+
+    if (error) throw error;
+
+    // Calculate distances if location provided
+    const buyersWithDistance = buyers?.map((buyer: any) => {
+      if (location && typeof location === 'string') {
+        try {
+          const loc = JSON.parse(location);
+          if (loc.lat && loc.lng && buyer.location) {
+            const buyerLoc = typeof buyer.location === 'string' 
+              ? JSON.parse(buyer.location) 
+              : buyer.location;
+            const distance = calculateDistance(
+              loc.lat,
+              loc.lng,
+              buyerLoc.lat,
+              buyerLoc.lng
+            );
+            return { ...buyer, distance };
+          }
+        } catch (e) {
+          // Invalid location format
+        }
+      }
+      return buyer;
+    }) || [];
+
+    res.json({ success: true, data: buyersWithDistance });
+  } catch (error: unknown) {
+    console.error('Get buyers error:', error);
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
+  }
+});
+
+/**
+ * POST /marketplace/buyers
+ * Create buyer listing
+ */
+app.post('/marketplace/buyers', verifyAuth, async (req, res) => {
+  try {
+    const { maxPricePerUnit, energyNeeded, preferredDeliveryWindow, location } = req.body;
+    const user = (req as any).user;
+
+    if (!maxPricePerUnit || !energyNeeded || !location) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: maxPricePerUnit, energyNeeded, location',
+      });
+    }
+
+    // Get user name from users table
+    const { data: userData } = await supabase
+      .from('users')
+      .select('name, email')
+      .eq('id', user.id)
+      .single();
+
+    const { data: buyer, error } = await supabase
+      .from('buyers')
+      .insert({
+        user_id: user.id,
+        name: userData?.name || userData?.email || 'Buyer',
+        location: location,
+        max_price_per_unit: maxPricePerUnit,
+        energy_needed: energyNeeded,
+        preferred_delivery_window: preferredDeliveryWindow,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, data: buyer });
+  } catch (error: unknown) {
+    console.error('Create buyer error:', error);
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
+  }
+});
+
+/**
+ * GET /marketplace/buyers/:id
+ * Get specific buyer details
+ */
+app.get('/marketplace/buyers/:id', verifyAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: buyer, error } = await supabase
+      .from('buyers')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    if (!buyer) {
+      return res.status(404).json({ success: false, error: 'Buyer not found' });
+    }
+
+    res.json({ success: true, data: buyer });
+  } catch (error: unknown) {
+    console.error('Get buyer error:', error);
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
+  }
+});
+
+/**
+ * DELETE /marketplace/buyers/:id
+ * Remove buyer listing
+ */
+app.delete('/marketplace/buyers/:id', verifyAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = (req as any).user;
+
+    // Check if buyer exists and belongs to user
+    const { data: buyer, error: fetchError } = await supabase
+      .from('buyers')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (fetchError || !buyer) {
+      return res.status(404).json({ success: false, error: 'Buyer listing not found' });
+    }
+
+    // Delete buyer listing
+    const { error } = await supabase
+      .from('buyers')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.json({ success: true, message: 'Buyer listing deleted' });
+  } catch (error: unknown) {
+    console.error('Delete buyer error:', error);
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
+  }
+});
+
+// ==================== ANALYTICS ENDPOINTS ====================
+
+/**
+ * GET /analytics/sites
+ * Get user's sites with basic info
+ */
+app.get('/analytics/sites', verifyAuth, async (req, res) => {
+  try {
+    const user = (req as any).user;
+
+    // Get user's meters
+    const { data: meters, error: metersError } = await supabase
+      .from('meters')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (metersError) throw metersError;
+
+    // If no meters, return fake sites for demo
+    if (!meters || meters.length === 0) {
+      const fakeSites = getSiteProfiles().map((profile, index) => {
+        const analytics = generateSiteAnalytics(profile.id, 'month');
+        return {
+          id: profile.id,
+          name: profile.name,
+          discomName: profile.discomName,
+          consumerNumber: profile.consumerNumber,
+          address: profile.address,
+          totalGeneration: analytics.energyGenerated,
+          totalRevenue: analytics.totalRevenue,
+          activeTrades: analytics.activeTrades,
+          efficiency: analytics.efficiency,
+        };
+      });
+      return res.json({ success: true, data: fakeSites });
+    }
+
+    // Get analytics for each meter
+    const sitesWithAnalytics = await Promise.all(
+      (meters || []).map(async (meter: any, index: number) => {
+        // Get energy data for this meter
+        const { data: energyData } = await supabase
+          .from('energy_data')
+          .select('generation, consumption, net_export')
+          .eq('meter_id', meter.id);
+
+        // Check if we have real data
+        const hasRealData = energyData && energyData.length > 0;
+
+        let totalGeneration = 0;
+        let totalConsumption = 0;
+        let totalRevenue = 0;
+        let activeTrades = 0;
+        let efficiency = 0;
+
+        if (hasRealData) {
+          // Use real data
+          totalGeneration = energyData.reduce((sum, d) => sum + (d.generation || 0), 0);
+          totalConsumption = energyData.reduce((sum, d) => sum + (d.consumption || 0), 0);
+          const netExport = totalGeneration - totalConsumption;
+
+          // Get orders
+          const { data: orders } = await supabase
+            .from('orders')
+            .select('*')
+            .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+            .in('status', ['pending', 'confirmed', 'in_progress']);
+
+          const { data: completedOrders } = await supabase
+            .from('orders')
+            .select('total_price')
+            .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+            .eq('status', 'completed');
+
+          totalRevenue = completedOrders?.reduce((sum, o) => sum + (parseFloat(o.total_price) || 0), 0) || 0;
+          activeTrades = orders?.length || 0;
+          efficiency = totalGeneration > 0 
+            ? parseFloat(((netExport / totalGeneration) * 100).toFixed(1))
+            : 0;
+        } else {
+          // Use fake data - map meter to a fake site profile
+          const fakeProfileIndex = index % SITE_PROFILES.length;
+          const fakeProfile = SITE_PROFILES[fakeProfileIndex];
+          const analytics = generateSiteAnalytics(fakeProfile.id, 'month');
+          
+          totalGeneration = analytics.energyGenerated;
+          totalConsumption = analytics.energyConsumed;
+          totalRevenue = analytics.totalRevenue;
+          activeTrades = analytics.activeTrades;
+          efficiency = analytics.efficiency;
+        }
+
+        return {
+          id: meter.id,
+          name: `Site ${index + 1} - ${meter.discom_name}`,
+          discomName: meter.discom_name,
+          consumerNumber: meter.consumer_number,
+          address: meter.address,
+          totalGeneration,
+          totalRevenue,
+          activeTrades,
+          efficiency,
+        };
+      })
+    );
+
+    res.json({ success: true, data: sitesWithAnalytics });
+  } catch (error: unknown) {
+    console.error('Get sites error:', error);
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
+  }
+});
+
+/**
+ * GET /analytics/site/:siteId
+ * Get detailed analytics for specific site
+ */
+app.get('/analytics/site/:siteId', verifyAuth, async (req, res) => {
+  try {
+    const { siteId } = req.params;
+    const { startDate, endDate, period = 'month' } = req.query;
+    const user = (req as any).user;
+
+    // Verify meter belongs to user
+    const { data: meters } = await supabase
+      .from('meters')
+      .select('*')
+      .eq('user_id', user.id);
+
+    const meter = meters?.find((m: any) => m.id === siteId);
+    
+    // If meter not found, check if it's a fake site ID
+    if (!meter) {
+      const fakeProfile = getSiteProfile(siteId);
+      if (fakeProfile) {
+        // Return fake data for demo site
+        const analytics = generateSiteAnalytics(siteId, period as 'day' | 'week' | 'month' | 'year');
+        return res.json({
+          success: true,
+          data: {
+            siteId,
+            period: period || 'month',
+            ...analytics,
+          },
+        });
+      }
+      return res.status(404).json({ success: false, error: 'Site not found' });
+    }
+
+    // Build date filter
+    let energyQuery = supabase
+      .from('energy_data')
+      .select('*')
+      .eq('meter_id', siteId);
+
+    if (startDate) {
+      energyQuery = energyQuery.gte('timestamp', startDate);
+    }
+    if (endDate) {
+      energyQuery = energyQuery.lte('timestamp', endDate);
+    }
+
+    const { data: energyData } = await energyQuery;
+
+    // Check if we have real data
+    const hasRealData = energyData && energyData.length > 0;
+
+    if (hasRealData) {
+      // Use real data
+      const energyGenerated = energyData.reduce((sum, d) => sum + (d.generation || 0), 0);
+      const energyConsumed = energyData.reduce((sum, d) => sum + (d.consumption || 0), 0);
+      const netExport = energyGenerated - energyConsumed;
+
+      // Get orders
+      const { data: activeOrders } = await supabase
+        .from('orders')
+        .select('*')
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+        .in('status', ['pending', 'confirmed', 'in_progress']);
+
+      const { data: completedOrders } = await supabase
+        .from('orders')
+        .select('*')
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+        .eq('status', 'completed');
+
+      const totalRevenue = completedOrders?.reduce((sum, o) => sum + (parseFloat(o.total_price) || 0), 0) || 0;
+      const efficiency = energyGenerated > 0 
+        ? parseFloat(((netExport / energyGenerated) * 100).toFixed(1))
+        : 0;
+
+      const trends = {
+        generation: '+12%',
+        revenue: '+8%',
+      };
+
+      return res.json({
+        success: true,
+        data: {
+          siteId,
+          period: period || 'month',
+          energyGenerated,
+          energyConsumed,
+          netExport,
+          totalRevenue,
+          activeTrades: activeOrders?.length || 0,
+          completedTrades: completedOrders?.length || 0,
+          efficiency,
+          trends,
+        },
+      });
+    } else {
+      // Use fake data - map meter to a fake site profile
+      const meterIndex = meters?.findIndex((m: any) => m.id === siteId) || 0;
+      const fakeProfileIndex = meterIndex % SITE_PROFILES.length;
+      const fakeProfile = SITE_PROFILES[fakeProfileIndex];
+      const analytics = generateSiteAnalytics(fakeProfile.id, period as 'day' | 'week' | 'month' | 'year');
+      
+      return res.json({
+        success: true,
+        data: {
+          siteId,
+          period: period || 'month',
+          ...analytics,
+        },
+      });
+    }
+  } catch (error: unknown) {
+    console.error('Get site analytics error:', error);
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
+  }
+});
+
+/**
+ * GET /analytics/aggregated
+ * Get aggregated analytics across all user sites
+ */
+app.get('/analytics/aggregated', verifyAuth, async (req, res) => {
+  try {
+    const { startDate, endDate, period = 'month' } = req.query;
+    const user = (req as any).user;
+
+    // Get all user meters
+    const { data: meters } = await supabase
+      .from('meters')
+      .select('id')
+      .eq('user_id', user.id);
+
+    const meterIds = meters?.map(m => m.id) || [];
+
+    // If no meters, return aggregated fake data for all demo sites
+    if (meterIds.length === 0) {
+      const analytics = generateAggregatedAnalytics(period as 'day' | 'week' | 'month' | 'year');
+      return res.json({
+        success: true,
+        data: {
+          period: period || 'month',
+          ...analytics,
+        },
+      });
+    }
+
+    // Get energy data for all meters
+    let energyQuery = supabase
+      .from('energy_data')
+      .select('*')
+      .in('meter_id', meterIds);
+
+    if (startDate) {
+      energyQuery = energyQuery.gte('timestamp', startDate);
+    }
+    if (endDate) {
+      energyQuery = energyQuery.lte('timestamp', endDate);
+    }
+
+    const { data: energyData } = await energyQuery;
+
+    // Check if we have real data
+    const hasRealData = energyData && energyData.length > 0;
+
+    if (hasRealData) {
+      // Use real data
+      const energyGenerated = energyData.reduce((sum, d) => sum + (d.generation || 0), 0);
+      const energyConsumed = energyData.reduce((sum, d) => sum + (d.consumption || 0), 0);
+      const netExport = energyGenerated - energyConsumed;
+
+      // Get orders
+      const { data: activeOrders } = await supabase
+        .from('orders')
+        .select('*')
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+        .in('status', ['pending', 'confirmed', 'in_progress']);
+
+      const { data: completedOrders } = await supabase
+        .from('orders')
+        .select('*')
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+        .eq('status', 'completed');
+
+      const totalRevenue = completedOrders?.reduce((sum, o) => sum + (parseFloat(o.total_price) || 0), 0) || 0;
+      const efficiency = energyGenerated > 0 
+        ? parseFloat(((netExport / energyGenerated) * 100).toFixed(1))
+        : 0;
+
+      const trends = {
+        generation: '+12%',
+        revenue: '+8%',
+      };
+
+      return res.json({
+        success: true,
+        data: {
+          period: period || 'month',
+          energyGenerated,
+          energyConsumed,
+          netExport,
+          totalRevenue,
+          activeTrades: activeOrders?.length || 0,
+          completedTrades: completedOrders?.length || 0,
+          efficiency,
+          trends,
+        },
+      });
+    } else {
+      // Use fake aggregated data
+      const analytics = generateAggregatedAnalytics(period as 'day' | 'week' | 'month' | 'year');
+      return res.json({
+        success: true,
+        data: {
+          period: period || 'month',
+          ...analytics,
+        },
+      });
+    }
+  } catch (error: unknown) {
+    console.error('Get aggregated analytics error:', error);
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
+  }
+});
+
+// ==================== TRANSACTIONS ENDPOINTS ====================
+
+/**
+ * GET /transactions
+ * Get user's transactions with optional filtering
+ */
+app.get('/transactions', verifyAuth, async (req, res) => {
+  try {
+    const { limit, offset, type, status, startDate, endDate } = req.query;
+    const user = (req as any).user;
+
+    let query = supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (type) {
+      query = query.eq('type', type);
+    }
+    if (status) {
+      query = query.eq('status', status);
+    }
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
+    if (endDate) {
+      query = query.lte('created_at', endDate);
+    }
+
+    const limitNum = limit ? parseInt(limit as string, 10) : 50;
+    const offsetNum = offset ? parseInt(offset as string, 10) : 0;
+
+    query = query.range(offsetNum, offsetNum + limitNum - 1);
+
+    const { data: transactions, error } = await query;
+
+    if (error) throw error;
+
+    res.json({ success: true, data: transactions || [] });
+  } catch (error: unknown) {
+    console.error('Get transactions error:', error);
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 

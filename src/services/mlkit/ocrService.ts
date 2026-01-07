@@ -12,6 +12,7 @@
 import TextRecognition from '@react-native-ml-kit/text-recognition';
 import Constants from 'expo-constants';
 import { cloudOcrService } from '../cloudOcrService';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 export interface OCRResult {
   text: string;
@@ -129,9 +130,9 @@ class OCRService {
               blocks: [],
             };
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           if (__DEV__) {
-            console.warn('☁️ Cloud OCR failed:', error?.message);
+            console.warn('☁️ Cloud OCR failed:', getErrorMessage(error));
           }
         }
       }
@@ -164,9 +165,9 @@ class OCRService {
               blocks: [],
             };
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           if (__DEV__) {
-            console.warn('☁️ Cloud OCR failed:', error?.message);
+            console.warn('☁️ Cloud OCR failed:', getErrorMessage(error));
           }
         }
       }
@@ -215,19 +216,20 @@ class OCRService {
           },
         })),
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Re-throw our custom errors
       if (error instanceof ExpoGoDetectedError || error instanceof OCRNotAvailableError) {
         throw error;
       }
 
       // Check if error indicates Expo Go / module not linked
-      const errorMessage = error?.message || '';
+      const errorMessage = getErrorMessage(error);
+      const errorCode = error instanceof Error && 'code' in error ? (error as { code: string }).code : undefined;
       const isNotLinkedError = 
         errorMessage.includes("doesn't seem to be linked") ||
         errorMessage.includes('not linked') ||
         errorMessage.includes('Make sure:') ||
-        error?.code === 'MODULE_NOT_FOUND';
+        errorCode === 'MODULE_NOT_FOUND';
 
       if (isNotLinkedError) {
         if (__DEV__) {

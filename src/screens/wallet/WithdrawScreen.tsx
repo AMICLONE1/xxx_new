@@ -17,6 +17,7 @@ import { RootStackParamList } from '@/types';
 import { useWalletStore } from '@/store';
 import { formatCurrency } from '@/utils/helpers';
 import { paymentService } from '@/services/payments/paymentService';
+import { getErrorMessage } from '@/utils/errorUtils';
 import { useTheme } from '@/contexts';
 import { getThemedColors } from '@/utils/themedStyles';
 
@@ -114,8 +115,8 @@ export default function WithdrawScreen({ navigation }: Props) {
           [{ text: 'OK' }]
         );
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to process withdrawal request');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to process withdrawal request');
     } finally {
       setIsProcessing(false);
     }

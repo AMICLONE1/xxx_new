@@ -17,7 +17,7 @@ import { OTP_RESEND_COOLDOWN } from '@/utils/constants';
 import { authService } from '@/services/api/authService';
 import { useTheme } from '@/contexts';
 import { getThemedColors } from '@/utils/themedStyles';
-
+import { getErrorMessage } from '@/utils/errorUtils';
 type OTPScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'OTP'>;
 type OTPScreenRouteProp = RouteProp<RootStackParamList, 'OTP'>;
 
@@ -105,8 +105,8 @@ export default function OTPScreen({ navigation, route }: Props) {
       } else {
         throw new Error(response.error || 'Invalid OTP');
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Invalid OTP. Please try again.');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error));
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } finally {
@@ -125,8 +125,8 @@ export default function OTPScreen({ navigation, route }: Props) {
       } else {
         throw new Error(response.error || 'Failed to resend OTP');
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to resend OTP');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error));
     }
   };
 

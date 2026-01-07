@@ -1,5 +1,13 @@
 import { supabase } from './client';
-import { User, ApiResponse } from '@/types';
+import { User, ApiResponse, SupabaseUserProfile } from '@/types';
+import { AuthError, Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { getErrorMessage, logError, createErrorResponse } from '@/utils/errorUtils';
+
+// Type for Supabase OTP verification response
+interface OtpVerificationData {
+  user: SupabaseUser | null;
+  session: Session | null;
+}
 
 export interface SendOTPRequest {
   email: string;
@@ -80,11 +88,12 @@ class SupabaseAuthService {
         success: true,
         data: { message: 'OTP sent successfully to your email. Please check your inbox.' },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('OTP send exception:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send OTP. Please try again.';
       return {
         success: false,
-        error: error.message || 'Failed to send OTP. Please try again.',
+        error: errorMessage,
       };
     }
   }
@@ -95,8 +104,8 @@ class SupabaseAuthService {
   async verifyOTP(data: VerifyOTPRequest): Promise<ApiResponse<AuthResponse>> {
     try {
       // Verify OTP - try email type first, then fallback to other types
-      let authData: any = null;
-      let error: any = null;
+      let authData: OtpVerificationData | null = null;
+      let error: AuthError | null = null;
 
       // Try email OTP verification
       const result = await supabase.auth.verifyOtp({
@@ -146,11 +155,9 @@ class SupabaseAuthService {
           token: authData.session.access_token,
         },
       };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Failed to verify OTP',
-      };
+    } catch (error: unknown) {
+      logError('verifyOTP', error);
+      return createErrorResponse(error, 'Failed to verify OTP');
     }
   }
 
@@ -246,10 +253,8 @@ class SupabaseAuthService {
       }
 
       return this.mapSupabaseUserToUser(newUser);
-    } catch (error: any) {
-      if (__DEV__) {
-        console.error('❌ getOrCreateUserProfile error:', error);
-      }
+    } catch (error: unknown) {
+      logError('getOrCreateUserProfile', error);
       throw error;
     }
   }
@@ -257,7 +262,7 @@ class SupabaseAuthService {
   /**
    * Map Supabase user to app User type
    */
-  private mapSupabaseUserToUser(supabaseUser: any): User {
+  private mapSupabaseUserToUser(supabaseUser: SupabaseUserProfile): User {
     return {
       id: supabaseUser.id,
       email: supabaseUser.email,
@@ -304,11 +309,9 @@ class SupabaseAuthService {
         success: true,
         data: this.mapSupabaseUserToUser(userProfile),
       };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Failed to get current user',
-      };
+    } catch (error: unknown) {
+      logError('getCurrentUser', error);
+      return createErrorResponse(error, 'Failed to get current user');
     }
   }
 
@@ -333,11 +336,9 @@ class SupabaseAuthService {
         success: true,
         data: { token: session.access_token },
       };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Failed to refresh token',
-      };
+    } catch (error: unknown) {
+      logError('refreshToken', error);
+      return createErrorResponse(error, 'Failed to refresh token');
     }
   }
 
@@ -358,11 +359,9 @@ class SupabaseAuthService {
       return {
         success: true,
       };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Failed to logout',
-      };
+    } catch (error: unknown) {
+      logError('logout', error);
+      return createErrorResponse(error, 'Failed to logout');
     }
   }
 
@@ -392,10 +391,11 @@ class SupabaseAuthService {
 
       let result;
       try {
-        result = await Promise.race([signUpPromise, timeoutPromise]) as any;
-      } catch (raceError: any) {
+        result = await Promise.race([signUpPromise, timeoutPromise]) as { data: { user: any; session: any }; error: any };
+      } catch (raceError: unknown) {
         // Handle network errors from Promise.race
-        if (raceError.message?.includes('timeout') || raceError.message?.includes('Network request failed')) {
+        const errorMessage = raceError instanceof Error ? raceError.message : '';
+        if (errorMessage.includes('timeout') || errorMessage.includes('Network request failed')) {
           if (__DEV__) {
             console.error('❌ Sign up network error:', raceError);
           }
@@ -457,7 +457,7 @@ class SupabaseAuthService {
         );
 
         userProfile = await Promise.race([profilePromise, profileTimeoutPromise]) as User;
-      } catch (profileError: any) {
+      } catch (profileError: unknown) {
         if (__DEV__) {
           console.warn('⚠️ Profile creation failed, using basic user data:', profileError);
         }
@@ -484,14 +484,9 @@ class SupabaseAuthService {
           token: authData.session.access_token,
         },
       };
-    } catch (error: any) {
-      if (__DEV__) {
-        console.error('❌ Sign up exception:', error);
-      }
-      return {
-        success: false,
-        error: error.message || 'Failed to sign up. Please check your internet connection.',
-      };
+    } catch (error: unknown) {
+      logError('signUp', error);
+      return createErrorResponse(error, 'Failed to sign up. Please check your internet connection.');
     }
   }
 
@@ -516,10 +511,11 @@ class SupabaseAuthService {
 
       let result;
       try {
-        result = await Promise.race([signInPromise, timeoutPromise]) as any;
-      } catch (raceError: any) {
+        result = await Promise.race([signInPromise, timeoutPromise]) as { data: { user: any; session: any }; error: any };
+      } catch (raceError: unknown) {
         // Handle network errors from Promise.race
-        if (raceError.message?.includes('timeout') || raceError.message?.includes('Network request failed')) {
+        const errorMessage = raceError instanceof Error ? raceError.message : '';
+        if (errorMessage.includes('timeout') || errorMessage.includes('Network request failed')) {
           if (__DEV__) {
             console.error('❌ Sign in network error:', raceError);
           }
@@ -580,7 +576,7 @@ class SupabaseAuthService {
       let userProfile;
       try {
         userProfile = await Promise.race([profilePromise, profileTimeoutPromise]) as User;
-      } catch (profileError: any) {
+      } catch (profileError: unknown) {
         if (__DEV__) {
           console.error('❌ Profile fetch error:', profileError);
         }
@@ -606,14 +602,9 @@ class SupabaseAuthService {
           token: authData.session.access_token,
         },
       };
-    } catch (error: any) {
-      if (__DEV__) {
-        console.error('❌ Sign in exception:', error);
-      }
-      return {
-        success: false,
-        error: error.message || 'Failed to sign in. Please check your internet connection.',
-      };
+    } catch (error: unknown) {
+      logError('signIn', error);
+      return createErrorResponse(error, 'Failed to sign in. Please check your internet connection.');
     }
   }
 
@@ -658,11 +649,9 @@ class SupabaseAuthService {
         success: true,
         data: this.mapSupabaseUserToUser(updatedUser),
       };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Failed to update profile',
-      };
+    } catch (error: unknown) {
+      logError('updateProfile', error);
+      return createErrorResponse(error, 'Failed to update profile');
     }
   }
 
@@ -698,14 +687,9 @@ class SupabaseAuthService {
         success: true,
         data: { message: 'Password reset code sent to your email.' },
       };
-    } catch (error: any) {
-      if (__DEV__) {
-        console.error('❌ Password reset exception:', error);
-      }
-      return {
-        success: false,
-        error: error.message || 'Failed to send password reset email.',
-      };
+    } catch (error: unknown) {
+      logError('resetPasswordForEmail', error);
+      return createErrorResponse(error, 'Failed to send password reset email.');
     }
   }
 
@@ -715,7 +699,7 @@ class SupabaseAuthService {
    * @param token - The 6-digit OTP code
    * @param type - The type of OTP ('email' | 'recovery' | 'signup')
    */
-  async verifyOTP(
+  async verifyRecoveryOTP(
     email: string,
     token: string,
     type: 'email' | 'recovery' | 'signup' = 'recovery'
@@ -761,14 +745,9 @@ class SupabaseAuthService {
           token: authData.session.access_token,
         },
       };
-    } catch (error: any) {
-      if (__DEV__) {
-        console.error('❌ OTP verification exception:', error);
-      }
-      return {
-        success: false,
-        error: error.message || 'Failed to verify code.',
-      };
+    } catch (error: unknown) {
+      logError('verifyOtpForRecovery', error);
+      return createErrorResponse(error, 'Failed to verify code.');
     }
   }
 
@@ -804,14 +783,9 @@ class SupabaseAuthService {
         success: true,
         data: { message: 'Password updated successfully. Please sign in with your new password.' },
       };
-    } catch (error: any) {
-      if (__DEV__) {
-        console.error('❌ Password update exception:', error);
-      }
-      return {
-        success: false,
-        error: error.message || 'Failed to update password.',
-      };
+    } catch (error: unknown) {
+      logError('updatePassword', error);
+      return createErrorResponse(error, 'Failed to update password.');
     }
   }
 }

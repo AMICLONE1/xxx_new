@@ -1,5 +1,5 @@
 import { supabase } from './client';
-import { Meter, EnergyData, Order, Wallet, Transaction, KYCData, TradingBotConfig } from '@/types';
+import { Meter, EnergyData, Order, Wallet, Transaction, KYCData, TradingBotConfig, MeterUpdateData, UserProfileUpdateData } from '@/types';
 
 class SupabaseDatabaseService {
   /**
@@ -192,7 +192,7 @@ class SupabaseDatabaseService {
     userId: string,
     updates: Partial<Pick<Wallet, 'energyBalance' | 'cashBalance'>>
   ): Promise<Wallet> {
-    const updateData: any = {};
+    const updateData: Record<string, number> = {};
     if (updates.energyBalance !== undefined) updateData.energy_balance = updates.energyBalance;
     if (updates.cashBalance !== undefined) updateData.cash_balance = updates.cashBalance;
 
@@ -453,7 +453,7 @@ class SupabaseDatabaseService {
     userId: string,
     config: Partial<Omit<TradingBotConfig, 'userId' | 'updatedAt'>>
   ): Promise<TradingBotConfig> {
-    const updateData: any = {};
+    const updateData: Record<string, boolean | number | string> = {};
     if (config.enabled !== undefined) updateData.enabled = config.enabled;
     if (config.reservePower !== undefined) updateData.reserve_power = config.reservePower;
     if (config.minSellPrice !== undefined) updateData.min_sell_price = config.minSellPrice;

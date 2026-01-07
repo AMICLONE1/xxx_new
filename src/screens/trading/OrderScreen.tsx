@@ -16,6 +16,7 @@ import { RootStackParamList } from '@/types';
 import { useTradingStore, useWalletStore } from '@/store';
 import { tradingService } from '@/services/api/tradingService';
 import { formatEnergy, formatCurrency } from '@/utils/helpers';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 type OrderScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -107,8 +108,8 @@ export default function OrderScreen({ navigation, route }: Props) {
           throw new Error(response.error || 'Failed to place order');
         }
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to place order');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to place order');
     } finally {
       setIsSubmitting(false);
     }

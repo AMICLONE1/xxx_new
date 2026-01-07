@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 interface Props {
   onComplete: (imageUri: string) => void;
@@ -76,8 +77,8 @@ export default function LivenessCheckScreen({ onComplete, onCancel }: Props) {
       setTimeout(() => {
         onComplete('mock_image_uri');
       }, 1000);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to capture image');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to capture image');
       setIsCapturing(false);
     }
   };

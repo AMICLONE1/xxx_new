@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -102,6 +102,13 @@ export default function HomeScreen({ navigation }: Props) {
   const [isSelling, setIsSelling] = useState(false);
   const [currentPrice, setCurrentPrice] = useState(6.50);
   
+  // Memoized navigation handlers to prevent unnecessary re-renders
+  const navigateToMeterRegistration = useCallback(() => navigation.navigate('MeterRegistration'), [navigation]);
+  const navigateToMarketplace = useCallback(() => navigation.navigate('Marketplace'), [navigation]);
+  const navigateToTradingBot = useCallback(() => navigation.navigate('TradingBot'), [navigation]);
+  const navigateToWallet = useCallback(() => navigation.navigate('Wallet'), [navigation]);
+  const navigateToEnergyChart = useCallback(() => navigation.navigate('EnergyChart'), [navigation]);
+
   // Animation values for energy flow
   const flowAnimation = React.useRef(new Animated.Value(0)).current;
 
@@ -219,7 +226,7 @@ export default function HomeScreen({ navigation }: Props) {
           </Text>
           <TouchableOpacity
             style={styles.registerButton}
-            onPress={() => navigation.navigate('MeterRegistration')}
+            onPress={navigateToMeterRegistration}
           >
             <LinearGradient
               colors={['#10b981', '#059669']}
@@ -316,7 +323,7 @@ export default function HomeScreen({ navigation }: Props) {
                 <MaterialCommunityIcons name="wallet" size={24} color={colors.primary} />
                 <Text style={[styles.walletTitle, { color: colors.text }]}>Wallet Balance</Text>
               </View>
-              <TouchableOpacity onPress={() => navigation.navigate('Wallet')}>
+              <TouchableOpacity onPress={navigateToWallet}>
                 <Text style={[styles.walletLink, { color: colors.primary }]}>View Details</Text>
               </TouchableOpacity>
             </View>
@@ -395,7 +402,7 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.quickActions}>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonEV]}
-            onPress={() => navigation.navigate('Marketplace')}
+            onPress={navigateToMarketplace}
           >
             <LinearGradient
               colors={['#3b82f6', '#2563eb']}
@@ -410,7 +417,7 @@ export default function HomeScreen({ navigation }: Props) {
             style={[styles.actionButton, styles.actionButtonSell]}
             onPress={() => {
               setIsSelling(!isSelling);
-              navigation.navigate('TradingBot');
+              navigateToTradingBot();
             }}
           >
             <LinearGradient
@@ -431,7 +438,7 @@ export default function HomeScreen({ navigation }: Props) {
 
         <TouchableOpacity
           style={[styles.withdrawButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => navigation.navigate('Wallet')}
+          onPress={navigateToWallet}
         >
           <Ionicons name="cash-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
           <Text style={[styles.withdrawButtonText, { color: colors.text }]}>Withdraw Cash</Text>
@@ -441,7 +448,7 @@ export default function HomeScreen({ navigation }: Props) {
         {/* View Charts Button */}
         <TouchableOpacity
           style={[styles.chartButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => navigation.navigate('EnergyChart')}
+          onPress={navigateToEnergyChart}
         >
           <MaterialCommunityIcons name="chart-timeline-variant" size={24} color={colors.primary} />
           <Text style={[styles.chartButtonText, { color: colors.text }]}>View Detailed Charts</Text>

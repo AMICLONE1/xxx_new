@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 const BECKN_GATEWAY_URL =
   Constants.expoConfig?.extra?.becknGatewayUrl ||
@@ -104,12 +105,13 @@ class BecknClient {
 
       const data = await response.json();
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Improve error message
-      if (error.message?.includes('JSON Parse error') || error.message?.includes('Unexpected character')) {
+      const errorMsg = getErrorMessage(error);
+      if (errorMsg.includes('JSON Parse error') || errorMsg.includes('Unexpected character')) {
         throw new Error('Beckn gateway not available or not configured');
       }
-      throw new Error(`Beckn search error: ${error.message || error}`);
+      throw new Error(`Beckn search error: ${errorMsg}`);
     }
   }
 

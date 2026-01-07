@@ -82,6 +82,53 @@ export interface Seller {
   distance?: number; // km from user
 }
 
+export interface Buyer {
+  id: string;
+  userId: string;
+  name: string;
+  location: {
+    lat: number;
+    lng: number;
+    address?: string;
+  };
+  maxPricePerUnit: number; // INR per kWh
+  energyNeeded: number; // kWh
+  preferredDeliveryWindow?: string;
+  rating?: number; // 0-5
+  status: 'active' | 'inactive' | 'fulfilled';
+  distance?: number; // km from user
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface Site {
+  id: string;
+  name: string;
+  discomName: string;
+  consumerNumber: string;
+  address?: string;
+  totalGeneration?: number;
+  totalRevenue?: number;
+  activeTrades?: number;
+  efficiency?: number;
+}
+
+export interface SiteAnalytics {
+  siteId: string;
+  period: string;
+  energyGenerated: number;
+  energyConsumed: number;
+  netExport: number;
+  totalRevenue: number;
+  activeTrades: number;
+  completedTrades: number;
+  efficiency: number;
+  trends: {
+    generation: string;
+    revenue: string;
+  };
+}
+
 // Wallet Types
 export interface Wallet {
   userId: string;
@@ -184,6 +231,12 @@ export type RootStackParamList = {
     pricePerUnit: number;
     availableEnergy: number;
   };
+  SellEnergy: {
+    buyerId?: string;
+    buyerName?: string;
+    maxPricePerUnit?: number;
+    energyNeeded?: number;
+  };
   EnergyChart: undefined;
   TradingBot: undefined;
   TopUp: undefined;
@@ -198,3 +251,60 @@ export type MainTabParamList = {
   Profile: undefined;
 };
 
+// Supabase Types
+export interface SupabaseUserProfile {
+  id: string;
+  email: string;
+  phone_number?: string;
+  name?: string;
+  profile_picture_url?: string;
+  kyc_status: KYCStatus;
+  has_solar?: boolean;
+  has_battery?: boolean;
+  has_grid?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupabaseAuthError {
+  message: string;
+  status?: number;
+  code?: string;
+}
+
+export interface SupabaseOtpResponse {
+  user: {
+    id: string;
+    email?: string;
+    phone?: string;
+    created_at: string;
+    user_metadata: Record<string, unknown>;
+  } | null;
+  session: {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    token_type: string;
+  } | null;
+}
+
+// Database Update Types
+export interface MeterUpdateData {
+  discomName?: string;
+  consumerNumber?: string;
+  meterSerialId?: string;
+  verificationStatus?: MeterVerificationStatus;
+  address?: string;
+  updated_at?: string;
+}
+
+export interface UserProfileUpdateData {
+  name?: string;
+  phone_number?: string;
+  profile_picture_url?: string;
+  kyc_status?: KYCStatus;
+  has_solar?: boolean;
+  has_battery?: boolean;
+  has_grid?: boolean;
+  updated_at?: string;
+}

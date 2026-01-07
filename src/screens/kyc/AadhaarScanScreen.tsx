@@ -18,6 +18,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { ocrService, ExpoGoDetectedError, OCRNotAvailableError } from '@/services/mlkit/ocrService';
 import { useKYCStore, useAuthStore } from '@/store';
+import { getErrorMessage } from '@/utils/errorUtils';
 import * as FileSystem from 'expo-file-system/legacy';
 
 type AadhaarScanScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AadhaarScan'>;
@@ -795,8 +796,8 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                 if (!result.canceled && result.assets && result.assets[0]) {
                   await processImage(result.assets[0].uri);
                 }
-              } catch (error: any) {
-                Alert.alert('Error', `Failed to open camera: ${error.message || 'Unknown error'}`);
+              } catch (error: unknown) {
+                Alert.alert('Error', `Failed to open camera: ${getErrorMessage(error) || 'Unknown error'}`);
               }
             },
           },
@@ -813,8 +814,8 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                 if (!result.canceled && result.assets && result.assets[0]) {
                   await processImage(result.assets[0].uri);
                 }
-              } catch (error: any) {
-                Alert.alert('Error', `Failed to open photo library: ${error.message || 'Unknown error'}`);
+              } catch (error: unknown) {
+                Alert.alert('Error', `Failed to open photo library: ${getErrorMessage(error) || 'Unknown error'}`);
               }
             },
           },
@@ -825,8 +826,8 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         ],
         { cancelable: true }
       );
-    } catch (error: any) {
-      Alert.alert('Error', `Failed to open image picker: ${error.message || 'Please try again.'}`);
+    } catch (error: unknown) {
+      Alert.alert('Error', `Failed to open image picker: ${getErrorMessage(error) || 'Please try again.'}`);
     }
   };
 
@@ -895,16 +896,16 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           console.log('✅ OCR Success! Text extracted (length:', ocrResult.text.length, 'chars)');
           // NEVER log OCR text (contains sensitive PII data)
         }
-      } catch (ocrError: any) {
+      } catch (ocrError: unknown) {
         // CRITICAL: Delete image before showing error
         await deleteImage();
 
         if (__DEV__) {
-          console.error('❌ OCR Error:', ocrError?.name || 'Unknown');
+          console.error('❌ OCR Error:', ocrError instanceof Error ? ocrError.name : 'Unknown');
         }
         
         // Handle Expo Go detection - silently fall back to manual entry
-        if (ocrError instanceof ExpoGoDetectedError || ocrError?.message === 'EXPO_GO_DETECTED') {
+        if (ocrError instanceof ExpoGoDetectedError || getErrorMessage(ocrError) === 'EXPO_GO_DETECTED') {
           console.log('[AadhaarScan] Expo Go detected during OCR - using manual entry');
           setExtractedData(emptyData);
           setShowForm(true);
@@ -1062,7 +1063,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         );
       }, 500);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       // CRITICAL: Always delete image on error
       await deleteImage();
 
@@ -1104,9 +1105,9 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         if (__DEV__) {
           console.log('✅ Back side OCR completed. Text extracted (length:', ocrResult.text.length, 'chars)');
         }
-      } catch (ocrError: any) {
+      } catch (ocrError: unknown) {
         if (__DEV__) {
-          console.error('❌ Back side OCR Error:', ocrError?.message || ocrError);
+          console.error('❌ Back side OCR Error:', getErrorMessage(ocrError) || ocrError);
         }
         Alert.alert(
           'OCR Failed',
@@ -1163,7 +1164,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           console.warn('⚠️ Could not delete back side image file:', deleteError);
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (__DEV__) {
         console.error('❌ Error processing back side:', error);
       }
@@ -1212,8 +1213,8 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                 if (!result.canceled && result.assets && result.assets[0]) {
                   await processBackImage(result.assets[0].uri);
                 }
-              } catch (error: any) {
-                Alert.alert('Error', `Failed to open camera: ${error.message || 'Unknown error'}`);
+              } catch (error: unknown) {
+                Alert.alert('Error', `Failed to open camera: ${getErrorMessage(error) || 'Unknown error'}`);
               }
             },
           },
@@ -1230,8 +1231,8 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                 if (!result.canceled && result.assets && result.assets[0]) {
                   await processBackImage(result.assets[0].uri);
                 }
-              } catch (error: any) {
-                Alert.alert('Error', `Failed to open photo library: ${error.message || 'Unknown error'}`);
+              } catch (error: unknown) {
+                Alert.alert('Error', `Failed to open photo library: ${getErrorMessage(error) || 'Unknown error'}`);
               }
             },
           },
@@ -1242,8 +1243,8 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         ],
         { cancelable: true }
       );
-    } catch (error: any) {
-      Alert.alert('Error', `Failed to open image picker: ${error.message || 'Please try again.'}`);
+    } catch (error: unknown) {
+      Alert.alert('Error', `Failed to open image picker: ${getErrorMessage(error) || 'Please try again.'}`);
     }
   };
 
@@ -1287,10 +1288,10 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           },
         ]
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       Alert.alert(
         'Error',
-        `Failed to submit KYC data: ${error.message || 'Unknown error'}. Please try again.`
+        `Failed to submit KYC data: ${getErrorMessage(error) || 'Unknown error'}. Please try again.`
       );
     } finally {
       setIsProcessing(false);

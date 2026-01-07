@@ -18,6 +18,7 @@ import { RootStackParamList } from '@/types';
 import { useKYCStore, useAuthStore } from '@/store';
 import type { KYCDocumentType, DocumentStatus } from '@/store';
 import { KYC_DOCUMENT_TYPES } from '@/utils/constants';
+import { getErrorMessage } from '@/utils/errorUtils';
 import DocumentScanScreen from './DocumentScanScreen';
 import LivenessCheckScreen from './LivenessCheckScreen';
 
@@ -261,8 +262,8 @@ export default function KYCScreen({ navigation }: Props) {
           'Document Submitted',
           'Your document has been submitted for verification. You will be notified once it is reviewed.'
         );
-      } catch (error: any) {
-        Alert.alert('Error', error.message || 'Failed to submit document');
+      } catch (error: unknown) {
+        Alert.alert('Error', getErrorMessage(error) || 'Failed to submit document');
       }
     }
   };
@@ -284,8 +285,8 @@ export default function KYCScreen({ navigation }: Props) {
         'Verification Submitted',
         'Your identity verification has been submitted. You will be notified once verification is complete.'
       );
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to complete liveness check. Please try again.');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to complete liveness check. Please try again.');
     }
   };
 

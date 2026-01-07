@@ -18,6 +18,7 @@ import { validatePassword, passwordsMatch, PasswordValidation } from '@/utils/pa
 import { supabaseAuthService } from '@/services/supabase/authService';
 import { useTheme } from '@/contexts';
 import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 type ResetPasswordScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -118,11 +119,11 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
       } else {
         setError(response.error || 'Failed to reset password. Please try again.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (__DEV__) {
-        console.error('❌ Password reset error:', err);
+        console.error('❌ Password reset error:', getErrorMessage(err));
       }
-      setError(err.message || 'An unexpected error occurred. Please try again.');
+      setError(getErrorMessage(err) || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }

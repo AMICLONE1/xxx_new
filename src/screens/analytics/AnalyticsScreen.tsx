@@ -1,17 +1,452 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, Dimensions, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LineChart } from 'react-native-chart-kit';
+import { useMeterStore } from '@/store/meterStore';
+import { useAuthStore } from '@/store';
+import { useTransactionStore } from '@/store/transactionStore';
+import { analyticsService } from '@/services/api/analyticsService';
+import { transactionsService } from '@/services/api/transactionsService';
+import { SiteSelector } from '@/components/analytics/SiteSelector';
+import { MeterSelector } from '@/components/analytics/MeterSelector';
+import { Site, SiteAnalytics, Transaction } from '@/types';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
+import { formatEnergy as formatEnergyUtil, formatCurrency as formatCurrencyUtil } from '@/utils/helpers';
+import { logger } from '@/utils/logger';
 
 const { width } = Dimensions.get('window');
 
 const AnalyticsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { meters, energyData } = useMeterStore();
+  const { user } = useAuthStore();
+  const { transactions } = useTransactionStore();
+  const [selectedSiteId, setSelectedSiteId] = useState<string | 'all'>('all');
+  const [selectedMeterId, setSelectedMeterId] = useState<string | 'all'>('all');
+  const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [userSites, setUserSites] = useState<{ id: string; name: string; }[]>([]);
+  const [analytics, setAnalytics] = useState<SiteAnalytics | null>(null);
+  const [selectedChartType, setSelectedChartType] = useState<string>('none');
+  const [showChartModal, setShowChartModal] = useState(false);
+  const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month'>('day');
+  const [loading, setLoading] = useState(true);
+  const [selectedSite, setSelectedSite] = useState<Site | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Initialize user sites (up to 6 sites)
+  useEffect(() => {
+    // Create default placeholder sites (without data logger IDs)
+    const defaultSites = Array.from({ length: Math.min(6, Math.max(3, meters.length)) }, (_, i) => ({
+      id: `site-${i + 1}`,
+      name: `Site ${i + 1}`,
+    }));
+    setUserSites(defaultSites);
+    
+    // Don't select any sites by default - user must add them first
+    setSelectedSiteIds([]);
+  }, [meters.length]);
+
+  // Convert meters to sites format for the meter selector
+  useEffect(() => {
+    if (meters.length > 0) {
+      const sitesData: Site[] = meters.map((meter, index) => ({
+        id: meter.id,
+        name: `Site ${index + 1} - ${meter.discomName}`,
+        discomName: meter.discomName,
+        consumerNumber: meter.consumerNumber,
+        address: meter.address,
+      }));
+      setSites(sitesData);
+    }
+  }, [meters]);
+
+  // Handler for adding a new site
+  const handleAddSite = useCallback((siteName: string, dataLoggerId: string) => {
+    const newSiteNumber = userSites.length + 1;
+    const newSite = {
+      id: `site-${newSiteNumber}`,
+      name: siteName,
+      dataLoggerId: dataLoggerId,
+    };
+    setUserSites([...userSites, newSite]);
+    setSelectedSiteId(newSite.id);
+    
+    // Auto-select the new site (up to 2 sites can be selected)
+    setSelectedSiteIds(prev => {
+      if (prev.length < 2) {
+        return [...prev, newSite.id];
+      }
+      return prev;
+    });
+  }, [userSites]);
+
+  // Handler for deleting a site
+  const handleDeleteSite = useCallback((siteId: string) => {
+    setUserSites(prevSites => prevSites.filter(site => site.id !== siteId));
+    // If the deleted site was selected, remove it from multi-selection
+    setSelectedSiteIds(prev => prev.filter(id => id !== siteId));
+    if (selectedSiteId === siteId) {
+      setSelectedSiteId('all');
+    }
+  }, [selectedSiteId]);
+
+  // Handler for multi-site selection
+  const handleMultiSiteChange = useCallback((siteIds: string[]) => {
+    setSelectedSiteIds(siteIds);
+    // Reset meter selection when sites change
+    setSelectedMeterId('all');
+  }, []);
+
+  // Chart types
+  const chartTypes = [
+    { id: 'none', name: 'No Chart', icon: 'close-circle' },
+    { id: 'generation', name: 'Generation (kW)', icon: 'solar-power' },
+    { id: 'consumption', name: 'Consumption (kW)', icon: 'flash' },
+    { id: 'comparison', name: 'Generation vs Consumption', icon: 'chart-line' },
+    { id: 'netExport', name: 'Net Export', icon: 'swap-horizontal' },
+  ];
+
+  // Load analytics function
+  const loadAnalytics = useCallback(async (showRefresh = false) => {
+    if (!user?.id) return;
+
+    if (showRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+    
+    try {
+      // If both are 'all', show aggregated analytics
+      if (selectedSiteId === 'all' && selectedMeterId === 'all') {
+        const response = await analyticsService.getAggregatedAnalytics({ period: 'month' });
+        if (response.success && response.data) {
+          setAnalytics(response.data);
+          setSelectedSite(null);
+        } else {
+          setError(response.error || 'Failed to load analytics');
+        }
+      } else if (selectedSiteId !== 'all') {
+        // If a specific site is selected, use site analytics
+        const site = sites.find(s => s.id === selectedSiteId);
+        if (site) {
+          setSelectedSite(site);
+          const response = await analyticsService.getSiteAnalytics(selectedSiteId, { period: 'month' });
+          if (response.success && response.data) {
+            setAnalytics(response.data);
+          } else {
+            setError(response.error || 'Failed to load site analytics');
+          }
+        }
+      } else if (selectedMeterId !== 'all') {
+        // If a specific meter is selected, treat it as a site
+        const meter = meters.find(m => m.id === selectedMeterId);
+        if (meter) {
+          const site = {
+            id: meter.id,
+            name: `Meter ${meter.consumerNumber}`,
+            discomName: meter.discomName,
+            consumerNumber: meter.consumerNumber,
+            address: meter.address,
+          };
+          setSelectedSite(site);
+          const response = await analyticsService.getSiteAnalytics(selectedMeterId, { period: 'month' });
+          if (response.success && response.data) {
+            setAnalytics(response.data);
+          } else {
+            setError(response.error || 'Failed to load meter analytics');
+          }
+        }
+      }
+    } catch (error: unknown) {
+      logger.error('AnalyticsScreen', 'Error loading analytics:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred while loading analytics');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [selectedSiteId, selectedMeterId, sites, meters, user?.id]);
+
+  // Load analytics when site selection changes
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
+
+  // Refresh handler
+  const onRefresh = useCallback(() => {
+    loadAnalytics(true);
+  }, [loadAnalytics]);
+
+  // Load transactions from API
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const loadTransactions = async () => {
+      setTransactionsLoading(true);
+      try {
+        const response = await transactionsService.getTransactions({
+          limit: 20,
+          status: 'completed',
+        });
+        if (response.success && response.data) {
+          // Update transaction store with fetched data
+          // Note: In a real app, you'd update the store properly
+        }
+      } catch (error) {
+        console.error('Error loading transactions:', error);
+      } finally {
+        setTransactionsLoading(false);
+      }
+    };
+
+    loadTransactions();
+  }, [user?.id]);
+
+  // Filter transactions by site (if we had meter_id in transactions, we'd filter properly)
+  // For now, we'll show all transactions but add site context where possible
+  const filteredTransactions = useMemo(() => {
+    // Since transactions don't have meter_id, we show all transactions
+    // In a real implementation, you'd link transactions to orders, and orders to meters
+    return transactions
+      .filter(tx => tx.status === 'completed')
+      .slice(0, 10) // Show last 10
+      .sort((a, b) => {
+        const dateA = a.timestamp || a.createdAt || new Date(0);
+        const dateB = b.timestamp || b.createdAt || new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
+  }, [transactions, selectedSiteId]);
+
+  // Calculate monthly summary from transactions and analytics
+  const monthlySummary = useMemo(() => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const monthTransactions = transactions.filter(tx => {
+      const txDate = tx.timestamp || tx.createdAt || new Date(0);
+      return txDate >= startOfMonth && tx.status === 'completed';
+    });
+
+    const sales = monthTransactions.filter(tx => tx.tradeType === 'sell' || tx.type === 'energy_sale');
+    const purchases = monthTransactions.filter(tx => tx.tradeType === 'buy' || tx.type === 'energy_purchase');
+
+    const totalSales = sales.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+    const totalPurchases = purchases.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+    const totalEnergySold = sales.reduce((sum, tx) => sum + (tx.energyAmount || 0), 0);
+    const totalEnergyBought = purchases.reduce((sum, tx) => sum + (tx.energyAmount || 0), 0);
+
+    const daysInMonth = now.getDate();
+    const avgDailyRevenue = daysInMonth > 0 ? (totalSales - totalPurchases) / daysInMonth : 0;
+
+    // Calculate peak trading hours (simplified - would need timestamp analysis)
+    // Group transactions by hour and find peak
+    const hourCounts: { [key: number]: number } = {};
+    monthTransactions.forEach(tx => {
+      const txDate = tx.timestamp || tx.createdAt || new Date();
+      const hour = txDate.getHours();
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+    });
+    
+    let peakStart = 10;
+    let peakEnd = 16;
+    let maxCount = 0;
+    for (let h = 0; h < 24; h++) {
+      if ((hourCounts[h] || 0) > maxCount) {
+        maxCount = hourCounts[h] || 0;
+        peakStart = h;
+        peakEnd = h + 4;
+      }
+    }
+    
+    const formatHour = (h: number) => {
+      const period = h >= 12 ? 'PM' : 'AM';
+      const hour12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+      return `${hour12} ${period}`;
+    };
+    
+    const peakHours = maxCount > 0 
+      ? `${formatHour(peakStart)} - ${formatHour(peakEnd)}`
+      : '10 AM - 4 PM';
+
+    // Calculate generation time from analytics
+    // Assuming average generation rate, calculate hours
+    const energyGenerated = analytics?.energyGenerated || 0;
+    const avgGenerationRate = 5; // kW average (simplified)
+    const generationHours = avgGenerationRate > 0 ? (energyGenerated / avgGenerationRate / 30).toFixed(1) : '0';
+
+    return {
+      generationTime: `${generationHours} hours/day`,
+      avgDailyRevenue: `₹${Math.round(Math.max(0, avgDailyRevenue))}`,
+      peakTradingHours: peakHours,
+      totalSales,
+      totalPurchases,
+      netRevenue: totalSales - totalPurchases,
+    };
+  }, [transactions, analytics]);
+
+  // Use centralized utility functions (imported from @/utils/helpers)
+  const formatEnergy = (value: number) => formatEnergyUtil(value, 'kWh');
+  const formatCurrency = (value: number) => formatCurrencyUtil(value).replace('.00', '');
+
+  // Prepare chart data from energy data based on time range
+  const { chartData, stats } = useMemo(() => {
+    logger.log('AnalyticsScreen', '📊 Chart Data Debug:', {
+      hasEnergyData: !!energyData,
+      energyDataLength: energyData?.length || 0,
+      timeRange,
+      firstData: energyData?.[0],
+    });
+    
+    if (!energyData || energyData.length === 0) {
+      logger.warn('AnalyticsScreen', 'No energy data available');
+      return {
+        chartData: {
+          labels: ['No Data'],
+          datasets: [{ data: [0] }],
+        },
+        stats: {
+          avgGeneration: 0,
+          maxGeneration: 0,
+          avgConsumption: 0,
+          maxConsumption: 0,
+          totalGenerated: 0,
+          netExported: 0,
+        },
+      };
+    }
+
+    // Filter data based on time range
+    const now = new Date();
+    const filterDate = new Date();
+    
+    switch (timeRange) {
+      case 'day':
+        filterDate.setDate(now.getDate() - 1);
+        break;
+      case 'week':
+        filterDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        filterDate.setMonth(now.getMonth() - 1);
+        break;
+    }
+    
+    const filtered = energyData
+      .filter(d => d.timestamp >= filterDate)
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+      .slice(-96);
+
+    logger.log('AnalyticsScreen', '📈 Filtered data:', { 
+      total: energyData.length, 
+      filtered: filtered.length,
+      filterDate: filterDate.toISOString(),
+    });
+
+    if (filtered.length === 0) {
+      logger.warn('AnalyticsScreen', 'No data after filtering');
+      return {
+        chartData: {
+          labels: ['No Data'],
+          datasets: [{ data: [0] }],
+        },
+        stats: {
+          avgGeneration: 0,
+          maxGeneration: 0,
+          avgConsumption: 0,
+          maxConsumption: 0,
+          totalGenerated: 0,
+          netExported: 0,
+        },
+      };
+    }
+
+    // Generate labels based on time range
+    const labelInterval = timeRange === 'day' ? 8 : timeRange === 'week' ? 12 : 16;
+    const labels = filtered.map((d, i) => {
+      if (i % labelInterval === 0) {
+        if (timeRange === 'day') {
+          return `${d.timestamp.getHours().toString().padStart(2, '0')}:${d.timestamp.getMinutes().toString().padStart(2, '0')}`;
+        } else {
+          return `${d.timestamp.getDate()}/${d.timestamp.getMonth() + 1}`;
+        }
+      }
+      return '';
+    });
+
+    const generationData = filtered.map(d => Number(d.generation) || 0);
+    const consumptionData = filtered.map(d => Number(d.consumption) || 0);
+    const netExportData = filtered.map((d, i) => generationData[i] - consumptionData[i]);
+
+    // Calculate stats
+    const avgGen = generationData.reduce((a, b) => a + b, 0) / generationData.length;
+    const maxGen = Math.max(...generationData);
+    const avgCon = consumptionData.reduce((a, b) => a + b, 0) / consumptionData.length;
+    const maxCon = Math.max(...consumptionData);
+    const totalGen = generationData.reduce((a, b) => a + b, 0) * 0.25; // 15-min intervals to kWh
+    const netExp = netExportData.reduce((a, b) => a + b, 0) * 0.25;
+
+    logger.log('AnalyticsScreen', '✅ Chart data prepared:', {
+      dataPoints: generationData.length,
+      avgGen: avgGen.toFixed(2),
+      avgCon: avgCon.toFixed(2),
+      totalGen: totalGen.toFixed(2),
+    });
+
+    return {
+      chartData: {
+        labels,
+        generation: generationData,
+        consumption: consumptionData,
+        netExport: netExportData,
+      },
+      stats: {
+        avgGeneration: avgGen,
+        maxGeneration: maxGen,
+        avgConsumption: avgCon,
+        maxConsumption: maxCon,
+        totalGenerated: totalGen,
+        netExported: netExp,
+      },
+    };
+  }, [energyData, selectedSiteId, selectedMeterId, timeRange]);
+
+  const formatDate = (date: Date) => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    
+    return date.toLocaleDateString('en-IN', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />
+      }
+    >
       {/* Header */}
       <LinearGradient colors={['#10b981', '#059669']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
         <View style={styles.headerContent}>
@@ -19,180 +454,650 @@ const AnalyticsScreen = () => {
             <Text style={styles.headerTitle}>Analytics</Text>
             <Text style={styles.headerSubtitle}>Your Energy & Trading Performance</Text>
           </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.headerChip}
-              onPress={() => navigation.navigate('TradeAnalytics', { mode: 'buyer' })}
-            >
-              <MaterialCommunityIcons name="account-arrow-left" size={16} color="#065f46" />
-              <Text style={styles.headerChipText}>Buyers</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerChip}
-              onPress={() => navigation.navigate('TradeAnalytics', { mode: 'seller' })}
-            >
-              <MaterialCommunityIcons name="account-arrow-right" size={16} color="#065f46" />
-              <Text style={styles.headerChipText}>Sellers</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </LinearGradient>
 
-      {/* Stats Cards in 2x2 Grid */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statsRow}>
-          {/* Energy Generated */}
-          <View style={[styles.statCard, { flex: 1, marginRight: 6 }]}>
-            <View style={styles.statIconContainer}>
-              <MaterialCommunityIcons name="lightning-bolt" size={24} color="#10b981" />
-            </View>
-            <Text style={styles.statLabel}>Energy Generated</Text>
-            <Text style={styles.statValue}>1,245 kWh</Text>
-            <Text style={styles.statChange}>↑ 12% this month</Text>
-          </View>
-
-          {/* Total Revenue */}
-          <View style={[styles.statCard, { flex: 1, marginLeft: 6 }]}>
-            <View style={styles.statIconContainer}>
-              <MaterialCommunityIcons name="currency-inr" size={24} color="#f59e0b" />
-            </View>
-            <Text style={styles.statLabel}>Total Revenue</Text>
-            <Text style={styles.statValue}>₹15,420</Text>
-            <Text style={styles.statChange}>↑ 8% this month</Text>
-          </View>
+      {/* Site & Meter Selector Row */}
+      {(userSites.length > 0 || meters.length > 0) && (
+        <View style={styles.selectorRow}>
+          <SiteSelector
+            sites={userSites}
+            selectedSiteId={selectedSiteId}
+            selectedSiteIds={selectedSiteIds}
+            multiSelect={true}
+            onSiteChange={(siteId) => {
+              if (siteId === 'add') {
+                // This is now handled by onAddSite callback
+              } else {
+                setSelectedSiteId(siteId);
+                if (siteId !== 'all') {
+                  setSelectedMeterId('all'); // Reset meter when site is selected
+                }
+              }
+            }}
+            onMultiSiteChange={handleMultiSiteChange}
+            onAddSite={handleAddSite}
+            onDeleteSite={handleDeleteSite}
+          />
+          {meters.length > 0 && (
+            <MeterSelector
+              meters={meters}
+              sites={sites}
+              selectedMeterId={selectedMeterId}
+              onMeterChange={(meterId) => {
+                setSelectedMeterId(meterId);
+                if (meterId !== 'all') {
+                  setSelectedSiteId('all'); // Reset site when meter is selected
+                }
+              }}
+            />
+          )}
         </View>
+      )}
 
-        <View style={styles.statsRow}>
-          {/* Active Trades */}
-          <View style={[styles.statCard, { flex: 1, marginRight: 6 }]}>
-            <View style={styles.statIconContainer}>
-              <MaterialCommunityIcons name="trending-up" size={24} color="#3b82f6" />
-            </View>
-            <Text style={styles.statLabel}>Active Trades</Text>
-            <Text style={styles.statValue}>24</Text>
-            <Text style={styles.statChange}>3 new today</Text>
-          </View>
-
-          {/* Efficiency Rating */}
-          <View style={[styles.statCard, { flex: 1, marginLeft: 6 }]}>
-            <View style={styles.statIconContainer}>
-              <MaterialCommunityIcons name="star" size={24} color="#ec4899" />
-            </View>
-            <Text style={styles.statLabel}>Efficiency</Text>
-            <Text style={styles.statValue}>94%</Text>
-            <Text style={styles.statChange}>Excellent</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Buyers & Sellers */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Buyers & Sellers</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.buyerSellerContainer}
+      {/* Time Range Selector */}
+      <View style={styles.timeRangeContainer}>
+        <TouchableOpacity
+          style={[styles.timeRangeButton, timeRange === 'day' && styles.timeRangeButtonActive]}
+          onPress={() => setTimeRange('day')}
         >
-          {/* Buyers */}
-          <View style={[styles.buyerSellerCard, styles.buyerCard]}>
-            <View style={styles.cardHeader}>
-              <MaterialCommunityIcons name="arrow-down-circle" size={20} color="#ef4444" />
-              <Text style={styles.cardTitle}>Buyers</Text>
+          <Text style={[styles.timeRangeText, timeRange === 'day' && styles.timeRangeTextActive]}>
+            Day
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.timeRangeButton, timeRange === 'week' && styles.timeRangeButtonActive]}
+          onPress={() => setTimeRange('week')}
+        >
+          <Text style={[styles.timeRangeText, timeRange === 'week' && styles.timeRangeTextActive]}>
+            Week
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.timeRangeButton, timeRange === 'month' && styles.timeRangeButtonActive]}
+          onPress={() => setTimeRange('month')}
+        >
+          <Text style={[styles.timeRangeText, timeRange === 'month' && styles.timeRangeTextActive]}>
+            Month
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Energy Stats Cards */}
+      {chartData.generation && chartData.generation.length > 0 && chartData.labels[0] !== 'No Data' && (
+        <View style={styles.energyStatsContainer}>
+          <View style={styles.statsRow}>
+            <View style={[styles.energyStatCard, { marginRight: 6 }]}>
+              <Text style={styles.energyStatLabel}>AVG GENERATION</Text>
+              <Text style={[styles.energyStatValue, { color: '#10b981' }]}>
+                {stats.avgGeneration.toFixed(2)} kW
+              </Text>
             </View>
-            {[
-              { name: 'Raj Kumar', amount: '₹8,500' },
-              { name: 'Priya Singh', amount: '₹6,200' },
-              { name: 'Amit Patel', amount: '₹5,100' },
-            ].map((buyer, index) => (
-              <View key={index} style={styles.buyerSellerItem}>
-                <View style={styles.userAvatar}>
-                  <Text style={styles.avatarText}>{buyer.name.charAt(0)}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.userName}>{buyer.name}</Text>
-                </View>
-                <Text style={styles.userAmount}>{buyer.amount}</Text>
+            <View style={[styles.energyStatCard, { marginLeft: 6 }]}>
+              <Text style={styles.energyStatLabel}>PEAK GENERATION</Text>
+              <Text style={[styles.energyStatValue, { color: '#10b981' }]}>
+                {stats.maxGeneration.toFixed(2)} kW
+              </Text>
+            </View>
+          </View>
+          <View style={styles.statsRow}>
+            <View style={[styles.energyStatCard, { marginRight: 6 }]}>
+              <Text style={styles.energyStatLabel}>AVG CONSUMPTION</Text>
+              <Text style={[styles.energyStatValue, { color: '#ef4444' }]}>
+                {stats.avgConsumption.toFixed(2)} kW
+              </Text>
+            </View>
+            <View style={[styles.energyStatCard, { marginLeft: 6 }]}>
+              <Text style={styles.energyStatLabel}>PEAK CONSUMPTION</Text>
+              <Text style={[styles.energyStatValue, { color: '#ef4444' }]}>
+                {stats.maxConsumption.toFixed(2)} kW
+              </Text>
+            </View>
+          </View>
+          <View style={styles.statsRow}>
+            <View style={[styles.energyStatCard, { marginRight: 6 }]}>
+              <Text style={styles.energyStatLabel}>TOTAL GENERATED</Text>
+              <Text style={[styles.energyStatValue, { color: '#10b981' }]}>
+                {stats.totalGenerated.toFixed(2)} kWh
+              </Text>
+            </View>
+            <View style={[styles.energyStatCard, { marginLeft: 6 }]}>
+              <Text style={styles.energyStatLabel}>NET EXPORT</Text>
+              <Text style={[styles.energyStatValue, { color: stats.netExported >= 0 ? '#10b981' : '#ef4444' }]}>
+                {stats.netExported >= 0 ? '+' : ''}{stats.netExported.toFixed(2)} kWh
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Site/Meter Information Card (when single site or meter selected) */}
+      {selectedSite && (selectedSiteId !== 'all' || selectedMeterId !== 'all') && (
+        <View style={styles.siteInfoCard}>
+          <View style={styles.siteInfoHeader}>
+            <MaterialCommunityIcons 
+              name={selectedMeterId !== 'all' ? "speedometer" : "home-city"} 
+              size={26} 
+              color="#10b981" 
+            />
+            <Text style={styles.siteInfoTitle}>
+              {selectedMeterId !== 'all' 
+                ? `Meter ${selectedSite.consumerNumber || 'Details'}` 
+                : selectedSite.name}
+            </Text>
+          </View>
+          <View style={styles.siteInfoDetails}>
+            <View style={styles.siteInfoRow}>
+              <Text style={styles.siteInfoLabel}>DISCOM:</Text>
+              <Text style={styles.siteInfoValue}>{selectedSite.discomName}</Text>
+            </View>
+            <View style={styles.siteInfoRow}>
+              <Text style={styles.siteInfoLabel}>Consumer No:</Text>
+              <Text style={styles.siteInfoValue}>{selectedSite.consumerNumber}</Text>
+            </View>
+            {selectedSite.address && (
+              <View style={styles.siteInfoRow}>
+                <Text style={styles.siteInfoLabel}>Address:</Text>
+                <Text style={styles.siteInfoValue}>{selectedSite.address}</Text>
               </View>
-            ))}
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Stats Cards in 2x2 Grid */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#10b981" />
+          <Text style={styles.loadingText}>Loading analytics...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <MaterialCommunityIcons name="alert-circle" size={48} color="#ef4444" />
+          <Text style={styles.errorText}>Error Loading Analytics</Text>
+          <Text style={styles.errorSubtext}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => loadAnalytics()}
+          >
+            <LinearGradient
+              colors={['#10b981', '#059669']}
+              style={styles.retryButtonGradient}
+            >
+              <MaterialCommunityIcons name="refresh" size={20} color="#ffffff" />
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      ) : analytics ? (
+        <View style={styles.statsContainer}>
+          <View style={styles.statsRow}>
+            {/* Energy Generated */}
+            <View style={[styles.statCard, { flex: 1, marginRight: 6 }]}>
+              <View style={styles.statIconContainer}>
+                <MaterialCommunityIcons name="lightning-bolt" size={24} color="#10b981" />
+              </View>
+              <Text style={styles.statLabel}>Energy Generated</Text>
+              <Text style={styles.statValue}>{formatEnergy(analytics.energyGenerated)}</Text>
+              <Text style={styles.statChange}>
+                {analytics.trends.generation.startsWith('+') ? '↑' : '↓'} {analytics.trends.generation} this month
+              </Text>
+            </View>
+
+            {/* Total Revenue */}
+            <View style={[styles.statCard, { flex: 1, marginLeft: 6 }]}>
+              <View style={styles.statIconContainer}>
+                <MaterialCommunityIcons name="currency-inr" size={24} color="#f59e0b" />
+              </View>
+              <Text style={styles.statLabel}>Total Revenue</Text>
+              <Text style={styles.statValue}>{formatCurrency(analytics.totalRevenue)}</Text>
+              <Text style={styles.statChange}>
+                {analytics.trends.revenue.startsWith('+') ? '↑' : '↓'} {analytics.trends.revenue} this month
+              </Text>
+            </View>
           </View>
 
-          {/* Sellers */}
-          <View style={[styles.buyerSellerCard, styles.sellerCard]}>
-            <View style={styles.cardHeader}>
-              <MaterialCommunityIcons name="arrow-up-circle" size={20} color="#10b981" />
-              <Text style={styles.cardTitle}>Sellers</Text>
-            </View>
-            {[
-              { name: 'Vikas Sharma', amount: '₹7,800' },
-              { name: 'Maya Desai', amount: '₹6,900' },
-              { name: 'Arjun Nair', amount: '₹5,400' },
-            ].map((seller, index) => (
-              <View key={index} style={styles.buyerSellerItem}>
-                <View style={styles.userAvatar}>
-                  <Text style={styles.avatarText}>{seller.name.charAt(0)}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.userName}>{seller.name}</Text>
-                </View>
-                <Text style={styles.userAmount}>{seller.amount}</Text>
+          <View style={styles.statsRow}>
+            {/* Active Trades */}
+            <View style={[styles.statCard, { flex: 1, marginRight: 6 }]}>
+              <View style={styles.statIconContainer}>
+                <MaterialCommunityIcons name="trending-up" size={24} color="#3b82f6" />
               </View>
-            ))}
+              <Text style={styles.statLabel}>Active Trades</Text>
+              <Text style={styles.statValue}>{analytics.activeTrades}</Text>
+              <Text style={styles.statChange}>{analytics.completedTrades} completed</Text>
+            </View>
+
+            {/* Efficiency Rating */}
+            <View style={[styles.statCard, { flex: 1, marginLeft: 6 }]}>
+              <View style={styles.statIconContainer}>
+                <MaterialCommunityIcons name="star" size={24} color="#ec4899" />
+              </View>
+              <Text style={styles.statLabel}>Efficiency</Text>
+              <Text style={styles.statValue}>{analytics.efficiency.toFixed(1)}%</Text>
+              <Text style={styles.statChange}>
+                {analytics.efficiency >= 90 ? 'Excellent' : analytics.efficiency >= 70 ? 'Good' : 'Fair'}
+              </Text>
+            </View>
           </View>
-        </ScrollView>
+        </View>
+      ) : (
+        <View style={styles.emptyContainer}>
+          <MaterialCommunityIcons name="chart-line" size={64} color="#d1d5db" />
+          <Text style={styles.emptyText}>No analytics data available</Text>
+          <Text style={styles.emptySubtext}>
+            {sites.length === 0 
+              ? 'Register a meter to view analytics'
+              : 'Analytics data will appear here once available'}
+          </Text>
+        </View>
+      )}
+
+      {/* Chart Selector Dropdown */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Energy Charts</Text>
+        <TouchableOpacity
+          style={styles.chartSelector}
+          onPress={() => setShowChartModal(true)}
+        >
+          <View style={styles.chartSelectorContent}>
+            <MaterialCommunityIcons 
+              name={chartTypes.find(c => c.id === selectedChartType)?.icon as any || 'chart-line'} 
+              size={20} 
+              color="#10b981" 
+            />
+            <Text style={styles.chartSelectorText}>
+              {chartTypes.find(c => c.id === selectedChartType)?.name || 'Select Chart'}
+            </Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-down" size={20} color="#6b7280" />
+        </TouchableOpacity>
+
+        {/* Show all charts when data is available */}
+        {chartData.generation && chartData.generation.length > 0 && chartData.labels[0] !== 'No Data' && (
+          <View style={styles.allChartsContainer}>
+            {/* Generation Chart */}
+            {(selectedChartType === 'none' || selectedChartType === 'generation') && (
+              <View style={styles.chartContainer}>
+                <View style={styles.chartHeader}>
+                  <Text style={styles.chartTitle}>Generation (kW)</Text>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
+                    <Text style={styles.legendText}>Generation</Text>
+                  </View>
+                </View>
+                <Text style={styles.chartHint}>Tap on points to see details</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                  <LineChart
+                    data={{
+                      labels: chartData.labels,
+                      datasets: [{
+                        data: chartData.generation.length > 0 ? chartData.generation : [0],
+                        color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                        strokeWidth: 2,
+                      }],
+                    }}
+                    width={Math.max(width - 48, chartData.generation.length * 8)}
+                    height={280}
+                    chartConfig={{
+                      backgroundColor: '#ffffff',
+                      backgroundGradientFrom: '#ffffff',
+                      backgroundGradientTo: '#ffffff',
+                      decimalPlaces: 2,
+                      color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                      propsForDots: { r: '5', strokeWidth: '2', stroke: '#10b981' },
+                      propsForBackgroundLines: {
+                        strokeDasharray: '',
+                        stroke: '#e5e7eb',
+                        strokeWidth: 1,
+                      },
+                    }}
+                    bezier
+                    style={styles.chart}
+                    withInnerLines={true}
+                    withOuterLines={true}
+                    withVerticalLines={true}
+                    withHorizontalLines={true}
+                    withDots={true}
+                    withShadow={false}
+                  />
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Consumption Chart */}
+            {(selectedChartType === 'none' || selectedChartType === 'consumption') && (
+              <View style={styles.chartContainer}>
+                <View style={styles.chartHeader}>
+                  <Text style={styles.chartTitle}>Consumption (kW)</Text>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+                    <Text style={styles.legendText}>Consumption</Text>
+                  </View>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                  <LineChart
+                    data={{
+                      labels: chartData.labels,
+                      datasets: [{
+                        data: chartData.consumption && chartData.consumption.length > 0 ? chartData.consumption : [0],
+                        color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+                        strokeWidth: 2,
+                      }],
+                    }}
+                    width={Math.max(width - 48, (chartData.consumption?.length || 1) * 8)}
+                    height={220}
+                    chartConfig={{
+                      backgroundColor: '#ffffff',
+                      backgroundGradientFrom: '#ffffff',
+                      backgroundGradientTo: '#ffffff',
+                      decimalPlaces: 2,
+                      color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                      propsForDots: { r: '4', strokeWidth: '2', stroke: '#ef4444' },
+                      propsForBackgroundLines: {
+                        strokeDasharray: '',
+                        stroke: '#e5e7eb',
+                        strokeWidth: 1,
+                      },
+                    }}
+                    bezier
+                    style={styles.chart}
+                    withDots={true}
+                    withShadow={false}
+                  />
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Generation vs Consumption Comparison */}
+            {(selectedChartType === 'none' || selectedChartType === 'comparison') && (
+              <View style={styles.chartContainer}>
+                <View style={styles.chartHeader}>
+                  <Text style={styles.chartTitle}>Generation vs Consumption</Text>
+                  <View style={styles.chartLegend}>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
+                      <Text style={styles.legendText}>Gen</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+                      <Text style={styles.legendText}>Con</Text>
+                    </View>
+                  </View>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                  <LineChart
+                    data={{
+                      labels: chartData.labels,
+                      datasets: [
+                        {
+                          data: chartData.generation && chartData.generation.length > 0 ? chartData.generation : [0],
+                          color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                          strokeWidth: 2,
+                        },
+                        {
+                          data: chartData.consumption && chartData.consumption.length > 0 ? chartData.consumption : [0],
+                          color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+                          strokeWidth: 2,
+                        },
+                      ],
+                    }}
+                    width={Math.max(width - 48, (chartData.generation?.length || 1) * 8)}
+                    height={220}
+                    chartConfig={{
+                      backgroundColor: '#ffffff',
+                      backgroundGradientFrom: '#ffffff',
+                      backgroundGradientTo: '#ffffff',
+                      decimalPlaces: 2,
+                      color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                      propsForDots: { r: '4', strokeWidth: '2', stroke: '#10b981' },
+                      propsForBackgroundLines: {
+                        strokeDasharray: '',
+                        stroke: '#e5e7eb',
+                        strokeWidth: 1,
+                      },
+                    }}
+                    bezier
+                    style={styles.chart}
+                    withDots={true}
+                    withShadow={false}
+                  />
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Net Export Chart */}
+            {(selectedChartType === 'none' || selectedChartType === 'netExport') && (
+              <View style={styles.chartContainer}>
+                <View style={styles.chartHeader}>
+                  <Text style={styles.chartTitle}>Net Export</Text>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#3b82f6' }]} />
+                    <Text style={styles.legendText}>Net Export</Text>
+                  </View>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                  <LineChart
+                    data={{
+                      labels: chartData.labels,
+                      datasets: [{
+                        data: chartData.netExport && chartData.netExport.length > 0 ? chartData.netExport : [0],
+                        color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+                        strokeWidth: 2,
+                      }],
+                    }}
+                    width={Math.max(width - 48, (chartData.netExport?.length || 1) * 8)}
+                    height={220}
+                    chartConfig={{
+                      backgroundColor: '#ffffff',
+                      backgroundGradientFrom: '#ffffff',
+                      backgroundGradientTo: '#ffffff',
+                      decimalPlaces: 2,
+                      color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                      propsForDots: { r: '4', strokeWidth: '2', stroke: '#3b82f6' },
+                      propsForBackgroundLines: {
+                        strokeDasharray: '',
+                        stroke: '#e5e7eb',
+                        strokeWidth: 1,
+                      },
+                    }}
+                    bezier
+                    style={styles.chart}
+                    withDots={true}
+                    withShadow={false}
+                  />
+                </ScrollView>
+              </View>
+            )}
+          </View>
+        )}
+
+        {(!chartData.generation || chartData.generation.length === 0 || chartData.labels[0] === 'No Data') && (
+          <View style={styles.noDataContainer}>
+            <MaterialCommunityIcons name="chart-line-variant" size={48} color="#d1d5db" />
+            <Text style={styles.noDataText}>No chart data available</Text>
+            <Text style={styles.noDataSubtext}>Register a meter to start collecting energy data</Text>
+          </View>
+        )}
       </View>
+
+      {/* Chart Type Modal */}
+      <Modal
+        visible={showChartModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowChartModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Chart Type</Text>
+              <TouchableOpacity onPress={() => setShowChartModal(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#111827" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={chartTypes}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.chartOption,
+                    selectedChartType === item.id && styles.chartOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setSelectedChartType(item.id);
+                    setShowChartModal(false);
+                  }}
+                >
+                  <View style={styles.chartOptionContent}>
+                    <MaterialCommunityIcons
+                      name={item.icon as any}
+                      size={24}
+                      color={selectedChartType === item.id ? '#10b981' : '#6b7280'}
+                    />
+                    <Text
+                      style={[
+                        styles.chartOptionText,
+                        selectedChartType === item.id && styles.chartOptionTextSelected,
+                      ]}
+                    >
+                      {item.name}
+                    </Text>
+                  </View>
+                  {selectedChartType === item.id && (
+                    <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
 
       {/* Recent Transactions */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Transactions</Text>
-        {[
-          { id: 1, type: 'Sale', amount: '₹2,400', date: 'Today, 2:30 PM', status: 'Completed' },
-          { id: 2, type: 'Purchase', amount: '₹1,200', date: 'Yesterday, 10:15 AM', status: 'Completed' },
-          { id: 3, type: 'Sale', amount: '₹3,100', date: '2 days ago', status: 'Completed' },
-        ].map((transaction) => (
-          <View key={transaction.id} style={styles.transactionItem}>
-            <View style={styles.transactionLeft}>
-              <View style={[styles.transactionIcon, { backgroundColor: transaction.type === 'Sale' ? '#d1fae5' : '#fef3c7' }]}>
-                <MaterialCommunityIcons 
-                  name={transaction.type === 'Sale' ? 'arrow-up' : 'arrow-down'} 
-                  size={18} 
-                  color={transaction.type === 'Sale' ? '#10b981' : '#f59e0b'} 
-                />
-              </View>
-              <View>
-                <Text style={styles.transactionType}>{transaction.type}</Text>
-                <Text style={styles.transactionDate}>{transaction.date}</Text>
-              </View>
-            </View>
-            <View style={styles.transactionRight}>
-              <Text style={[styles.transactionAmount, { color: transaction.type === 'Sale' ? '#10b981' : '#ef4444' }]}>
-                {transaction.type === 'Sale' ? '+' : '-'}{transaction.amount}
-              </Text>
-              <Text style={styles.transactionStatus}>{transaction.status}</Text>
-            </View>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Transactions</Text>
+          {filteredTransactions.length > 0 && (
+            <TouchableOpacity onPress={() => navigation.navigate('History')}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {transactionsLoading ? (
+          <View style={styles.transactionsLoadingContainer}>
+            <ActivityIndicator size="small" color="#10b981" />
+            <Text style={styles.transactionsLoadingText}>Loading transactions...</Text>
           </View>
-        ))}
+        ) : filteredTransactions.length === 0 ? (
+          <View style={styles.emptyTransactionContainer}>
+            <MaterialCommunityIcons name="receipt" size={48} color="#d1d5db" />
+            <Text style={styles.emptyTransactionText}>No transactions yet</Text>
+            <Text style={styles.emptyTransactionSubtext}>
+              Your completed trades will appear here
+            </Text>
+          </View>
+        ) : (
+          filteredTransactions.map((transaction) => {
+            const isSale = transaction.tradeType === 'sell' || transaction.type === 'energy_sale';
+            const txDate = transaction.timestamp || transaction.createdAt || new Date();
+            
+            return (
+              <View key={transaction.id} style={styles.transactionItem}>
+                <View style={styles.transactionLeft}>
+                  <View style={[styles.transactionIcon, { backgroundColor: isSale ? '#d1fae5' : '#fef3c7' }]}>
+                    <MaterialCommunityIcons 
+                      name={isSale ? 'arrow-up' : 'arrow-down'} 
+                      size={18} 
+                      color={isSale ? '#10b981' : '#f59e0b'} 
+                    />
+                  </View>
+                  <View style={styles.transactionDetails}>
+                    <View style={styles.transactionHeaderRow}>
+                      <Text style={styles.transactionType}>
+                        {isSale ? 'Sale' : 'Purchase'}
+                      </Text>
+                      {selectedSiteId !== 'all' && selectedSite && (
+                        <View style={styles.siteBadge}>
+                          <Text style={styles.siteBadgeText}>{selectedSite.name.split(' - ')[0]}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.transactionDate}>{formatDate(txDate)}</Text>
+                    {transaction.counterPartyName && (
+                      <Text style={styles.transactionCounterParty}>
+                        {isSale ? 'To' : 'From'}: {transaction.counterPartyName}
+                      </Text>
+                    )}
+                    {transaction.energyAmount && (
+                      <Text style={styles.transactionEnergy}>
+                        {transaction.energyAmount} kWh @ ₹{transaction.pricePerUnit || 0}/kWh
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.transactionRight}>
+                  <Text style={[styles.transactionAmount, { color: isSale ? '#10b981' : '#ef4444' }]}>
+                    {isSale ? '+' : '-'}{formatCurrency(transaction.amount || 0)}
+                  </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: transaction.status === 'completed' ? '#d1fae5' : '#fef3c7' }]}>
+                    <Text style={[styles.statusBadgeText, { color: transaction.status === 'completed' ? '#065f46' : '#92400e' }]}>
+                      {transaction.status === 'completed' ? 'Completed' : transaction.status}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })
+        )}
       </View>
 
       {/* Monthly Summary */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Monthly Summary</Text>
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Generation Time</Text>
-            <Text style={styles.summaryValue}>18.5 hours/day</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Avg. Daily Revenue</Text>
-            <Text style={styles.summaryValue}>₹487</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Peak Trading Hours</Text>
-            <Text style={styles.summaryValue}>10 AM - 4 PM</Text>
+      {analytics && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Monthly Summary</Text>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryRowLeft}>
+                <MaterialCommunityIcons name="clock-outline" size={18} color="#6b7280" />
+                <Text style={styles.summaryLabel}>Generation Time</Text>
+              </View>
+              <Text style={styles.summaryValue}>{monthlySummary.generationTime}</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryRowLeft}>
+                <MaterialCommunityIcons name="currency-inr" size={18} color="#6b7280" />
+                <Text style={styles.summaryLabel}>Avg. Daily Revenue</Text>
+              </View>
+              <Text style={styles.summaryValue}>{monthlySummary.avgDailyRevenue}</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryRowLeft}>
+                <MaterialCommunityIcons name="chart-line" size={18} color="#6b7280" />
+                <Text style={styles.summaryLabel}>Peak Trading Hours</Text>
+              </View>
+              <Text style={styles.summaryValue}>{monthlySummary.peakTradingHours}</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryRowLeft}>
+                <MaterialCommunityIcons name="trending-up" size={18} color="#10b981" />
+                <Text style={styles.summaryLabel}>Net Revenue</Text>
+              </View>
+              <Text style={[styles.summaryValue, { color: monthlySummary.netRevenue >= 0 ? '#10b981' : '#ef4444' }]}>
+                {formatCurrency(monthlySummary.netRevenue)}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
+      )}
 
       {/* Empty Space */}
       <View style={{ height: 20 }} />
@@ -204,6 +1109,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
   header: {
     padding: 20,
@@ -295,11 +1203,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 24,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#1f2937',
-    marginBottom: 12,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: '#10b981',
+    fontWeight: '600',
+  },
+  transactionsLoadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transactionsLoadingText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#6b7280',
   },
   transactionItem: {
     backgroundColor: '#ffffff',
@@ -379,70 +1307,394 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1f2937',
   },
-  buyerSellerContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 8,
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  buyerSellerCard: {
-    width: Math.max(width * 0.65, 240),
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ef4444',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    marginTop: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  retryButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  transactionDetails: {
+    flex: 1,
+  },
+  transactionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  siteBadge: {
+    backgroundColor: '#e0e7ff',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  siteBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#4f46e5',
+  },
+  transactionCounterParty: {
+    fontSize: 11,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  transactionEnergy: {
+    fontSize: 11,
+    color: '#9ca3af',
+    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  emptyTransactionContainer: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTransactionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptyTransactionSubtext: {
+    fontSize: 13,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  summaryRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  selectorRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+    marginTop: 16,
+    paddingHorizontal: 16,
+  },
+  siteInfoCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#f0fdf4',
+  },
+  siteInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    gap: 12,
+  },
+  siteInfoTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    flex: 1,
+  },
+  siteInfoDetails: {
+    gap: 12,
+  },
+  siteInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+  },
+  siteInfoLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  siteInfoValue: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'right',
+  },
+  timeRangeContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    gap: 8,
+  },
+  timeRangeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     backgroundColor: '#ffffff',
     borderRadius: 12,
-    padding: 12,
-    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  timeRangeButtonActive: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  timeRangeText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  timeRangeTextActive: {
+    color: '#ffffff',
+  },
+  energyStatsContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  energyStatCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowRadius: 4,
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10b981',
   },
-  buyerCard: {
-    marginRight: 12,
+  energyStatLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6b7280',
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
-  sellerCard: {
-    marginRight: 0,
+  energyStatValue: {
+    fontSize: 20,
+    fontWeight: '700',
   },
-  cardHeader: {
+  allChartsContainer: {
+    marginTop: 16,
+  },
+  chartHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
-    paddingBottom: 10,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  noDataSubtext: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  chartSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  chartSelectorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chartSelectorText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    marginLeft: 10,
+  },
+  chartContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  chartWrapper: {
+    marginBottom: 8,
+  },
+  chartHint: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+  },
+  chartLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 6,
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  noDataContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  noDataText: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '50%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
-  cardTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginLeft: 8,
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
   },
-  buyerSellerItem: {
+  chartOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
-  userAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#e5e7eb',
-    justifyContent: 'center',
+  chartOptionSelected: {
+    backgroundColor: '#f0fdf4',
+  },
+  chartOptionContent: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 8,
   },
-  avatarText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1f2937',
+  chartOptionText: {
+    fontSize: 16,
+    color: '#374151',
+    marginLeft: 12,
   },
-  userName: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#1f2937',
-  },
-  userAmount: {
-    fontSize: 11,
-    fontWeight: '600',
+  chartOptionTextSelected: {
     color: '#10b981',
+    fontWeight: '600',
   },
 });
 

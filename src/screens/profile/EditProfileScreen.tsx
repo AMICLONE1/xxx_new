@@ -25,6 +25,7 @@ import { supabaseAuthService } from '@/services/supabase/authService';
 import { UserLocation } from '@/store/profileStore';
 import { useTheme } from '@/contexts';
 import { getThemedColors } from '@/utils/themedStyles';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 type EditProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditProfile'>;
 
@@ -173,9 +174,9 @@ export default function EditProfileScreen({ navigation }: Props) {
         console.log('[EditProfile] No address in cached location, switching to manual');
         setLocationType('manual');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // GPS failed - silently switch to manual mode without blocking popup
-      console.log('[EditProfile] GPS error, switching to manual mode:', error.message);
+      console.log('[EditProfile] GPS error, switching to manual mode:', getErrorMessage(error));
       setLocationType('manual');
       // No Alert.alert - just let user enter manually
     } finally {
@@ -253,7 +254,7 @@ export default function EditProfileScreen({ navigation }: Props) {
           },
         ]
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       Alert.alert('Error', 'Failed to open image picker. Please try again.');
     }
   };
@@ -264,8 +265,8 @@ export default function EditProfileScreen({ navigation }: Props) {
       const imageUrl = await supabaseStorageService.uploadProfileImage(imageUri);
       setProfilePictureUrl(imageUrl);
       updateDraft({ profilePictureUrl: imageUrl });
-    } catch (error: any) {
-      Alert.alert('Upload Failed', error.message || 'Failed to upload profile picture.');
+    } catch (error: unknown) {
+      Alert.alert('Upload Failed', getErrorMessage(error) || 'Failed to upload profile picture.');
     } finally {
       setIsUploadingImage(false);
     }
@@ -302,8 +303,8 @@ export default function EditProfileScreen({ navigation }: Props) {
       } else {
         throw new Error(response.error || 'Failed to update profile');
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save profile. Please try again.');
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error) || 'Failed to save profile. Please try again.');
     }
   };
 

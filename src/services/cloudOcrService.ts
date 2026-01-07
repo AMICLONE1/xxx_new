@@ -11,6 +11,7 @@
 
 import * as FileSystem from 'expo-file-system/legacy';
 import Constants from 'expo-constants';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 // Get API key from app.json extra or use placeholder
 const GOOGLE_CLOUD_VISION_API_KEY = Constants.expoConfig?.extra?.googleCloudVisionApiKey || 'NOT_CONFIGURED';
@@ -53,8 +54,8 @@ class CloudOCRService {
       });
 
       return base64;
-    } catch (error: any) {
-      console.error('Failed to convert image to base64:', error);
+    } catch (error: unknown) {
+      console.error('Failed to convert image to base64:', getErrorMessage(error));
       throw new Error('Failed to process image');
     }
   }
@@ -168,13 +169,13 @@ class CloudOCRService {
         success: true,
         method: 'cloud',
       };
-    } catch (error: any) {
-      console.error('Cloud OCR error:', error);
+    } catch (error: unknown) {
+      console.error('Cloud OCR error:', getErrorMessage(error));
       return {
         text: '',
         success: false,
         method: 'cloud',
-        error: error.message || 'OCR processing failed',
+        error: getErrorMessage(error) || 'OCR processing failed',
       };
     }
   }

@@ -1,6 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { logError, getErrorMessage } from '@/utils/errorUtils';
 
 // Get Supabase config from environment variables or app.json
 const supabaseUrl =
@@ -48,14 +49,14 @@ export const getCurrentUser = async () => {
 };
 
 // Helper function to get current session with timeout
-export const getCurrentSession = async () => {
+export const getCurrentSession = async (): Promise<Session | null> => {
   try {
     const sessionPromise = supabase.auth.getSession();
-    const timeoutPromise = new Promise((_, reject) =>
+    const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Session fetch timeout')), 10000)
     );
 
-    const result = await Promise.race([sessionPromise, timeoutPromise]) as any;
+    const result = await Promise.race([sessionPromise, timeoutPromise]);
     const { data: { session }, error } = result;
     
     if (error) {
@@ -65,10 +66,8 @@ export const getCurrentSession = async () => {
       throw error;
     }
     return session;
-  } catch (error: any) {
-    if (__DEV__) {
-      console.warn('⚠️ getCurrentSession error:', error.message);
-    }
+  } catch (error: unknown) {
+    logError('getCurrentSession', error);
     // Return null instead of throwing to allow app to continue
     return null;
   }

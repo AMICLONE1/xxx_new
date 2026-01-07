@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import { supabaseAuthService } from '@/services/supabase/authService';
 import { supabase } from '@/services/supabase/client';
 import { useKYCStore } from './kycStore';
+import { logError } from '@/utils/errorUtils';
 
 interface AuthState {
   user: User | null;
@@ -284,9 +285,9 @@ export const useAuthStore = create<AuthState>((set) => ({
           token: null,
           isLoading: false,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         clearTimeout(timeoutId);
-        console.error('Error in session restore:', error);
+        logError('restoreSession inner', error);
         set({
           user: null,
           isAuthenticated: false,
@@ -294,8 +295,8 @@ export const useAuthStore = create<AuthState>((set) => ({
           isLoading: false,
         });
       }
-    } catch (error: any) {
-      console.error('Error restoring session:', error);
+    } catch (error: unknown) {
+      logError('restoreSession outer', error);
       
       // Always set loading to false, even on error
       set({

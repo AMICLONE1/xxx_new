@@ -116,11 +116,14 @@ class ApiClient {
       }
       
       return responseData;
-    } catch (error: any) {
+    } catch (error: unknown) {
       clearTimeout(timeoutId);
       
+      const errorName = error instanceof Error ? error.name : '';
+      const errorMessage = error instanceof Error ? error.message : '';
+      
       // Enhanced error handling
-      if (error.name === 'AbortError') {
+      if (errorName === 'AbortError') {
         // Retry on timeout
         if (retryCount < this.maxRetries) {
           const delay = this.retryDelay * Math.pow(2, retryCount);
@@ -135,9 +138,9 @@ class ApiClient {
       }
       
       // Network errors (connection failed, DNS error, etc.)
-      if (error.message?.includes('Network request failed') || 
-          error.message?.includes('Failed to fetch') ||
-          error.message?.includes('NetworkError')) {
+      if (errorMessage.includes('Network request failed') || 
+          errorMessage.includes('Failed to fetch') ||
+          errorMessage.includes('NetworkError')) {
         // Retry on network errors
         if (retryCount < this.maxRetries) {
           const delay = this.retryDelay * Math.pow(2, retryCount);

@@ -1,27 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useKYCStore } from '@/store';
-import { kycService } from '@/services/api/kycService';
+import { useAuthStore } from '@/store';
 import { KYCStatus } from '@/types';
 
 export const useKYCStatus = (pollInterval: number = 30000) => {
-  const { status, setStatus, setKYCData } = useKYCStore();
+  const { overallStatus, fetchKYCDocuments, syncFromBackend } = useKYCStore();
+  const { user } = useAuthStore();
   const [isPolling, setIsPolling] = useState(false);
 
-  const checkStatus = async () => {
+  const checkStatus = useCallback(async () => {
+    if (!user?.id) return;
+    
     try {
-      const response = await kycService.getKYCStatus();
-      if (response.success && response.data) {
-        setKYCData(response.data);
-        setStatus(response.data.status);
-      }
+      await syncFromBackend(user.id);
     } catch (error) {
       console.error('Failed to check KYC status:', error);
     }
-  };
+  }, [user?.id, syncFromBackend]);
 
   useEffect(() => {
-    // Only poll if status is pending
-    if (status === 'pending' && !isPolling) {
+    // Only poll if status is pending and we have a user
+    if (overallStatus === 'pending' && !isPolling && user?.id) {
       setIsPolling(true);
       checkStatus();
 
@@ -34,10 +33,10 @@ export const useKYCStatus = (pollInterval: number = 30000) => {
         setIsPolling(false);
       };
     }
-  }, [status, pollInterval]);
+  }, [overallStatus, pollInterval, user?.id, isPolling, checkStatus]);
 
   return {
-    status,
+    status: overallStatus,
     isPolling,
     refreshStatus: checkStatus,
   };

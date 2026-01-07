@@ -1,5 +1,6 @@
 import { apiClient } from './client';
-import { Order, ApiResponse } from '@/types';
+import { Order, ApiResponse, Seller } from '@/types';
+import { getErrorMessage } from '@/utils/errorUtils';
 
 export interface CreateOrderRequest {
   sellerId: string;
@@ -46,20 +47,20 @@ class TradingService {
     maxPrice?: number;
     greenEnergyOnly?: boolean;
     minRating?: number;
-  }): Promise<ApiResponse<any[]>> {
+  }): Promise<ApiResponse<Seller[]>> {
     try {
       return await apiClient.post('/trading/search', filters);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Only log in development mode, and use debug level instead of error
       // The app gracefully falls back to mock data, so this isn't a critical error
       if (__DEV__) {
-        console.log('[API] Backend unavailable, using mock data:', error.code || 'NETWORK_ERROR');
+        console.log('[API] Backend unavailable, using mock data:', error instanceof Error && 'code' in error ? (error as { code: string }).code : 'NETWORK_ERROR');
       }
       
       // Return error response instead of throwing
       return {
         success: false,
-        error: error.message || 'Failed to search sellers. Backend API may be unavailable.',
+        error: getErrorMessage(error) || 'Failed to search sellers. Backend API may be unavailable.',
       };
     }
   }
