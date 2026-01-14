@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,8 +16,6 @@ import { RootStackParamList } from '@/types';
 import { useWalletStore } from '@/store';
 import { formatCurrency, formatEnergy, getTimeAgo } from '@/utils/helpers';
 import { Transaction } from '@/types';
-import { useTheme } from '@/contexts';
-import { getThemedColors } from '@/utils/themedStyles';
 
 type WalletScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Wallet'>;
 
@@ -25,10 +24,15 @@ interface Props {
 }
 
 export default function WalletScreen({ navigation }: Props) {
-  const { isDark } = useTheme();
-  const colors = getThemedColors(isDark);
-  
   const { wallet, transactions } = useWalletStore();
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    // Simulate refresh delay - data is managed by store
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setRefreshing(false);
+  };
 
   const handleTopUp = () => {
     navigation.navigate('TopUp');
@@ -38,36 +42,40 @@ export default function WalletScreen({ navigation }: Props) {
     navigation.navigate('Withdraw');
   };
 
+  const handleTransactionHistory = () => {
+    navigation.navigate('History');
+  };
+
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'energy_sale':
-        return <MaterialCommunityIcons name="lightning-bolt" size={24} color="#10b981" />;
+        return <MaterialCommunityIcons name="lightning-bolt" size={20} color="#10b981" />;
       case 'energy_purchase':
-        return <MaterialCommunityIcons name="flash" size={24} color="#3b82f6" />;
+        return <MaterialCommunityIcons name="flash" size={20} color="#3b82f6" />;
       case 'topup':
-        return <MaterialCommunityIcons name="plus-circle" size={24} color="#10b981" />;
+        return <MaterialCommunityIcons name="plus-circle" size={20} color="#10b981" />;
       case 'withdrawal':
-        return <MaterialCommunityIcons name="minus-circle" size={24} color="#ef4444" />;
+        return <MaterialCommunityIcons name="minus-circle" size={20} color="#ef4444" />;
       default:
-        return <Ionicons name="swap-horizontal" size={24} color="#6b7280" />;
+        return <Ionicons name="swap-horizontal" size={20} color="#6b7280" />;
     }
   };
 
   const renderTransaction = ({ item }: { item: Transaction }) => {
     const isPositive = item.type === 'energy_sale' || item.type === 'topup';
     const amountPrefix = isPositive ? '+' : '-';
-    const amountColor = isPositive ? colors.success : colors.error;
+    const amountColor = isPositive ? '#10b981' : '#ef4444';
 
     return (
-      <View style={[styles.transactionItem, { backgroundColor: colors.card }]}>
-        <View style={styles.transactionIconContainer}>
+      <View style={styles.transactionItem}>
+        <View style={[styles.transactionIconContainer, { backgroundColor: isPositive ? '#dcfce7' : '#fee2e2' }]}>
           {getTransactionIcon(item.type || '')}
         </View>
         <View style={styles.transactionInfo}>
-          <Text style={[styles.transactionType, { color: colors.text }]}>
+          <Text style={styles.transactionType}>
             {item.type ? item.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Transaction'}
           </Text>
-          <Text style={[styles.transactionTime, { color: colors.textMuted }]}>
+          <Text style={styles.transactionTime}>
             {item.createdAt ? getTimeAgo(item.createdAt) : 'Unknown time'}
           </Text>
         </View>
@@ -79,103 +87,112 @@ export default function WalletScreen({ navigation }: Props) {
     );
   };
 
+  // Calculate savings (mock data - can be replaced with actual calculation)
+  const savingsThisMonth = wallet ? Math.abs(wallet.cashBalance * 0.02) : 0;
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <LinearGradient
-        colors={['#10b981', '#059669']}
-        style={styles.gradientHeader}
-      >
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.headerTitle}>Wallet</Text>
-            <Text style={styles.headerSubtitle}>Manage your energy & cash balance</Text>
+            <Text style={styles.headerSubtitle}>Manage your balance</Text>
           </View>
-          <MaterialCommunityIcons name="wallet" size={32} color="#ffffff" />
+          <TouchableOpacity style={styles.profileButton}>
+            <Ionicons name="person" size={18} color="#3b82f6" />
+            <Text style={styles.profileButtonText}>Profile</Text>
+          </TouchableOpacity>
         </View>
-      </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          {/* Dual Balance Cards */}
-          {wallet ? (
-            <View style={styles.balanceContainer}>
-              {/* Energy Balance Card */}
-              <View style={styles.balanceCard}>
-                <LinearGradient
-                  colors={['#ecfdf5', '#d1fae5']}
-                  style={styles.balanceCardGradient}
-                >
-                  <View style={styles.balanceCardHeader}>
-                    <View style={[styles.balanceIconContainer, { backgroundColor: '#10b981' }]}>
-                      <MaterialCommunityIcons name="lightning-bolt" size={28} color="#ffffff" />
-                    </View>
-                    <Text style={styles.balanceLabel}>Energy Balance</Text>
-                  </View>
-                  <Text style={styles.balanceValue}>
-                    {formatEnergy(wallet.energyBalance, 'kWh')}
-                  </Text>
-                  <Text style={styles.balanceSubtext}>Available to sell</Text>
-                </LinearGradient>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />
+          }
+        >
+          {/* Main Balance Card */}
+          <View style={styles.balanceCard}>
+            <Text style={styles.balanceLabel}>Total Balance</Text>
+            <Text style={styles.balanceAmount}>
+              {wallet ? formatCurrency(wallet.cashBalance) : '₹0.00'}
+            </Text>
+
+            {/* Savings indicator */}
+            {savingsThisMonth > 0 && (
+              <View style={styles.savingsRow}>
+                <View style={styles.savingsBadge}>
+                  <Ionicons name="trending-up" size={14} color="#10b981" />
+                  <Text style={styles.savingsAmount}>{formatCurrency(savingsThisMonth)}</Text>
+                </View>
+                <Text style={styles.savingsText}>Nice job! You've saved this month</Text>
               </View>
+            )}
 
-              {/* Cash Balance Card */}
-              <View style={styles.balanceCard}>
-                <LinearGradient
-                  colors={['#fef3c7', '#fde68a']}
-                  style={styles.balanceCardGradient}
-                >
-                  <View style={styles.balanceCardHeader}>
-                    <View style={[styles.balanceIconContainer, { backgroundColor: '#f59e0b' }]}>
-                      <MaterialCommunityIcons name="currency-inr" size={28} color="#ffffff" />
-                    </View>
-                    <Text style={styles.balanceLabel}>Cash Balance</Text>
-                  </View>
-                  <Text style={styles.balanceValue}>{formatCurrency(wallet.cashBalance)}</Text>
-                  <Text style={styles.balanceSubtext}>Ready to withdraw</Text>
-                </LinearGradient>
+            {/* Energy Balance */}
+            <View style={styles.energyBalanceRow}>
+              <View style={styles.energyIcon}>
+                <MaterialCommunityIcons name="lightning-bolt" size={16} color="#3b82f6" />
               </View>
+              <Text style={styles.energyBalanceText}>
+                Energy: {wallet ? formatEnergy(wallet.energyBalance, 'kWh') : '0 kWh'}
+              </Text>
             </View>
-          ) : (
-            <View style={styles.emptyBalance}>
-              <MaterialCommunityIcons name="wallet-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyText}>No wallet data available</Text>
-            </View>
-          )}
+          </View>
 
-          {/* Action Buttons */}
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleTopUp} activeOpacity={0.8}>
-              <LinearGradient
-                colors={['#10b981', '#059669']}
-                style={styles.actionButtonGradient}
-              >
-                <Ionicons name="add-circle" size={24} color="#ffffff" />
-                <Text style={styles.actionButtonText}>Top Up</Text>
-              </LinearGradient>
+          {/* Action Buttons - 3 buttons in a row */}
+          <View style={styles.actionsContainer}>
+            {/* Top Up Button */}
+            <TouchableOpacity style={styles.actionButton} onPress={handleTopUp} activeOpacity={0.7}>
+              <View style={[styles.actionIconContainer, { backgroundColor: '#dbeafe' }]}>
+                <Ionicons name="arrow-up" size={22} color="#3b82f6" />
+              </View>
+              <Text style={styles.actionButtonText}>Top Up</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.withdrawButton, { borderColor: colors.primary }]}
-              onPress={handleWithdraw}
-              activeOpacity={0.8}
-            >
-              <View style={styles.withdrawButtonContent}>
-                <Ionicons name="cash-outline" size={24} color={colors.primary} />
-                <Text style={[styles.withdrawButtonText, { color: colors.primary }]}>Withdraw</Text>
+
+            {/* Transaction History Button - Center with different style */}
+            <TouchableOpacity style={styles.actionButton} onPress={handleTransactionHistory} activeOpacity={0.7}>
+              <View style={[styles.actionIconContainerMain]}>
+                <LinearGradient
+                  colors={['#3b82f6', '#2563eb']}
+                  style={styles.actionIconGradient}
+                >
+                  <MaterialCommunityIcons name="swap-horizontal" size={24} color="#ffffff" />
+                </LinearGradient>
               </View>
+              <Text style={styles.actionButtonText}>History</Text>
+            </TouchableOpacity>
+
+            {/* Withdraw Button */}
+            <TouchableOpacity style={styles.actionButton} onPress={handleWithdraw} activeOpacity={0.7}>
+              <View style={[styles.actionIconContainer, { backgroundColor: '#dbeafe' }]}>
+                <Ionicons name="arrow-down" size={22} color="#3b82f6" />
+              </View>
+              <Text style={styles.actionButtonText}>Withdraw</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Transaction History */}
+          {/* Recent Transactions Section */}
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Transaction History</Text>
+            <Text style={styles.sectionTitle}>Recent Transactions</Text>
             {transactions.length > 0 && (
-              <Text style={[styles.sectionCount, { color: colors.textMuted }]}>{transactions.length} transactions</Text>
+              <TouchableOpacity onPress={handleTransactionHistory}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
             )}
           </View>
+
           {transactions.length > 0 ? (
-            <View style={[styles.transactionsContainer, { backgroundColor: colors.card }]}>
+            <View style={styles.transactionsContainer}>
               <FlatList
-                data={transactions}
+                data={transactions.slice(0, 5)}
                 renderItem={renderTransaction}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
@@ -183,160 +200,207 @@ export default function WalletScreen({ navigation }: Props) {
               />
             </View>
           ) : (
-            <View style={[styles.emptyTransactions, { backgroundColor: colors.card }]}>
-              <MaterialCommunityIcons name="history" size={48} color={colors.textMuted} />
-              <Text style={[styles.emptyText, { color: colors.text }]}>No transactions yet</Text>
-              <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+            <View style={styles.emptyTransactions}>
+              <View style={styles.emptyIconContainer}>
+                <MaterialCommunityIcons name="history" size={40} color="#d1d5db" />
+              </View>
+              <Text style={styles.emptyText}>No transactions yet</Text>
+              <Text style={styles.emptySubtext}>
                 Your transaction history will appear here
               </Text>
             </View>
           )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+          {/* Quick Stats Cards */}
+          {wallet && (
+            <View style={styles.statsContainer}>
+              <View style={styles.statCard}>
+                <View style={[styles.statIcon, { backgroundColor: '#dcfce7' }]}>
+                  <MaterialCommunityIcons name="trending-up" size={20} color="#10b981" />
+                </View>
+                <Text style={styles.statLabel}>Energy Sold</Text>
+                <Text style={styles.statValue}>{formatEnergy(wallet.energyBalance * 0.3, 'kWh')}</Text>
+              </View>
+              <View style={styles.statCard}>
+                <View style={[styles.statIcon, { backgroundColor: '#dbeafe' }]}>
+                  <MaterialCommunityIcons name="cart" size={20} color="#3b82f6" />
+                </View>
+                <Text style={styles.statLabel}>Energy Bought</Text>
+                <Text style={styles.statValue}>{formatEnergy(wallet.energyBalance * 0.2, 'kWh')}</Text>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f0fdf4',
-  },
-  gradientHeader: {
-    paddingTop: 16,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 30,
+    paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#1e293b',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#d1fae5',
+    fontSize: 15,
+    color: '#64748b',
     fontWeight: '500',
+  },
+  profileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  profileButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
   },
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 20,
-  },
-  balanceContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   balanceCard: {
-    flex: 1,
-    borderRadius: 20,
-    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    marginTop: 10,
+    padding: 24,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 6,
   },
-  balanceCardGradient: {
-    padding: 20,
+  balanceLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 8,
   },
-  balanceCardHeader: {
+  balanceAmount: {
+    fontSize: 42,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 16,
+  },
+  savingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
     marginBottom: 16,
-    gap: 12,
   },
-  balanceIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  savingsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  savingsAmount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  savingsText: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  energyBalanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f9ff',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 8,
+  },
+  energyIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#dbeafe',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  balanceLabel: {
+  energyBalanceText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1e293b',
   },
-  balanceValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  balanceSubtext: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  emptyBalance: {
-    padding: 48,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#6b7280',
-    marginTop: 16,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  actions: {
+  actionsContainer: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-around',
+    alignItems: 'center',
     marginBottom: 32,
   },
   actionButton: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  actionIconContainerMain: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'hidden',
+    shadowColor: '#3b82f6',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
-  actionButtonGradient: {
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+  actionIconGradient: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
-    gap: 8,
+    alignItems: 'center',
   },
   actionButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
-  },
-  withdrawButton: {
-    backgroundColor: '#ffffff',
-    borderWidth: 2,
-    borderColor: '#10b981',
-  },
-  withdrawButtonContent: {
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  withdrawButtonText: {
-    color: '#10b981',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#374151',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -346,22 +410,24 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#1e293b',
   },
-  sectionCount: {
+  viewAllText: {
     fontSize: 14,
-    color: '#6b7280',
+    fontWeight: '600',
+    color: '#3b82f6',
   },
   transactionsContainer: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
+    marginBottom: 24,
   },
   transactionItem: {
     flexDirection: 'row',
@@ -369,10 +435,9 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   transactionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f3f4f6',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -381,28 +446,88 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   transactionType: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
+    color: '#1e293b',
+    marginBottom: 2,
   },
   transactionTime: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#64748b',
   },
   transactionAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
   },
   transactionSeparator: {
     height: 1,
-    backgroundColor: '#f3f4f6',
-    marginLeft: 76,
+    backgroundColor: '#f1f5f9',
+    marginLeft: 72,
   },
   emptyTransactions: {
-    padding: 48,
+    padding: 40,
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
   },
 });

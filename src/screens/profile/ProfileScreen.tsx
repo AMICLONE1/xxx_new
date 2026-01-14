@@ -77,7 +77,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const { currentMeter, removeMeter } = useMeterStore();
   const { overallStatus: kycStatus } = useKYCStore();
   const { themeMode, setThemeMode, restoreTheme } = useThemeStore();
-  
+
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
 
@@ -233,7 +233,7 @@ export default function ProfileScreen({ navigation }: Props) {
       }
     } catch (error: unknown) {
       if (__DEV__) {
-        console.error('❌ Upload error:', getErrorMessage(error));
+        console.error('Upload error:', getErrorMessage(error));
       }
       Alert.alert('Upload Failed', getErrorMessage(error) || 'Failed to upload profile picture. Please try again.');
     } finally {
@@ -255,61 +255,68 @@ export default function ProfileScreen({ navigation }: Props) {
       id: 'editProfile',
       title: 'Edit Profile',
       subtitle: 'Update your personal information',
-      icon: <MaterialCommunityIcons name="account-edit" size={24} color="#10b981" />,
+      icon: 'account-edit',
       onPress: () => navigation.navigate('EditProfile'),
     },
     {
       id: 'history',
       title: 'Transaction History',
       subtitle: 'View all your trades and analytics',
-      icon: <MaterialCommunityIcons name="history" size={24} color="#10b981" />,
+      icon: 'history',
       onPress: () => navigation.navigate('History'),
     },
     {
       id: 'tradingBot',
       title: 'Trading Bot Settings',
       subtitle: 'Configure auto-selling rules',
-      icon: <MaterialCommunityIcons name="robot" size={24} color="#10b981" />,
+      icon: 'robot',
       onPress: () => navigation.navigate('TradingBot'),
     },
     {
       id: 'theme',
       title: 'Theme Preference',
       subtitle: THEME_OPTIONS.find(t => t.value === themeMode)?.label || 'System Default',
-      icon: <Ionicons name={themeMode === 'dark' ? 'moon' : themeMode === 'light' ? 'sunny' : 'phone-portrait-outline'} size={24} color="#10b981" />,
+      icon: themeMode === 'dark' ? 'moon-waning-crescent' : themeMode === 'light' ? 'white-balance-sunny' : 'cellphone',
       onPress: () => setShowThemeModal(true),
     },
     {
       id: 'meter',
       title: 'Meter Settings',
       subtitle: 'Manage your smart meter',
-      icon: <MaterialCommunityIcons name="meter-electric" size={24} color="#10b981" />,
+      icon: 'meter-electric',
       onPress: () => navigation.navigate('MeterRegistration'),
     },
   ];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <LinearGradient
-        colors={['#10b981', '#059669']}
-        style={styles.gradientHeader}
-      >
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.headerTitle}>Profile</Text>
-            <Text style={styles.headerSubtitle}>Manage your account settings</Text>
+            <Text style={styles.headerSubtitle}>Manage your account</Text>
           </View>
-          <MaterialCommunityIcons name="account-circle" size={32} color="#ffffff" />
+          <TouchableOpacity style={styles.settingsButton}>
+            <Ionicons name="settings-outline" size={22} color="#3b82f6" />
+          </TouchableOpacity>
         </View>
-      </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          {/* User Info Card */}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* User Profile Card */}
           {user && (
-            <View style={[styles.userCard, { backgroundColor: colors.card }]}>
+            <View style={styles.profileCard}>
               <TouchableOpacity
-                style={styles.userAvatarContainer}
+                style={styles.avatarContainer}
                 onPress={handlePickImage}
                 disabled={isUploadingImage}
                 activeOpacity={0.7}
@@ -317,79 +324,82 @@ export default function ProfileScreen({ navigation }: Props) {
                 {user.profilePictureUrl ? (
                   <Image
                     source={{ uri: user.profilePictureUrl }}
-                    style={styles.userAvatarImage}
+                    style={styles.avatarImage}
                     resizeMode="cover"
                   />
                 ) : (
-                  <View style={[styles.userAvatar, { backgroundColor: colors.primaryLight }]}>
-                    <MaterialCommunityIcons name="account" size={48} color={colors.primary} />
+                  <View style={styles.avatarPlaceholder}>
+                    <MaterialCommunityIcons name="account" size={48} color="#3b82f6" />
                   </View>
                 )}
                 {isUploadingImage ? (
                   <View style={styles.uploadingOverlay}>
-                    <ActivityIndicator size="small" color={colors.primary} />
+                    <ActivityIndicator size="small" color="#ffffff" />
                   </View>
                 ) : (
-                  <View style={styles.cameraIconOverlay}>
-                    <Ionicons name="camera" size={20} color="#ffffff" />
+                  <View style={styles.cameraIcon}>
+                    <Ionicons name="camera" size={16} color="#ffffff" />
                   </View>
                 )}
               </TouchableOpacity>
-              <View style={styles.userInfo}>
-                <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>
-                  {user.name?.trim() || 'User'}
-                </Text>
-                <View style={styles.userDetailRow}>
-                  <Ionicons name="mail" size={16} color={colors.textSecondary} />
-                  <Text style={[styles.userDetail, { color: colors.textSecondary }]}>{user.email}</Text>
+
+              <Text style={styles.userName}>{user.name?.trim() || 'User'}</Text>
+
+              <View style={styles.userDetails}>
+                <View style={styles.userDetailItem}>
+                  <View style={styles.detailIconContainer}>
+                    <Ionicons name="mail-outline" size={16} color="#3b82f6" />
+                  </View>
+                  <Text style={styles.userDetailText} numberOfLines={1}>{user.email}</Text>
                 </View>
                 {user.phoneNumber && (
-                  <View style={styles.userDetailRow}>
-                    <Ionicons name="call" size={16} color={colors.textSecondary} />
-                    <Text style={[styles.userDetail, { color: colors.textSecondary }]}>{user.phoneNumber}</Text>
+                  <View style={styles.userDetailItem}>
+                    <View style={styles.detailIconContainer}>
+                      <Ionicons name="call-outline" size={16} color="#3b82f6" />
+                    </View>
+                    <Text style={styles.userDetailText}>{user.phoneNumber}</Text>
                   </View>
                 )}
               </View>
             </View>
           )}
 
-          {/* KYC Status Card */}
-          <TouchableOpacity
-            style={[styles.kycCard, { backgroundColor: colors.card }]}
-            onPress={() => navigation.navigate('KYC')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.kycHeader}>
-              <View style={[styles.kycIconContainer, { backgroundColor: colors.primaryLight }]}>
-                <MaterialCommunityIcons name="shield-check" size={24} color={colors.primary} />
+          {/* Quick Stats Row */}
+          <View style={styles.statsRow}>
+            {/* KYC Status */}
+            <TouchableOpacity
+              style={styles.statCard}
+              onPress={() => navigation.navigate('KYC')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.statIconContainer, { backgroundColor: kycConfig.badgeBg }]}>
+                <Ionicons name={kycConfig.icon as any} size={20} color={kycConfig.badgeColor} />
               </View>
-              <View style={styles.kycInfo}>
-                <View style={styles.kycTitleRow}>
-                  <Text style={[styles.kycTitle, { color: colors.text }]}>KYC Verification</Text>
-                  <View style={[styles.kycBadge, { backgroundColor: kycConfig.badgeBg }]}>
-                    <Ionicons name={kycConfig.icon as any} size={12} color={kycConfig.badgeColor} />
-                    <Text style={[styles.kycBadgeText, { color: kycConfig.badgeColor }]}>
-                      {kycConfig.badge}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={[styles.kycDescription, { color: colors.textSecondary }]}>{kycConfig.description}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            </View>
-          </TouchableOpacity>
+              <Text style={styles.statLabel}>KYC Status</Text>
+              <Text style={[styles.statValue, { color: kycConfig.badgeColor }]}>{kycConfig.badge}</Text>
+            </TouchableOpacity>
 
-          {/* Current Meter Info */}
+            {/* App Version */}
+            <View style={styles.statCard}>
+              <View style={[styles.statIconContainer, { backgroundColor: '#dbeafe' }]}>
+                <Ionicons name="information-circle-outline" size={20} color="#3b82f6" />
+              </View>
+              <Text style={styles.statLabel}>App Version</Text>
+              <Text style={styles.statValue}>v{getAppVersion()}</Text>
+            </View>
+          </View>
+
+          {/* Linked Meter Card */}
           {currentMeter && (
-            <View style={[styles.meterCard, { backgroundColor: colors.card }]}>
+            <View style={styles.meterCard}>
               <View style={styles.meterHeader}>
-                <View style={[styles.meterIconContainer, { backgroundColor: colors.primaryLight }]}>
-                  <MaterialCommunityIcons name="meter-electric" size={24} color={colors.primary} />
+                <View style={styles.meterIconContainer}>
+                  <MaterialCommunityIcons name="meter-electric" size={24} color="#3b82f6" />
                 </View>
                 <View style={styles.meterInfo}>
-                  <Text style={[styles.meterTitle, { color: colors.text }]}>Linked Meter</Text>
-                  <Text style={[styles.meterSerial, { color: colors.textSecondary }]}>{currentMeter.meterSerialId}</Text>
-                  <Text style={[styles.meterDiscom, { color: colors.textMuted }]}>{currentMeter.discomName}</Text>
+                  <Text style={styles.meterLabel}>Linked Meter</Text>
+                  <Text style={styles.meterSerial}>{currentMeter.meterSerialId}</Text>
+                  <Text style={styles.meterDiscom}>{currentMeter.discomName}</Text>
                 </View>
               </View>
               <TouchableOpacity
@@ -397,47 +407,36 @@ export default function ProfileScreen({ navigation }: Props) {
                 onPress={handleDeleteMeter}
                 activeOpacity={0.7}
               >
-                <MaterialCommunityIcons name="delete-outline" size={20} color="#ef4444" />
-                <Text style={styles.deleteMeterText}>Delete Meter</Text>
+                <MaterialCommunityIcons name="delete-outline" size={18} color="#ef4444" />
+                <Text style={styles.deleteMeterText}>Remove</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Menu Items */}
+          {/* Menu Section */}
           <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Settings</Text>
-            {menuItems.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.menuItem, { backgroundColor: colors.card }]}
-                onPress={item.onPress}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.menuIconContainer, { backgroundColor: colors.primaryLight }]}>
-                  {item.icon}
-                </View>
-                <View style={styles.menuContent}>
-                  <Text style={[styles.menuItemText, { color: colors.text }]}>{item.title}</Text>
-                  <Text style={[styles.menuItemSubtext, { color: colors.textSecondary }]}>{item.subtitle}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Account Info Section */}
-          <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Account</Text>
-            
-            {/* App Version */}
-            <View style={[styles.infoItem, { backgroundColor: colors.card }]}>
-              <View style={[styles.menuIconContainer, { backgroundColor: colors.primaryLight }]}>
-                <Ionicons name="information-circle" size={24} color={colors.primary} />
-              </View>
-              <View style={styles.menuContent}>
-                <Text style={[styles.menuItemText, { color: colors.text }]}>App Version</Text>
-                <Text style={[styles.menuItemSubtext, { color: colors.textSecondary }]}>v{getAppVersion()}</Text>
-              </View>
+            <Text style={styles.sectionTitle}>Settings</Text>
+            <View style={styles.menuCard}>
+              {menuItems.map((item, index) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.menuItem,
+                    index < menuItems.length - 1 && styles.menuItemBorder,
+                  ]}
+                  onPress={item.onPress}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.menuIconContainer}>
+                    <MaterialCommunityIcons name={item.icon as any} size={22} color="#3b82f6" />
+                  </View>
+                  <View style={styles.menuContent}>
+                    <Text style={styles.menuItemTitle}>{item.title}</Text>
+                    <Text style={styles.menuItemSubtitle}>{item.subtitle}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -447,164 +446,164 @@ export default function ProfileScreen({ navigation }: Props) {
             onPress={handleLogout}
             activeOpacity={0.8}
           >
-            <LinearGradient
-              colors={['#ef4444', '#dc2626']}
-              style={styles.logoutButtonGradient}
-            >
-              <Ionicons name="log-out-outline" size={20} color="#ffffff" />
+            <View style={styles.logoutButtonContent}>
+              <Ionicons name="log-out-outline" size={20} color="#ef4444" />
               <Text style={styles.logoutText}>Logout</Text>
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
+        </ScrollView>
 
-      {/* Theme Selection Modal */}
-      <Modal
-        visible={showThemeModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowThemeModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowThemeModal(false)}
+        {/* Theme Selection Modal */}
+        <Modal
+          visible={showThemeModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowThemeModal(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Theme Preference</Text>
-            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>Choose your preferred appearance</Text>
-            
-            {THEME_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.themeOption,
-                  { backgroundColor: colors.backgroundSecondary },
-                  themeMode === option.value && [styles.themeOptionActive, { borderColor: colors.primary }],
-                ]}
-                onPress={() => handleThemeChange(option.value)}
-                activeOpacity={0.7}
-              >
-                <View style={[
-                  styles.themeIconContainer,
-                  { backgroundColor: colors.primaryLight },
-                  themeMode === option.value && [styles.themeIconContainerActive, { backgroundColor: colors.primary }],
-                ]}>
-                  <Ionicons
-                    name={option.icon as any}
-                    size={24}
-                    color={themeMode === option.value ? '#ffffff' : colors.primary}
-                  />
-                </View>
-                <Text style={[
-                  styles.themeOptionText,
-                  { color: colors.text },
-                  themeMode === option.value && styles.themeOptionTextActive,
-                ]}>
-                  {option.label}
-                </Text>
-                {themeMode === option.value && (
-                  <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
-            
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setShowThemeModal(false)}
-            >
-              <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </SafeAreaView>
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowThemeModal(false)}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Theme Preference</Text>
+                <TouchableOpacity onPress={() => setShowThemeModal(false)}>
+                  <Ionicons name="close" size={24} color="#1e293b" />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.modalSubtitle}>Choose your preferred appearance</Text>
+
+              {THEME_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.themeOption,
+                    themeMode === option.value && styles.themeOptionActive,
+                  ]}
+                  onPress={() => handleThemeChange(option.value)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[
+                    styles.themeIconContainer,
+                    themeMode === option.value && styles.themeIconContainerActive,
+                  ]}>
+                    <Ionicons
+                      name={option.icon as any}
+                      size={22}
+                      color={themeMode === option.value ? '#ffffff' : '#3b82f6'}
+                    />
+                  </View>
+                  <Text style={[
+                    styles.themeOptionText,
+                    themeMode === option.value && styles.themeOptionTextActive,
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {themeMode === option.value && (
+                    <Ionicons name="checkmark-circle" size={22} color="#3b82f6" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f0fdf4',
-  },
-  gradientHeader: {
-    paddingTop: 16,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#1e293b',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#d1fae5',
+    fontSize: 15,
+    color: '#64748b',
     fontWeight: '500',
+  },
+  settingsButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 20,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  userCard: {
+  // Profile Card
+  profileCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 24,
-    marginBottom: 24,
-    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
-    elevation: 4,
+    elevation: 6,
   },
-  userAvatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: 16,
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 16,
     position: 'relative',
-    overflow: 'hidden',
-    backgroundColor: '#ecfdf5',
-    alignSelf: 'flex-start',
   },
-  userAvatar: {
+  avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 40,
-    backgroundColor: '#ecfdf5',
+    borderRadius: 50,
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
+    backgroundColor: '#dbeafe',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  userAvatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 40,
-  },
-  cameraIconOverlay: {
+  cameraIcon: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#10b981',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#3b82f6',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#ffffff',
-    zIndex: 1,
   },
   uploadingOverlay: {
     position: 'absolute',
@@ -613,58 +612,171 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 40,
+    borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 2,
-  },
-  userInfo: {
-    flex: 1,
-    justifyContent: 'center',
   },
   userName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
   },
-  userDetailRow: {
+  userDetails: {
+    gap: 8,
+    width: '100%',
+  },
+  userDetailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    justifyContent: 'center',
     gap: 8,
   },
-  userDetail: {
-    fontSize: 14,
-    color: '#6b7280',
+  detailIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#dbeafe',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  userDetailText: {
+    fontSize: 14,
+    color: '#64748b',
+    maxWidth: 200,
+  },
+  // Stats Row
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  statIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  // Meter Card
+  meterCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  meterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  meterIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#dbeafe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  meterInfo: {
+    flex: 1,
+  },
+  meterLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  meterSerial: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  meterDiscom: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  deleteMeterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    gap: 6,
+  },
+  deleteMeterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+  // Menu Section
   menuSection: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
     marginBottom: 12,
+  },
+  menuCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+  },
+  menuItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
   menuIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#ecfdf5',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#dbeafe',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -672,172 +784,38 @@ const styles = StyleSheet.create({
   menuContent: {
     flex: 1,
   },
-  menuItemText: {
-    fontSize: 16,
+  menuItemTitle: {
+    fontSize: 15,
     fontWeight: '600',
-    color: '#111827',
+    color: '#1e293b',
     marginBottom: 2,
   },
-  menuItemSubtext: {
+  menuItemSubtitle: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#64748b',
   },
+  // Logout Button
   logoutButton: {
+    backgroundColor: '#ffffff',
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#fecaca',
     overflow: 'hidden',
-    marginTop: 8,
-    marginBottom: 40,
-    shadowColor: '#ef4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    marginBottom: 20,
   },
-  logoutButtonGradient: {
-    paddingVertical: 16,
+  logoutButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 16,
     gap: 8,
   },
   logoutText: {
-    color: '#ffffff',
     fontSize: 16,
-    fontWeight: '600',
-  },
-  meterCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  meterHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  meterIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#ecfdf5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  meterInfo: {
-    flex: 1,
-  },
-  meterTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  meterSerial: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  meterDiscom: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  deleteMeterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#fecaca',
-    gap: 8,
-  },
-  deleteMeterText: {
-    fontSize: 14,
     fontWeight: '600',
     color: '#ef4444',
   },
-  // KYC Card styles
-  kycCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  kycHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  kycIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#ecfdf5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  kycInfo: {
-    flex: 1,
-  },
-  kycTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  kycTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginRight: 8,
-  },
-  kycBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  kycBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  kycDescription: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  // Info item style
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  // Modal styles
+  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -850,64 +828,57 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 360,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: '#1e293b',
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
+    color: '#64748b',
     marginBottom: 20,
   },
   themeOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 14,
     marginBottom: 8,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f8fafc',
     borderWidth: 2,
     borderColor: 'transparent',
   },
   themeOptionActive: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#10b981',
+    backgroundColor: '#eff6ff',
+    borderColor: '#3b82f6',
   },
   themeIconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: '#ecfdf5',
+    borderRadius: 12,
+    backgroundColor: '#dbeafe',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   themeIconContainerActive: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#3b82f6',
   },
   themeOptionText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#374151',
   },
   themeOptionTextActive: {
-    color: '#111827',
-  },
-  modalCloseButton: {
-    marginTop: 12,
-    padding: 14,
-    alignItems: 'center',
-  },
-  modalCloseText: {
-    fontSize: 16,
-    color: '#6b7280',
-    fontWeight: '600',
+    color: '#1e293b',
   },
 });
