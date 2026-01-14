@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, FlatList } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Dimensions, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
@@ -30,8 +30,6 @@ const AnalyticsScreen = () => {
   const [sites, setSites] = useState<Site[]>([]);
   const [userSites, setUserSites] = useState<{ id: string; name: string; }[]>([]);
   const [analytics, setAnalytics] = useState<SiteAnalytics | null>(null);
-  const [selectedChartType, setSelectedChartType] = useState<string>('none');
-  const [showChartModal, setShowChartModal] = useState(false);
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month'>('day');
   const [loading, setLoading] = useState(true);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
@@ -102,15 +100,6 @@ const AnalyticsScreen = () => {
     // Reset meter selection when sites change
     setSelectedMeterId('all');
   }, []);
-
-  // Chart types
-  const chartTypes = [
-    { id: 'none', name: 'No Chart', icon: 'close-circle' },
-    { id: 'generation', name: 'Generation (kW)', icon: 'solar-power' },
-    { id: 'consumption', name: 'Consumption (kW)', icon: 'flash' },
-    { id: 'comparison', name: 'Generation vs Consumption', icon: 'chart-line' },
-    { id: 'netExport', name: 'Net Export', icon: 'swap-horizontal' },
-  ];
 
   // Load analytics function
   const loadAnalytics = useCallback(async (showRefresh = false) => {
@@ -439,23 +428,25 @@ const AnalyticsScreen = () => {
   };
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />
-      }
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
     >
-      {/* Header */}
-      <LinearGradient colors={['#10b981', '#059669']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Analytics</Text>
-            <Text style={styles.headerSubtitle}>Your Energy & Trading Performance</Text>
-          </View>
+      <ScrollView
+        style={[styles.container, { backgroundColor: 'transparent' }]}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />
+        }
+      >
+        {/* Header */}
+        <View style={styles.headerSimple}>
+          <Text style={styles.headerTitleNew}>Energy Analytics</Text>
+          <Text style={styles.headerSubtitleNew}>Your Trading Performance</Text>
         </View>
-      </LinearGradient>
 
       {/* Site & Meter Selector Row */}
       {(userSites.length > 0 || meters.length > 0) && (
@@ -523,48 +514,76 @@ const AnalyticsScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Energy Stats Cards */}
+      {/* Key Metrics Section */}
       {chartData.generation && chartData.generation.length > 0 && chartData.labels[0] !== 'No Data' && (
-        <View style={styles.energyStatsContainer}>
-          <View style={styles.statsRow}>
-            <View style={[styles.energyStatCard, { marginRight: 6 }]}>
-              <Text style={styles.energyStatLabel}>AVG GENERATION</Text>
-              <Text style={[styles.energyStatValue, { color: '#10b981' }]}>
-                {stats.avgGeneration.toFixed(2)} kW
+        <View style={styles.energyMetricsSection}>
+          <Text style={styles.sectionTitleNew}>Key Metrics</Text>
+
+          {/* Row 1: Average Generation | Peak Generation */}
+          <View style={styles.metricsRow}>
+            <View style={styles.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
+                <MaterialCommunityIcons name="solar-power" size={18} color="#10b981" />
+              </View>
+              <Text style={styles.metricLabel}>AVG GENERATION</Text>
+              <Text style={styles.metricValue}>
+                {stats.avgGeneration.toFixed(2)} <Text style={styles.metricUnit}>kW</Text>
               </Text>
             </View>
-            <View style={[styles.energyStatCard, { marginLeft: 6 }]}>
-              <Text style={styles.energyStatLabel}>PEAK GENERATION</Text>
-              <Text style={[styles.energyStatValue, { color: '#10b981' }]}>
-                {stats.maxGeneration.toFixed(2)} kW
-              </Text>
-            </View>
-          </View>
-          <View style={styles.statsRow}>
-            <View style={[styles.energyStatCard, { marginRight: 6 }]}>
-              <Text style={styles.energyStatLabel}>AVG CONSUMPTION</Text>
-              <Text style={[styles.energyStatValue, { color: '#ef4444' }]}>
-                {stats.avgConsumption.toFixed(2)} kW
-              </Text>
-            </View>
-            <View style={[styles.energyStatCard, { marginLeft: 6 }]}>
-              <Text style={styles.energyStatLabel}>PEAK CONSUMPTION</Text>
-              <Text style={[styles.energyStatValue, { color: '#ef4444' }]}>
-                {stats.maxConsumption.toFixed(2)} kW
+
+            <View style={styles.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
+                <MaterialCommunityIcons name="lightning-bolt" size={18} color="#10b981" />
+              </View>
+              <Text style={styles.metricLabel}>PEAK GENERATION</Text>
+              <Text style={styles.metricValue}>
+                {stats.maxGeneration.toFixed(2)} <Text style={styles.metricUnit}>kW</Text>
               </Text>
             </View>
           </View>
-          <View style={styles.statsRow}>
-            <View style={[styles.energyStatCard, { marginRight: 6 }]}>
-              <Text style={styles.energyStatLabel}>TOTAL GENERATED</Text>
-              <Text style={[styles.energyStatValue, { color: '#10b981' }]}>
-                {stats.totalGenerated.toFixed(2)} kWh
+
+          {/* Row 2: Average Consumption | Peak Consumption */}
+          <View style={styles.metricsRow}>
+            <View style={styles.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: '#fee2e2' }]}>
+                <MaterialCommunityIcons name="flash" size={18} color="#ef4444" />
+              </View>
+              <Text style={styles.metricLabel}>AVG CONSUMPTION</Text>
+              <Text style={styles.metricValue}>
+                {stats.avgConsumption.toFixed(2)} <Text style={styles.metricUnit}>kW</Text>
               </Text>
             </View>
-            <View style={[styles.energyStatCard, { marginLeft: 6 }]}>
-              <Text style={styles.energyStatLabel}>NET EXPORT</Text>
-              <Text style={[styles.energyStatValue, { color: stats.netExported >= 0 ? '#10b981' : '#ef4444' }]}>
-                {stats.netExported >= 0 ? '+' : ''}{stats.netExported.toFixed(2)} kWh
+
+            <View style={styles.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: '#fee2e2' }]}>
+                <MaterialCommunityIcons name="flash-alert" size={18} color="#ef4444" />
+              </View>
+              <Text style={styles.metricLabel}>PEAK CONSUMPTION</Text>
+              <Text style={styles.metricValue}>
+                {stats.maxConsumption.toFixed(2)} <Text style={styles.metricUnit}>kW</Text>
+              </Text>
+            </View>
+          </View>
+
+          {/* Row 3: Total Generated | Net Export */}
+          <View style={styles.metricsRow}>
+            <View style={styles.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
+                <MaterialCommunityIcons name="chart-bar" size={18} color="#10b981" />
+              </View>
+              <Text style={styles.metricLabel}>TOTAL GENERATED</Text>
+              <Text style={styles.metricValue}>
+                {stats.totalGenerated.toFixed(2)} <Text style={styles.metricUnit}>kWh</Text>
+              </Text>
+            </View>
+
+            <View style={styles.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: stats.netExported >= 0 ? '#dcfce7' : '#fee2e2' }]}>
+                <MaterialCommunityIcons name="swap-horizontal" size={18} color={stats.netExported >= 0 ? '#10b981' : '#ef4444'} />
+              </View>
+              <Text style={styles.metricLabel}>NET EXPORT</Text>
+              <Text style={[styles.metricValue, { color: stats.netExported >= 0 ? '#10b981' : '#ef4444' }]}>
+                {stats.netExported >= 0 ? '+' : ''}{stats.netExported.toFixed(2)} <Text style={styles.metricUnit}>kWh</Text>
               </Text>
             </View>
           </View>
@@ -693,230 +712,198 @@ const AnalyticsScreen = () => {
         </View>
       )}
 
-      {/* Chart Selector Dropdown */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Energy Charts</Text>
-        <TouchableOpacity
-          style={styles.chartSelector}
-          onPress={() => setShowChartModal(true)}
-        >
-          <View style={styles.chartSelectorContent}>
-            <MaterialCommunityIcons 
-              name={chartTypes.find(c => c.id === selectedChartType)?.icon as any || 'chart-line'} 
-              size={20} 
-              color="#10b981" 
-            />
-            <Text style={styles.chartSelectorText}>
-              {chartTypes.find(c => c.id === selectedChartType)?.name || 'Select Chart'}
-            </Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-down" size={20} color="#6b7280" />
-        </TouchableOpacity>
+      {/* Graphical Analysis Section */}
+      <View style={styles.chartsSection}>
+        <Text style={styles.sectionTitleNew}>Graphical Analysis</Text>
 
-        {/* Show all charts when data is available */}
-        {chartData.generation && chartData.generation.length > 0 && chartData.labels[0] !== 'No Data' && (
-          <View style={styles.allChartsContainer}>
-            {/* Generation Chart */}
-            {(selectedChartType === 'none' || selectedChartType === 'generation') && (
-              <View style={styles.chartContainer}>
-                <View style={styles.chartHeader}>
-                  <Text style={styles.chartTitle}>Generation (kW)</Text>
+        {chartData.generation && chartData.generation.length > 0 && chartData.labels[0] !== 'No Data' ? (
+          <>
+            {/* 1. Generation Trends */}
+            <View style={styles.chartCard}>
+              <View style={styles.chartCardHeader}>
+                <Text style={styles.chartCardTitle}>Generation Trends</Text>
+                <View style={styles.chartLegend}>
+                  <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
+                  <Text style={styles.legendText}>kW</Text>
+                </View>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                <LineChart
+                  data={{
+                    labels: chartData.labels,
+                    datasets: [{
+                      data: chartData.generation.length > 0 ? chartData.generation : [0],
+                      color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                      strokeWidth: 2,
+                    }],
+                  }}
+                  width={Math.max(width - 48, chartData.generation.length * 8)}
+                  height={220}
+                  chartConfig={{
+                    backgroundColor: '#ffffff',
+                    backgroundGradientFrom: '#ffffff',
+                    backgroundGradientTo: '#ffffff',
+                    decimalPlaces: 2,
+                    color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                    propsForDots: { r: '4', strokeWidth: '2', stroke: '#10b981' },
+                    propsForBackgroundLines: {
+                      strokeDasharray: '',
+                      stroke: '#e5e7eb',
+                      strokeWidth: 1,
+                    },
+                  }}
+                  bezier
+                  style={styles.chart}
+                  withDots={true}
+                  withShadow={false}
+                />
+              </ScrollView>
+            </View>
+
+            {/* 2. Consumption Patterns */}
+            <View style={styles.chartCard}>
+              <View style={styles.chartCardHeader}>
+                <Text style={styles.chartCardTitle}>Consumption Patterns</Text>
+                <View style={styles.chartLegend}>
+                  <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+                  <Text style={styles.legendText}>kW</Text>
+                </View>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                <LineChart
+                  data={{
+                    labels: chartData.labels,
+                    datasets: [{
+                      data: chartData.consumption && chartData.consumption.length > 0 ? chartData.consumption : [0],
+                      color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+                      strokeWidth: 2,
+                    }],
+                  }}
+                  width={Math.max(width - 48, (chartData.consumption?.length || 1) * 8)}
+                  height={220}
+                  chartConfig={{
+                    backgroundColor: '#ffffff',
+                    backgroundGradientFrom: '#ffffff',
+                    backgroundGradientTo: '#ffffff',
+                    decimalPlaces: 2,
+                    color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                    propsForDots: { r: '4', strokeWidth: '2', stroke: '#ef4444' },
+                    propsForBackgroundLines: {
+                      strokeDasharray: '',
+                      stroke: '#e5e7eb',
+                      strokeWidth: 1,
+                    },
+                  }}
+                  bezier
+                  style={styles.chart}
+                  withDots={true}
+                  withShadow={false}
+                />
+              </ScrollView>
+            </View>
+
+            {/* 3. Generation vs Consumption */}
+            <View style={styles.chartCard}>
+              <View style={styles.chartCardHeader}>
+                <Text style={styles.chartCardTitle}>Generation vs Consumption</Text>
+                <View style={styles.chartLegend}>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
-                    <Text style={styles.legendText}>Generation</Text>
+                    <Text style={styles.legendText}>Gen</Text>
                   </View>
-                </View>
-                <Text style={styles.chartHint}>Tap on points to see details</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-                  <LineChart
-                    data={{
-                      labels: chartData.labels,
-                      datasets: [{
-                        data: chartData.generation.length > 0 ? chartData.generation : [0],
-                        color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
-                        strokeWidth: 2,
-                      }],
-                    }}
-                    width={Math.max(width - 48, chartData.generation.length * 8)}
-                    height={280}
-                    chartConfig={{
-                      backgroundColor: '#ffffff',
-                      backgroundGradientFrom: '#ffffff',
-                      backgroundGradientTo: '#ffffff',
-                      decimalPlaces: 2,
-                      color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-                      propsForDots: { r: '5', strokeWidth: '2', stroke: '#10b981' },
-                      propsForBackgroundLines: {
-                        strokeDasharray: '',
-                        stroke: '#e5e7eb',
-                        strokeWidth: 1,
-                      },
-                    }}
-                    bezier
-                    style={styles.chart}
-                    withInnerLines={true}
-                    withOuterLines={true}
-                    withVerticalLines={true}
-                    withHorizontalLines={true}
-                    withDots={true}
-                    withShadow={false}
-                  />
-                </ScrollView>
-              </View>
-            )}
-
-            {/* Consumption Chart */}
-            {(selectedChartType === 'none' || selectedChartType === 'consumption') && (
-              <View style={styles.chartContainer}>
-                <View style={styles.chartHeader}>
-                  <Text style={styles.chartTitle}>Consumption (kW)</Text>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
-                    <Text style={styles.legendText}>Consumption</Text>
+                    <Text style={styles.legendText}>Con</Text>
                   </View>
                 </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-                  <LineChart
-                    data={{
-                      labels: chartData.labels,
-                      datasets: [{
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                <LineChart
+                  data={{
+                    labels: chartData.labels,
+                    datasets: [
+                      {
+                        data: chartData.generation && chartData.generation.length > 0 ? chartData.generation : [0],
+                        color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                        strokeWidth: 2,
+                      },
+                      {
                         data: chartData.consumption && chartData.consumption.length > 0 ? chartData.consumption : [0],
                         color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
                         strokeWidth: 2,
-                      }],
-                    }}
-                    width={Math.max(width - 48, (chartData.consumption?.length || 1) * 8)}
-                    height={220}
-                    chartConfig={{
-                      backgroundColor: '#ffffff',
-                      backgroundGradientFrom: '#ffffff',
-                      backgroundGradientTo: '#ffffff',
-                      decimalPlaces: 2,
-                      color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-                      propsForDots: { r: '4', strokeWidth: '2', stroke: '#ef4444' },
-                      propsForBackgroundLines: {
-                        strokeDasharray: '',
-                        stroke: '#e5e7eb',
-                        strokeWidth: 1,
                       },
-                    }}
-                    bezier
-                    style={styles.chart}
-                    withDots={true}
-                    withShadow={false}
-                  />
-                </ScrollView>
-              </View>
-            )}
+                    ],
+                  }}
+                  width={Math.max(width - 48, (chartData.generation?.length || 1) * 8)}
+                  height={220}
+                  chartConfig={{
+                    backgroundColor: '#ffffff',
+                    backgroundGradientFrom: '#ffffff',
+                    backgroundGradientTo: '#ffffff',
+                    decimalPlaces: 2,
+                    color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                    propsForDots: { r: '4', strokeWidth: '2', stroke: '#10b981' },
+                    propsForBackgroundLines: {
+                      strokeDasharray: '',
+                      stroke: '#e5e7eb',
+                      strokeWidth: 1,
+                    },
+                  }}
+                  bezier
+                  style={styles.chart}
+                  withDots={true}
+                  withShadow={false}
+                />
+              </ScrollView>
+            </View>
 
-            {/* Generation vs Consumption Comparison */}
-            {(selectedChartType === 'none' || selectedChartType === 'comparison') && (
-              <View style={styles.chartContainer}>
-                <View style={styles.chartHeader}>
-                  <Text style={styles.chartTitle}>Generation vs Consumption</Text>
-                  <View style={styles.chartLegend}>
-                    <View style={styles.legendItem}>
-                      <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
-                      <Text style={styles.legendText}>Gen</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                      <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
-                      <Text style={styles.legendText}>Con</Text>
-                    </View>
-                  </View>
+            {/* 4. Net Export Over Time */}
+            <View style={styles.chartCard}>
+              <View style={styles.chartCardHeader}>
+                <Text style={styles.chartCardTitle}>Net Export Over Time</Text>
+                <View style={styles.chartLegend}>
+                  <View style={[styles.legendDot, { backgroundColor: '#3b82f6' }]} />
+                  <Text style={styles.legendText}>kW</Text>
                 </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-                  <LineChart
-                    data={{
-                      labels: chartData.labels,
-                      datasets: [
-                        {
-                          data: chartData.generation && chartData.generation.length > 0 ? chartData.generation : [0],
-                          color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
-                          strokeWidth: 2,
-                        },
-                        {
-                          data: chartData.consumption && chartData.consumption.length > 0 ? chartData.consumption : [0],
-                          color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
-                          strokeWidth: 2,
-                        },
-                      ],
-                    }}
-                    width={Math.max(width - 48, (chartData.generation?.length || 1) * 8)}
-                    height={220}
-                    chartConfig={{
-                      backgroundColor: '#ffffff',
-                      backgroundGradientFrom: '#ffffff',
-                      backgroundGradientTo: '#ffffff',
-                      decimalPlaces: 2,
-                      color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-                      propsForDots: { r: '4', strokeWidth: '2', stroke: '#10b981' },
-                      propsForBackgroundLines: {
-                        strokeDasharray: '',
-                        stroke: '#e5e7eb',
-                        strokeWidth: 1,
-                      },
-                    }}
-                    bezier
-                    style={styles.chart}
-                    withDots={true}
-                    withShadow={false}
-                  />
-                </ScrollView>
               </View>
-            )}
-
-            {/* Net Export Chart */}
-            {(selectedChartType === 'none' || selectedChartType === 'netExport') && (
-              <View style={styles.chartContainer}>
-                <View style={styles.chartHeader}>
-                  <Text style={styles.chartTitle}>Net Export</Text>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#3b82f6' }]} />
-                    <Text style={styles.legendText}>Net Export</Text>
-                  </View>
-                </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-                  <LineChart
-                    data={{
-                      labels: chartData.labels,
-                      datasets: [{
-                        data: chartData.netExport && chartData.netExport.length > 0 ? chartData.netExport : [0],
-                        color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
-                        strokeWidth: 2,
-                      }],
-                    }}
-                    width={Math.max(width - 48, (chartData.netExport?.length || 1) * 8)}
-                    height={220}
-                    chartConfig={{
-                      backgroundColor: '#ffffff',
-                      backgroundGradientFrom: '#ffffff',
-                      backgroundGradientTo: '#ffffff',
-                      decimalPlaces: 2,
+              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                <LineChart
+                  data={{
+                    labels: chartData.labels,
+                    datasets: [{
+                      data: chartData.netExport && chartData.netExport.length > 0 ? chartData.netExport : [0],
                       color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-                      propsForDots: { r: '4', strokeWidth: '2', stroke: '#3b82f6' },
-                      propsForBackgroundLines: {
-                        strokeDasharray: '',
-                        stroke: '#e5e7eb',
-                        strokeWidth: 1,
-                      },
-                    }}
-                    bezier
-                    style={styles.chart}
-                    withDots={true}
-                    withShadow={false}
-                  />
-                </ScrollView>
-              </View>
-            )}
-          </View>
-        )}
-
-        {(!chartData.generation || chartData.generation.length === 0 || chartData.labels[0] === 'No Data') && (
+                      strokeWidth: 2,
+                    }],
+                  }}
+                  width={Math.max(width - 48, (chartData.netExport?.length || 1) * 8)}
+                  height={220}
+                  chartConfig={{
+                    backgroundColor: '#ffffff',
+                    backgroundGradientFrom: '#ffffff',
+                    backgroundGradientTo: '#ffffff',
+                    decimalPlaces: 2,
+                    color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                    propsForDots: { r: '4', strokeWidth: '2', stroke: '#3b82f6' },
+                    propsForBackgroundLines: {
+                      strokeDasharray: '',
+                      stroke: '#e5e7eb',
+                      strokeWidth: 1,
+                    },
+                  }}
+                  bezier
+                  style={styles.chart}
+                  withDots={true}
+                  withShadow={false}
+                />
+              </ScrollView>
+            </View>
+          </>
+        ) : (
           <View style={styles.noDataContainer}>
             <MaterialCommunityIcons name="chart-line-variant" size={48} color="#d1d5db" />
             <Text style={styles.noDataText}>No chart data available</Text>
@@ -925,64 +912,10 @@ const AnalyticsScreen = () => {
         )}
       </View>
 
-      {/* Chart Type Modal */}
-      <Modal
-        visible={showChartModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowChartModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Chart Type</Text>
-              <TouchableOpacity onPress={() => setShowChartModal(false)}>
-                <MaterialCommunityIcons name="close" size={24} color="#111827" />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={chartTypes}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.chartOption,
-                    selectedChartType === item.id && styles.chartOptionSelected,
-                  ]}
-                  onPress={() => {
-                    setSelectedChartType(item.id);
-                    setShowChartModal(false);
-                  }}
-                >
-                  <View style={styles.chartOptionContent}>
-                    <MaterialCommunityIcons
-                      name={item.icon as any}
-                      size={24}
-                      color={selectedChartType === item.id ? '#10b981' : '#6b7280'}
-                    />
-                    <Text
-                      style={[
-                        styles.chartOptionText,
-                        selectedChartType === item.id && styles.chartOptionTextSelected,
-                      ]}
-                    >
-                      {item.name}
-                    </Text>
-                  </View>
-                  {selectedChartType === item.id && (
-                    <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
-
       {/* Recent Transactions */}
-      <View style={styles.section}>
+      <View style={styles.transactionsSection}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Transactions</Text>
+          <Text style={styles.sectionTitleNew}>Recent Transactions</Text>
           {filteredTransactions.length > 0 && (
             <TouchableOpacity onPress={() => navigation.navigate('History')}>
               <Text style={styles.viewAllText}>View All</Text>
@@ -1059,9 +992,9 @@ const AnalyticsScreen = () => {
 
       {/* Monthly Summary */}
       {analytics && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Monthly Summary</Text>
-          <View style={styles.summaryCard}>
+        <View style={styles.monthlySummarySection}>
+          <Text style={styles.sectionTitleNew}>Monthly Summary</Text>
+          <View style={styles.summaryCardNew}>
             <View style={styles.summaryRow}>
               <View style={styles.summaryRowLeft}>
                 <MaterialCommunityIcons name="clock-outline" size={18} color="#6b7280" />
@@ -1101,7 +1034,8 @@ const AnalyticsScreen = () => {
 
       {/* Empty Space */}
       <View style={{ height: 20 }} />
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   );
 };
 
@@ -1570,27 +1504,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
-  chartSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  chartSelectorContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  chartSelectorText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-    marginLeft: 10,
-  },
   chartContainer: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
@@ -1648,53 +1561,119 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 12,
   },
-  modalOverlay: {
+  // New styles for redesigned UI
+  gradientBackground: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
   },
-  modalContent: {
+  headerSimple: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+  },
+  headerTitleNew: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  headerSubtitleNew: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  energyMetricsSection: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  sectionTitleNew: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  metricCard: {
+    flex: 1,
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '50%',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  modalHeader: {
+  metricIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  metricLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  metricValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  metricUnit: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '400',
+  },
+  chartsSection: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  chartCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  chartCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    marginBottom: 16,
   },
-  modalTitle: {
-    fontSize: 18,
+  chartCardTitle: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
   },
-  chartOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+  transactionsSection: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
   },
-  chartOptionSelected: {
-    backgroundColor: '#f0fdf4',
+  monthlySummarySection: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
   },
-  chartOptionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  chartOptionText: {
-    fontSize: 16,
-    color: '#374151',
-    marginLeft: 12,
-  },
-  chartOptionTextSelected: {
-    color: '#10b981',
-    fontWeight: '600',
+  summaryCardNew: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
 });
 

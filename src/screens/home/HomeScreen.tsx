@@ -198,329 +198,272 @@ export default function HomeScreen({ navigation }: Props) {
 
   if (!currentMeter) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <LinearGradient
-          colors={['#10b981', '#059669', '#047857']}
-          style={styles.gradientHeader}
-        >
-          <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.headerTitle}>PowerNetPro</Text>
-              <Text style={styles.headerSubtitle}>Democratizing Energy</Text>
+      <LinearGradient
+        colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+        style={styles.gradientBackground}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
+        <SafeAreaView style={styles.containerTransparent} edges={['top']}>
+          <View style={styles.headerContainer}>
+            <View style={styles.headerTop}>
+              <View style={styles.logoContainer}>
+                <MaterialCommunityIcons name="lightning-bolt" size={28} color="#0ea5e9" />
+              </View>
+              <View style={styles.headerActions}>
+                <TouchableOpacity style={styles.headerIconButton}>
+                  <Ionicons name="notifications-outline" size={24} color="#1e293b" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.profileButton}>
+                  <Ionicons name="person-outline" size={18} color="#1e293b" />
+                  <Text style={styles.profileButtonText}>Profile</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <Ionicons name="flash" size={32} color="#ffffff" />
           </View>
-        </LinearGradient>
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconContainer}>
-            <LinearGradient
-              colors={['#ecfdf5', '#d1fae5']}
-              style={styles.emptyIcon}
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconContainer}>
+              <LinearGradient
+                colors={['#e0f2fe', '#bae6fd']}
+                style={styles.emptyIcon}
+              >
+                <MaterialCommunityIcons name="lightning-bolt" size={64} color="#0ea5e9" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.emptyTitle}>No Meter Connected</Text>
+            <Text style={styles.emptySubtitle}>
+              Connect your smart meter to start tracking energy generation{'\n'}and participate in P2P energy trading
+            </Text>
+            <TouchableOpacity
+              style={styles.registerButton}
+              onPress={navigateToMeterRegistration}
             >
-              <MaterialCommunityIcons name="lightning-bolt" size={64} color="#10b981" />
-            </LinearGradient>
+              <LinearGradient
+                colors={['#0ea5e9', '#0284c7']}
+                style={styles.registerButtonGradient}
+              >
+                <Ionicons name="add-circle-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                <Text style={styles.registerButtonText}>Register Smart Meter</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.emptyTitle}>No Meter Connected</Text>
-          <Text style={styles.emptySubtitle}>
-            Connect your smart meter to start tracking energy generation{'\n'}and participate in P2P energy trading
-          </Text>
-          <TouchableOpacity
-            style={styles.registerButton}
-            onPress={navigateToMeterRegistration}
-          >
-            <LinearGradient
-              colors={['#10b981', '#059669']}
-              style={styles.registerButtonGradient}
-            >
-              <Ionicons name="add-circle-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
-              <Text style={styles.registerButtonText}>Register Smart Meter</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <LinearGradient
-        colors={['#10b981', '#059669', '#047857']}
-        style={styles.gradientHeader}
-      >
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerTitle}>Energy Cockpit</Text>
-            <Text style={styles.headerSubtitle}>Real-time Energy Dashboard</Text>
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.containerTransparent} edges={['top']}>
+        {/* Header with Greeting and Notification */}
+        <View style={styles.headerContainer}>
+          <View style={styles.greetingSection}>
+            <Text style={styles.greetingText}>Good Morning,</Text>
+            <Text style={styles.userName}>Alex Solar</Text>
           </View>
-          <View style={styles.statusIndicator}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>Live</Text>
-          </View>
-        </View>
-      </LinearGradient>
-
-      {/* Live Market Price Ticker */}
-      <View style={[styles.tickerContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.tickerContent}>
-          <Ionicons name="pulse" size={16} color={colors.primary} />
-          <Text style={[styles.tickerLabel, { color: colors.textSecondary }]}>Current Sell Price:</Text>
-          <Text style={[styles.tickerPrice, { color: colors.text }]}>₹{currentPrice.toFixed(2)}/unit</Text>
-          <View style={[styles.tickerChange, { backgroundColor: colors.successBackground }]}>
-            <Ionicons name="arrow-up" size={12} color={colors.success} />
-            <Text style={[styles.tickerChangeText, { color: colors.success }]}>+0.25</Text>
-          </View>
-        </View>
-      </View>
-
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Main Stats Grid */}
-        <View style={styles.statsGrid}>
-          {/* Daily Yield - Large Card */}
-          <View style={[styles.statCard, styles.primaryCard]}>
-            <LinearGradient
-              colors={['#10b981', '#059669']}
-              style={styles.statCardGradient}
-            >
-              <View style={styles.statCardHeader}>
-                <MaterialCommunityIcons name="chart-line" size={28} color="#ffffff" />
-                <Text style={styles.statCardLabel}>Daily Yield</Text>
-              </View>
-              <Text style={styles.statCardValue}>{formatEnergy(dailyYield, 'kWh')}</Text>
-              <Text style={styles.statCardUnit}>Today's Generation</Text>
-            </LinearGradient>
-          </View>
-
-          {/* Current Generation */}
-          <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-            <View style={styles.statCardContent}>
-              <MaterialCommunityIcons name="lightning-bolt" size={24} color={colors.primary} />
-              <Text style={[styles.statCardLabelSmall, { color: colors.textSecondary }]}>Current</Text>
-              <Text style={[styles.statCardValueSmall, { color: colors.text }]}>{formatEnergy(currentGeneration, 'kW')}</Text>
-              <Text style={[styles.statCardUnitSmall, { color: colors.textMuted }]}>Real-time Power</Text>
-            </View>
-          </View>
-
-          {/* Carbon Saved */}
-          <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-            <View style={styles.statCardContent}>
-              <MaterialCommunityIcons name="leaf" size={24} color={colors.primary} />
-              <Text style={[styles.statCardLabelSmall, { color: colors.textSecondary }]}>Carbon Saved</Text>
-              <Text style={[styles.statCardValueSmall, { color: colors.text }]}>{carbonSaved.toFixed(1)} kg</Text>
-              <Text style={[styles.statCardUnitSmall, { color: colors.textMuted }]}>CO₂ Today</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Wallet Balance */}
-        {wallet && (
-          <View style={[styles.walletCard, { backgroundColor: colors.card }]}>
-            <View style={styles.walletHeader}>
-              <View style={styles.walletHeaderLeft}>
-                <MaterialCommunityIcons name="wallet" size={24} color={colors.primary} />
-                <Text style={[styles.walletTitle, { color: colors.text }]}>Wallet Balance</Text>
-              </View>
-              <TouchableOpacity onPress={navigateToWallet}>
-                <Text style={[styles.walletLink, { color: colors.primary }]}>View Details</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.walletBalances}>
-              <View style={styles.walletBalanceItem}>
-                <LinearGradient
-                  colors={isDark ? ['#064e3b', '#065f46'] : ['#ecfdf5', '#d1fae5']}
-                  style={styles.walletBalanceIcon}
-                >
-                  <MaterialCommunityIcons name="lightning-bolt" size={24} color={colors.primary} />
-                </LinearGradient>
-                <View style={styles.walletBalanceInfo}>
-                  <Text style={[styles.walletBalanceLabel, { color: colors.textSecondary }]}>Energy</Text>
-                  <Text style={[styles.walletBalanceValue, { color: colors.text }]}>
-                    {formatEnergy(wallet.energyBalance, 'kWh')}
-                  </Text>
-                </View>
-              </View>
-              <View style={[styles.walletDivider, { backgroundColor: colors.border }]} />
-              <View style={styles.walletBalanceItem}>
-                <LinearGradient
-                  colors={isDark ? ['#451a03', '#78350f'] : ['#fef3c7', '#fde68a']}
-                  style={styles.walletBalanceIcon}
-                >
-                  <MaterialCommunityIcons name="currency-inr" size={24} color="#f59e0b" />
-                </LinearGradient>
-                <View style={styles.walletBalanceInfo}>
-                  <Text style={[styles.walletBalanceLabel, { color: colors.textSecondary }]}>Cash</Text>
-                  <Text style={[styles.walletBalanceValue, { color: colors.text }]}>
-                    {formatCurrency(wallet.cashBalance)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Active Orders */}
-        {activeOrders.length > 0 && (
-          <View style={[styles.ordersCard, { backgroundColor: colors.card }]}>
-            <View style={styles.ordersHeader}>
-              <View style={styles.ordersHeaderLeft}>
-                <MaterialCommunityIcons name="package-variant" size={24} color={colors.primary} />
-                <Text style={[styles.ordersTitle, { color: colors.text }]}>Active Orders</Text>
-              </View>
-              <View style={[styles.ordersCountBadge, { backgroundColor: colors.primaryLight }]}>
-                <Text style={[styles.ordersCount, { color: colors.primary }]}>{activeOrders.length}</Text>
-              </View>
-            </View>
-            {activeOrders.map((order) => (
-              <View key={order.id} style={[styles.orderItem, { borderTopColor: colors.border }]}>
-                <View style={styles.orderInfo}>
-                  <Text style={[styles.orderEnergy, { color: colors.text }]}>
-                    {formatEnergy(order.energyAmount, 'kWh')}
-                  </Text>
-                  <Text style={[styles.orderPrice, { color: colors.textSecondary }]}>
-                    @ {formatCurrency(order.pricePerUnit)}/unit
-                  </Text>
-                </View>
-                <View style={[
-                  styles.orderStatusBadge,
-                  order.status === 'pending' && styles.orderStatusPending,
-                  order.status === 'confirmed' && styles.orderStatusConfirmed,
-                  order.status === 'in_progress' && styles.orderStatusIn_progress,
-                  order.status === 'completed' && styles.orderStatusCompleted,
-                  order.status === 'cancelled' && styles.orderStatusCancelled,
-                ]}>
-                  <Text style={styles.orderStatusText}>{order.status}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Quick Actions - TRD Requirements */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonEV]}
-            onPress={navigateToMarketplace}
-          >
-            <LinearGradient
-              colors={['#3b82f6', '#2563eb']}
-              style={styles.actionButtonGradient}
-            >
-              <MaterialCommunityIcons name="car-electric" size={24} color="#ffffff" />
-              <Text style={styles.actionButtonText}>Charge EV Now</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonSell]}
-            onPress={() => {
-              setIsSelling(!isSelling);
-              navigateToTradingBot();
-            }}
-          >
-            <LinearGradient
-              colors={isSelling ? ['#ef4444', '#dc2626'] : ['#10b981', '#059669']}
-              style={styles.actionButtonGradient}
-            >
-              <MaterialCommunityIcons 
-                name={isSelling ? 'pause-circle' : 'play-circle'} 
-                size={24} 
-                color="#ffffff" 
-              />
-              <Text style={styles.actionButtonText}>
-                {isSelling ? 'Pause Selling' : 'Start Selling'}
-              </Text>
-            </LinearGradient>
+          <TouchableOpacity style={styles.notificationButton}>
+            <Ionicons name="notifications-outline" size={24} color="#1e293b" />
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[styles.withdrawButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={navigateToWallet}
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          <Ionicons name="cash-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
-          <Text style={[styles.withdrawButtonText, { color: colors.text }]}>Withdraw Cash</Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.primary} style={{ marginLeft: 'auto' }} />
-        </TouchableOpacity>
-
-        {/* View Charts Button */}
-        <TouchableOpacity
-          style={[styles.chartButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={navigateToEnergyChart}
-        >
-          <MaterialCommunityIcons name="chart-timeline-variant" size={24} color={colors.primary} />
-          <Text style={[styles.chartButtonText, { color: colors.text }]}>View Detailed Charts</Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-        </TouchableOpacity>
-
-        {/* Energy Flow Visualization - Dynamic Version */}
-        <View style={[styles.energyFlowContainerCompact, { backgroundColor: colors.card }]}>
-          <View style={styles.energyFlowHeader}>
-            <MaterialCommunityIcons name="transit-connection-variant" size={20} color={colors.primary} />
-            <Text style={[styles.energyFlowTitleCompact, { color: colors.text }]}>Energy Flow</Text>
-          </View>
-          <View style={styles.energyFlowDiagramCompact}>
-            {visibleEnergyNodes.map((nodeId, index) => {
-              const config = ENERGY_NODE_CONFIGS[nodeId];
-              const isLastNode = index === visibleEnergyNodes.length - 1;
-              const nodeOpacity = nodeAnimations[nodeId];
-
-              // Render icon based on icon family
-              const renderIcon = () => {
-                if (config.iconFamily === 'MaterialCommunityIcons') {
-                  return (
-                    <MaterialCommunityIcons
-                      name={config.icon as any}
-                      size={20}
-                      color="#ffffff"
-                    />
-                  );
-                }
-                return (
-                  <Ionicons
-                    name={config.icon as any}
-                    size={20}
-                    color="#ffffff"
-                  />
-                );
-              };
-
-              return (
-                <React.Fragment key={nodeId}>
-                  {/* Energy Node */}
-                  <View style={styles.flowNodeCompact}>
-                    <Animated.View style={[styles.flowIconContainerCompact, { opacity: nodeOpacity }]}>
-                      <LinearGradient
-                        colors={config.gradientColors}
-                        style={styles.flowIconGradientCompact}
-                      >
-                        {renderIcon()}
-                      </LinearGradient>
-                    </Animated.View>
-                    <Text style={styles.flowLabelCompact}>{config.label}</Text>
-                    <Text style={styles.flowValueCompact}>
-                      {config.getStatusText(energyFlowContext)}
-                    </Text>
+          {/* Hero Card - Today's Generation */}
+          <View style={styles.heroCardNew}>
+            <View style={styles.heroCardContent}>
+              <View style={styles.heroCardLeft}>
+                <Text style={styles.heroCardTitle}>TODAY'S GENERATION</Text>
+                <Text style={styles.heroCardValueNew}>{formatEnergy(dailyYield, 'kWh')}</Text>
+                <View style={styles.peakEfficiencyBadge}>
+                  <Ionicons name="trending-up" size={12} color="#10b981" />
+                  <Text style={styles.peakEfficiencyText}>Peak Efficiency</Text>
+                </View>
+              </View>
+              <View style={styles.heroCardRight}>
+                <View style={styles.circularProgressContainer}>
+                  <View style={styles.circularProgress}>
+                    <View style={styles.circularProgressInner}>
+                      <Text style={styles.circularProgressText}>+72%</Text>
+                      <Text style={styles.circularProgressLabel}>Surplus</Text>
+                    </View>
                   </View>
-
-                  {/* Arrow between nodes (not after last node) */}
-                  {!isLastNode && (
-                    <Ionicons
-                      name="arrow-forward"
-                      size={16}
-                      color="#10b981"
-                      style={styles.flowArrowCompact}
-                    />
-                  )}
-                </React.Fragment>
-              );
-            })}
+                </View>
+              </View>
+            </View>
           </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtonsRowNew}>
+            <TouchableOpacity
+              style={styles.actionButtonNew}
+              onPress={navigateToMarketplace}
+              activeOpacity={0.9}
+            >
+              <View style={styles.actionButtonIconContainer}>
+                <MaterialCommunityIcons name="car-electric" size={24} color="#ffffff" />
+              </View>
+              <Text style={styles.actionButtonLabel}>Charge EV</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButtonNew, styles.actionButtonSell]}
+              onPress={() => {
+                setIsSelling(!isSelling);
+                navigateToTradingBot();
+              }}
+              activeOpacity={0.9}
+            >
+              <View style={styles.actionButtonIconContainer}>
+                <MaterialCommunityIcons name="currency-usd" size={24} color="#ffffff" />
+              </View>
+              <Text style={styles.actionButtonLabel}>Sell Surplus</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Live Energy Flow Section */}
+          <View style={styles.liveEnergySection}>
+            <View style={styles.liveEnergySectionHeader}>
+              <Text style={styles.liveEnergySectionTitle}>Live Energy Flow</Text>
+              <View style={styles.realTimeBadge}>
+                <Text style={styles.realTimeBadgeText}>Real-time</Text>
+              </View>
+            </View>
+            <View style={[styles.energyFlowContainerCompact, { backgroundColor: colors.card }]}>
+              <View style={styles.energyFlowDiagramCompact}>
+                {visibleEnergyNodes.map((nodeId, index) => {
+                  const config = ENERGY_NODE_CONFIGS[nodeId];
+                  const isLastNode = index === visibleEnergyNodes.length - 1;
+                  const nodeOpacity = nodeAnimations[nodeId];
+
+                  const renderIcon = () => {
+                    if (config.iconFamily === 'MaterialCommunityIcons') {
+                      return (
+                        <MaterialCommunityIcons
+                          name={config.icon as any}
+                          size={20}
+                          color="#ffffff"
+                        />
+                      );
+                    }
+                    return (
+                      <Ionicons
+                        name={config.icon as any}
+                        size={20}
+                        color="#ffffff"
+                      />
+                    );
+                  };
+
+                  return (
+                    <React.Fragment key={nodeId}>
+                      <View style={styles.flowNodeCompact}>
+                        <Animated.View style={[styles.flowIconContainerCompact, { opacity: nodeOpacity }]}>
+                          <LinearGradient
+                            colors={config.gradientColors}
+                            style={styles.flowIconGradientCompact}
+                          >
+                            {renderIcon()}
+                          </LinearGradient>
+                        </Animated.View>
+                        <Text style={styles.flowLabelCompact}>{config.label}</Text>
+                        <Text style={styles.flowValueCompact}>
+                          {config.getStatusText(energyFlowContext)}
+                        </Text>
+                      </View>
+
+                      {!isLastNode && (
+                        <Ionicons
+                          name="arrow-forward"
+                          size={16}
+                          color="#0ea5e9"
+                          style={styles.flowArrowCompact}
+                        />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+
+          {/* Stats Grid - 2x2 */}
+          <View style={styles.statsGrid}>
+            {/* Current Power */}
+            <View style={styles.statCardSmallNew}>
+              <View style={styles.statIconCircleSmall}>
+                <MaterialCommunityIcons name="lightning-bolt" size={18} color="#f59e0b" />
+              </View>
+              <Text style={styles.statLabelSmall}>Current Power</Text>
+              <Text style={styles.statValueSmall}>{formatEnergy(currentGeneration, 'kW')}</Text>
+            </View>
+
+            {/* Carbon Saved */}
+            <View style={styles.statCardSmallNew}>
+              <View style={[styles.statIconCircleSmall, { backgroundColor: '#dcfce7' }]}>
+                <MaterialCommunityIcons name="leaf" size={18} color="#10b981" />
+              </View>
+              <Text style={styles.statLabelSmall}>Carbon Saved</Text>
+              <Text style={styles.statValueSmall}>{carbonSaved.toFixed(1)} kg</Text>
+            </View>
+
+            {/* Market Price */}
+            <View style={styles.statCardFullWidth}>
+              <View style={[styles.statIconCircleSmall, { backgroundColor: '#dbeafe', marginBottom: 0 }]}>
+                <MaterialCommunityIcons name="chart-line" size={18} color="#3b82f6" />
+              </View>
+
+              <View style={styles.marketPriceContent}>
+                <Text style={[styles.statLabelSmall, { marginBottom: 4 }]}>Market Price</Text>
+                <Text style={styles.statValueSmall}>
+                  {formatCurrency(currentPrice)} <Text style={styles.statUnitSmall}>/ kWh</Text>
+                </Text>
+              </View>
+
+              <View style={styles.marketPriceTrendContainer}>
+                <View style={styles.marketPriceTrendRow}>
+                  <Ionicons name="trending-up" size={14} color="#10b981" />
+                  <Text style={styles.statTrendTextLarge}>+2.4%</Text>
+                </View>
+                <Text style={styles.statSubtextSmall}>vs yesterday</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Secondary Actions */}
+          <View style={styles.secondaryActionsRowNew}>
+            <TouchableOpacity
+              style={styles.secondaryActionButtonNew}
+              onPress={navigateToWallet}
+              activeOpacity={0.8}
+            >
+              <View style={styles.secondaryActionIconContainer}>
+                <Ionicons name="card-outline" size={20} color="#1e293b" />
+              </View>
+              <Text style={styles.secondaryActionLabel}>Withdraw Cash</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryActionButtonNew}
+              onPress={navigateToEnergyChart}
+              activeOpacity={0.8}
+            >
+              <View style={styles.secondaryActionIconContainer}>
+                <MaterialCommunityIcons name="chart-bar" size={20} color="#1e293b" />
+              </View>
+              <Text style={styles.secondaryActionLabel}>View Charts</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
@@ -528,6 +471,261 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f0fdf4',
+  },
+  gradientBackground: {
+    flex: 1,
+  },
+  containerTransparent: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  headerContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  greetingSection: {
+    flex: 1,
+  },
+  greetingText: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '400',
+    marginBottom: 4,
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  notificationButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  logoContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  profileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  profileButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  mainCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  mainCardLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  mainCardValueRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  mainCardValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    letterSpacing: -0.5,
+  },
+  mainCardArrow: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  miniChartContainer: {
+    height: 100,
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 16,
+  },
+  chartBadge: {
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  chartBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#16a34a',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: 16,
+  },
+  highlightsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  highlightCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  highlightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  highlightLabel: {
+    fontSize: 12,
+    color: '#ef4444',
+    fontWeight: '500',
+  },
+  highlightLabelGreen: {
+    fontSize: 12,
+    color: '#10b981',
+    fontWeight: '500',
+  },
+  highlightValue: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    marginBottom: 2,
+  },
+  highlightChange: {
+    fontSize: 13,
+    color: '#ef4444',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  highlightChangeGreen: {
+    fontSize: 13,
+    color: '#10b981',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  highlightSubtext: {
+    fontSize: 11,
+    color: '#94a3b8',
+    lineHeight: 16,
+  },
+  quickActionsGrid: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  quickActionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  quickActionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  quickActionIconOrange: {
+    backgroundColor: '#ffedd5',
+  },
+  quickActionContent: {
+    flex: 1,
+  },
+  quickActionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  quickActionSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 2,
   },
   gradientHeader: {
     paddingTop: 16,
@@ -617,6 +815,640 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 32,
   },
+  // ============================================
+  // NEW REDESIGNED UI STYLES
+  // ============================================
+  heroCardNew: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  heroCardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  heroCardLeft: {
+    flex: 1,
+  },
+  heroCardTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  heroCardValueNew: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 8,
+  },
+  peakEfficiencyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  peakEfficiencyText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  heroCardRight: {
+    marginLeft: 16,
+  },
+  circularProgressContainer: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circularProgress: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 6,
+    borderColor: '#10b981',
+    borderTopColor: '#e0f2fe',
+    borderRightColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    transform: [{ rotate: '-45deg' }],
+  },
+  circularProgressInner: {
+    transform: [{ rotate: '45deg' }],
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circularProgressText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#10b981',
+  },
+  circularProgressLabel: {
+    fontSize: 10,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  actionButtonsRowNew: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  actionButtonNew: {
+    flex: 1,
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  actionButtonSell: {
+    backgroundColor: '#10b981',
+  },
+  actionButtonIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  actionButtonLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  liveEnergySection: {
+    marginBottom: 20,
+  },
+  liveEnergySectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  liveEnergySectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  realTimeBadge: {
+    backgroundColor: '#dbeafe',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  realTimeBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#3b82f6',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+  },
+  statCardSmallNew: {
+    width: (width - 52) / 2,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  statCardFullWidth: {
+    width: width - 40,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  marketPriceContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  marketPriceTrendContainer: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  marketPriceTrendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+  },
+  statIconCircleSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#fef3c7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statLabelSmall: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  statValueSmall: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1e293b',
+  },
+  statUnitSmall: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '400',
+  },
+  statTrendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statTrendText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  statTrendTextLarge: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#10b981',
+  },
+  statSubtextSmall: {
+    fontSize: 10,
+    color: '#94a3b8',
+  },
+  secondaryActionsRowNew: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  secondaryActionButtonNew: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  secondaryActionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  secondaryActionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1e293b',
+    flex: 1,
+  },
+  // ============================================
+  // OLD CARD STYLES (kept for compatibility)
+  // ============================================
+  energyCardsContainer: {
+    marginBottom: 20,
+  },
+  heroCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginBottom: 16,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  heroCardGradient: {
+    padding: 24,
+  },
+  heroCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  heroCardIconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroCardBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  heroCardBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  heroCardLabel: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  heroCardValue: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    letterSpacing: -1,
+    marginBottom: 16,
+  },
+  heroCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  heroCardSubtext: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '500',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  statCardModern: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  statCardModernHeader: {
+    marginBottom: 14,
+  },
+  statIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statCardModernValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    marginBottom: 4,
+  },
+  statCardModernLabel: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  statCardModernIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pulsingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statCardModernStatus: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  marketPriceCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    height : 82,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  marketPriceLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  marketPriceInfo: {
+    gap: 2,
+  },
+  marketPriceLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  marketPriceValue: {
+    fontSize: 19,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  marketPriceTrend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  marketPriceTrendText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  // ============================================
+  // WALLET CARD MODERN STYLES
+  // ============================================
+  walletCardModern: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  walletCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  walletTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  walletCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  walletBalancesModern: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  walletBalanceItemModern: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  walletBalanceIconSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletBalanceInfoModern: {
+    flex: 1,
+  },
+  walletBalanceLabelModern: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  walletBalanceValueModern: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  walletBalanceDividerModern: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#e2e8f0',
+    marginHorizontal: 12,
+  },
+  // ============================================
+  // ORDERS CARD MODERN STYLES
+  // ============================================
+  ordersCardModern: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  ordersHeaderModern: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  ordersTitleModern: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginLeft: 12,
+  },
+  ordersCountBadgeModern: {
+    backgroundColor: '#ede9fe',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  ordersCountModern: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8b5cf6',
+  },
+  orderItemModern: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  orderInfoModern: {
+    flex: 1,
+  },
+  orderEnergyModern: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0f172a',
+    marginBottom: 2,
+  },
+  orderPriceModern: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  orderStatusBadgeModern: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  orderStatusTextModern: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  // ============================================
+  // ACTION BUTTONS MODERN STYLES
+  // ============================================
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  actionButtonModern: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  actionButtonGradientModern: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  actionButtonTextModern: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  secondaryActionsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  secondaryActionCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  secondaryActionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  secondaryActionText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
   energyFlowContainerCompact: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
@@ -680,20 +1512,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     marginHorizontal: 2,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
   statCard: {
+    width: width - 40,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 12,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  statCardSmall: {
     width: (width - 52) / 2,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -715,7 +1553,7 @@ const styles = StyleSheet.create({
   },
   statCardLabel: {
     fontSize: 13,
-    color: '#d1fae5',
+    color: '#bae6fd',
     fontWeight: '500',
     marginLeft: 8,
   },
@@ -740,7 +1578,7 @@ const styles = StyleSheet.create({
   },
   statCardUnit: {
     fontSize: 12,
-    color: '#d1fae5',
+    color: '#bae6fd',
     fontWeight: '500',
   },
   statCardUnitSmall: {
@@ -916,9 +1754,6 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   actionButtonEV: {
-    flex: 1,
-  },
-  actionButtonSell: {
     flex: 1,
   },
   actionButtonGradient: {
