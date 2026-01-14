@@ -460,19 +460,19 @@ export default function MarketplaceScreen({ navigation }: Props) {
       <View style={styles.sellerCardHeader}>
         <View style={styles.sellerInfo}>
           <View style={styles.sellerNameRow}>
-            <MaterialCommunityIcons name="store" size={20} color="#10b981" />
+            <MaterialCommunityIcons name="store" size={20} color="#3b82f6" />
             <Text style={styles.sellerName}>{seller.name}</Text>
           </View>
           {seller.distance !== undefined && (
             <View style={styles.distanceRow}>
-              <Ionicons name="location" size={14} color="#6b7280" />
+              <Ionicons name="location" size={14} color="#64748b" />
               <Text style={styles.sellerDistance}>{seller.distance.toFixed(1)} km away</Text>
             </View>
           )}
         </View>
         {seller.greenEnergy && (
           <View style={styles.greenBadge}>
-            <MaterialCommunityIcons name="leaf" size={14} color="#065f46" />
+            <MaterialCommunityIcons name="leaf" size={14} color="#10b981" />
             <Text style={styles.greenBadgeText}>Green</Text>
           </View>
         )}
@@ -481,14 +481,14 @@ export default function MarketplaceScreen({ navigation }: Props) {
       <View style={styles.sellerDetails}>
         <View style={styles.detailRow}>
           <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="currency-inr" size={18} color="#6b7280" />
+            <MaterialCommunityIcons name="currency-inr" size={18} color="#3b82f6" />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Price</Text>
               <Text style={styles.detailValue}>{formatCurrency(seller.pricePerUnit)}/kWh</Text>
             </View>
           </View>
           <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="lightning-bolt" size={18} color="#6b7280" />
+            <MaterialCommunityIcons name="lightning-bolt" size={18} color="#3b82f6" />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Available</Text>
               <Text style={styles.detailValue}>{formatEnergy(seller.availableEnergy, 'kWh')}</Text>
@@ -497,7 +497,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
         </View>
         {seller.rating !== undefined && (
           <View style={styles.ratingRow}>
-            <Ionicons name="star" size={16} color="#fbbf24" />
+            <Ionicons name="star" size={16} color="#3b82f6" />
             <Text style={styles.ratingText}>{seller.rating.toFixed(1)}</Text>
           </View>
         )}
@@ -520,12 +520,12 @@ export default function MarketplaceScreen({ navigation }: Props) {
       <View style={styles.buyerCardHeader}>
         <View style={styles.buyerInfo}>
           <View style={styles.buyerNameRow}>
-            <MaterialCommunityIcons name="account-arrow-down" size={20} color="#f59e0b" />
+            <MaterialCommunityIcons name="account-arrow-down" size={20} color="#3b82f6" />
             <Text style={styles.buyerName}>{buyer.name}</Text>
           </View>
           {buyer.distance !== undefined && (
             <View style={styles.distanceRow}>
-              <Ionicons name="location" size={14} color="#6b7280" />
+              <Ionicons name="location" size={14} color="#64748b" />
               <Text style={styles.buyerDistance}>{buyer.distance.toFixed(1)} km away</Text>
             </View>
           )}
@@ -535,14 +535,14 @@ export default function MarketplaceScreen({ navigation }: Props) {
       <View style={styles.buyerDetails}>
         <View style={styles.detailRow}>
           <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="currency-inr" size={18} color="#6b7280" />
+            <MaterialCommunityIcons name="currency-inr" size={18} color="#3b82f6" />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Max Price</Text>
               <Text style={styles.detailValue}>{formatCurrency(buyer.maxPricePerUnit)}/kWh</Text>
             </View>
           </View>
           <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="lightning-bolt" size={18} color="#6b7280" />
+            <MaterialCommunityIcons name="lightning-bolt" size={18} color="#3b82f6" />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Needed</Text>
               <Text style={styles.detailValue}>{formatEnergy(buyer.energyNeeded, 'kWh')}</Text>
@@ -551,13 +551,13 @@ export default function MarketplaceScreen({ navigation }: Props) {
         </View>
         {buyer.preferredDeliveryWindow && (
           <View style={styles.deliveryWindowRow}>
-            <MaterialCommunityIcons name="clock-outline" size={16} color="#6b7280" />
+            <MaterialCommunityIcons name="clock-outline" size={16} color="#64748b" />
             <Text style={styles.deliveryWindowText}>{buyer.preferredDeliveryWindow}</Text>
           </View>
         )}
         {buyer.rating !== undefined && (
           <View style={styles.ratingRow}>
-            <Ionicons name="star" size={16} color="#fbbf24" />
+            <Ionicons name="star" size={16} color="#3b82f6" />
             <Text style={styles.ratingText}>{buyer.rating.toFixed(1)}</Text>
           </View>
         )}
@@ -623,10 +623,10 @@ export default function MarketplaceScreen({ navigation }: Props) {
             style={[styles.mapControlButton, autoRefreshEnabled && styles.mapControlButtonActive]}
             onPress={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
           >
-            <MaterialCommunityIcons 
-              name={autoRefreshEnabled ? "autorenew" : "autorenew-off"} 
-              size={20} 
-              color={autoRefreshEnabled ? "#10b981" : "#6b7280"} 
+            <MaterialCommunityIcons
+              name={autoRefreshEnabled ? "autorenew" : "autorenew-off"}
+              size={20}
+              color={autoRefreshEnabled ? "#3b82f6" : "#6b7280"}
             />
           </TouchableOpacity>
           <TouchableOpacity
@@ -636,13 +636,13 @@ export default function MarketplaceScreen({ navigation }: Props) {
               searchSellers();
             }}
           >
-            <Ionicons name="locate" size={20} color="#10b981" />
+            <Ionicons name="locate" size={20} color="#3b82f6" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.mapControlButton}
             onPress={() => setViewMode('list')}
           >
-            <Ionicons name="list" size={20} color="#10b981" />
+            <Ionicons name="list" size={20} color="#3b82f6" />
           </TouchableOpacity>
         </View>
 
@@ -704,7 +704,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   }}
                 >
                   <LinearGradient
-                    colors={['#10b981', '#059669']}
+                    colors={['#3b82f6', '#2563eb']}
                     style={styles.sellerModalButtonGradient}
                   >
                     <Text style={styles.sellerModalButtonText}>View Details</Text>
@@ -835,7 +835,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     <Switch
                       value={filters.greenEnergyOnly}
                       onValueChange={(value) => setFilters({ ...filters, greenEnergyOnly: value })}
-                      trackColor={{ false: '#d1d5db', true: '#10b981' }}
+                      trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
                       thumbColor="#ffffff"
                     />
                   </View>
@@ -855,7 +855,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
               }}
             >
               <LinearGradient
-                colors={['#10b981', '#059669']}
+                colors={['#3b82f6', '#2563eb']}
                 style={styles.applyButtonGradient}
               >
                 <Text style={styles.applyButtonText}>Apply Filters</Text>
@@ -868,41 +868,44 @@ export default function MarketplaceScreen({ navigation }: Props) {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <LinearGradient
-        colors={['#10b981', '#059669']}
-        style={styles.gradientHeader}
-      >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Marketplace</Text>
-            <Text style={styles.subtitle}>
-              {mode === 'buy' ? 'Find Energy Sellers' : 'Find Energy Buyers'}
-            </Text>
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.headerSimple}>
+          <View style={styles.headerTop}>
+            <View>
+              <Text style={styles.headerTitle}>Marketplace</Text>
+              <Text style={styles.headerSubtitle}>
+                {mode === 'buy' ? 'Find Energy Sellers' : 'Find Energy Buyers'}
+              </Text>
+            </View>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => setShowFilters(true)}
+              >
+                <Ionicons name="filter" size={20} color="#3b82f6" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+              >
+                <Ionicons
+                  name={viewMode === 'list' ? 'map' : 'list'}
+                  size={20}
+                  color="#3b82f6"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => setShowFilters(true)}
-            >
-              <Ionicons name="filter" size={20} color="#ffffff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
-            >
-              <Ionicons 
-                name={viewMode === 'list' ? 'map' : 'list'} 
-                size={20} 
-                color="#ffffff" 
-              />
-            </TouchableOpacity>
+          <View style={styles.toggleContainer}>
+            <BuySellToggle mode={mode} onModeChange={setMode} />
           </View>
         </View>
-        <View style={styles.toggleContainer}>
-          <BuySellToggle mode={mode} onModeChange={setMode} />
-        </View>
-      </LinearGradient>
 
       {renderFilters()}
 
@@ -913,12 +916,12 @@ export default function MarketplaceScreen({ navigation }: Props) {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />
           }
         >
           {loading && !refreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#10b981" />
+              <ActivityIndicator size="large" color="#3b82f6" />
               <Text style={styles.loadingText}>Searching for sellers...</Text>
             </View>
           ) : (mode === 'buy' ? sellers.length === 0 : buyers.length === 0) ? (
@@ -937,7 +940,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
               {!userLocation && (
                 <TouchableOpacity style={styles.locationButton} onPress={() => getLocation(true)}>
                   <LinearGradient
-                    colors={['#10b981', '#059669']}
+                    colors={['#3b82f6', '#2563eb']}
                     style={styles.locationButtonGradient}
                   >
                     <Ionicons name="location" size={20} color="#ffffff" />
@@ -1018,7 +1021,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   onPress={() => handleTradeOptionSelect('buy')}
                 >
                   <LinearGradient
-                    colors={['#10b981', '#059669']}
+                    colors={['#3b82f6', '#2563eb']}
                     style={styles.tradeModalButtonGradient}
                   >
                     <Ionicons name="cart" size={24} color="#ffffff" />
@@ -1099,7 +1102,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   onPress={() => handleTradeOptionSelect('sell')}
                 >
                   <LinearGradient
-                    colors={['#f59e0b', '#d97706']}
+                    colors={['#0ea5e9', '#0284c7']}
                     style={styles.tradeModalButtonGradient}
                   >
                     <Ionicons name="cash" size={24} color="#ffffff" />
@@ -1121,24 +1124,42 @@ export default function MarketplaceScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f0fdf4',
   },
-  gradientHeader: {
-    paddingTop: 16,
-    paddingBottom: 20,
+  headerSimple: {
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 15,
+    color: '#64748b',
+    fontWeight: '500',
   },
   toggleContainer: {
-    marginTop: 16,
+    marginTop: 0,
   },
   header: {
     flexDirection: 'row',
@@ -1164,9 +1185,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   modalOverlay: {
     flex: 1,
@@ -1317,32 +1343,32 @@ const styles = StyleSheet.create({
   },
   filterLink: {
     fontSize: 14,
-    color: '#10b981',
+    color: '#3b82f6',
     fontWeight: '600',
   },
   sellerCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   buyerCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
     borderLeftWidth: 4,
-    borderLeftColor: '#f59e0b',
+    borderLeftColor: '#3b82f6',
   },
   buyerCardHeader: {
     flexDirection: 'row',
@@ -1413,7 +1439,7 @@ const styles = StyleSheet.create({
   greenBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#d1fae5',
+    backgroundColor: '#dcfce7',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -1422,7 +1448,7 @@ const styles = StyleSheet.create({
   greenBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#065f46',
+    color: '#10b981',
   },
   sellerDetails: {
     gap: 12,
@@ -1492,7 +1518,7 @@ const styles = StyleSheet.create({
   switchToListButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#10b981',
+    backgroundColor: '#3b82f6',
     borderRadius: 12,
   },
   switchToListButtonText: {
@@ -1562,9 +1588,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   mapControlButtonActive: {
-    backgroundColor: '#d1fae5',
+    backgroundColor: '#dbeafe',
     borderWidth: 2,
-    borderColor: '#10b981',
+    borderColor: '#3b82f6',
   },
   sellerModalOverlay: {
     flex: 1,
@@ -1683,13 +1709,13 @@ const styles = StyleSheet.create({
   },
   tradeModalContainer: {
     backgroundColor: '#ffffff',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 24,
     width: '100%',
     maxWidth: 400,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 10,
   },
@@ -1706,8 +1732,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tradeModalInfo: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 20,
   },

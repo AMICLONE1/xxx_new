@@ -18,7 +18,7 @@ export const BuySellToggle: React.FC<BuySellToggleProps> = ({ mode, onModeChange
       >
         {mode === 'buy' ? (
           <LinearGradient
-            colors={['#10b981', '#059669']}
+            colors={['#3b82f6', '#2563eb']}
             style={styles.toggleButtonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -41,7 +41,7 @@ export const BuySellToggle: React.FC<BuySellToggleProps> = ({ mode, onModeChange
       >
         {mode === 'sell' ? (
           <LinearGradient
-            colors={['#f59e0b', '#d97706']}
+            colors={['#0ea5e9', '#0284c7']}
             style={styles.toggleButtonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
