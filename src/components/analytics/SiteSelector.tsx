@@ -197,7 +197,7 @@ export const SiteSelector: React.FC<SiteSelectorProps> = ({
         activeOpacity={0.7}
       >
         <View style={styles.selectorContent}>
-          <MaterialCommunityIcons name="home-city" size={20} color="#10b981" />
+          <MaterialCommunityIcons name="home-city" size={20} color="#3b82f6" />
           <Text style={styles.selectorText}>{getDisplayText()}</Text>
           <MaterialCommunityIcons name="chevron-down" size={20} color="#6b7280" />
         </View>

@@ -43,7 +43,7 @@ export const MeterSelector: React.FC<MeterSelectorProps> = ({
         activeOpacity={0.7}
       >
         <View style={styles.selectorContent}>
-          <MaterialCommunityIcons name="speedometer" size={20} color="#10b981" />
+          <MaterialCommunityIcons name="speedometer" size={20} color="#3b82f6" />
           <Text style={styles.selectorText}>
             {selectedMeter ? (
               selectedMeterId === 'all' ? 'All Meters' : 

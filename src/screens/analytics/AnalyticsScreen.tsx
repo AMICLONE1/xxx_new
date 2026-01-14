@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, Dimensions, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 import { useMeterStore } from '@/store/meterStore';
@@ -36,6 +37,7 @@ const AnalyticsScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedChartType, setSelectedChartType] = useState<'generation' | 'consumption' | 'comparison' | 'netExport'>('generation');
 
   // Initialize user sites (up to 6 sites)
   useEffect(() => {
@@ -434,16 +436,17 @@ const AnalyticsScreen = () => {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      <ScrollView
-        style={[styles.container, { backgroundColor: 'transparent' }]}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />
-        }
-      >
-        {/* Header */}
-        <View style={styles.headerSimple}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScrollView
+          style={[styles.container, { backgroundColor: 'transparent' }]}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />
+          }
+        >
+          {/* Header */}
+          <View style={styles.headerSimple}>
           <Text style={styles.headerTitleNew}>Energy Analytics</Text>
           <Text style={styles.headerSubtitleNew}>Your Trading Performance</Text>
         </View>
@@ -522,8 +525,8 @@ const AnalyticsScreen = () => {
           {/* Row 1: Average Generation | Peak Generation */}
           <View style={styles.metricsRow}>
             <View style={styles.metricCard}>
-              <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
-                <MaterialCommunityIcons name="solar-power" size={18} color="#10b981" />
+              <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                <MaterialCommunityIcons name="solar-power" size={18} color="#3b82f6" />
               </View>
               <Text style={styles.metricLabel}>AVG GENERATION</Text>
               <Text style={styles.metricValue}>
@@ -532,8 +535,8 @@ const AnalyticsScreen = () => {
             </View>
 
             <View style={styles.metricCard}>
-              <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
-                <MaterialCommunityIcons name="lightning-bolt" size={18} color="#10b981" />
+              <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                <MaterialCommunityIcons name="lightning-bolt" size={18} color="#3b82f6" />
               </View>
               <Text style={styles.metricLabel}>PEAK GENERATION</Text>
               <Text style={styles.metricValue}>
@@ -568,8 +571,8 @@ const AnalyticsScreen = () => {
           {/* Row 3: Total Generated | Net Export */}
           <View style={styles.metricsRow}>
             <View style={styles.metricCard}>
-              <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
-                <MaterialCommunityIcons name="chart-bar" size={18} color="#10b981" />
+              <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                <MaterialCommunityIcons name="chart-bar" size={18} color="#3b82f6" />
               </View>
               <Text style={styles.metricLabel}>TOTAL GENERATED</Text>
               <Text style={styles.metricValue}>
@@ -578,11 +581,11 @@ const AnalyticsScreen = () => {
             </View>
 
             <View style={styles.metricCard}>
-              <View style={[styles.metricIcon, { backgroundColor: stats.netExported >= 0 ? '#dcfce7' : '#fee2e2' }]}>
-                <MaterialCommunityIcons name="swap-horizontal" size={18} color={stats.netExported >= 0 ? '#10b981' : '#ef4444'} />
+              <View style={[styles.metricIcon, { backgroundColor: stats.netExported >= 0 ? '#dbeafe' : '#fee2e2' }]}>
+                <MaterialCommunityIcons name="swap-horizontal" size={18} color={stats.netExported >= 0 ? '#3b82f6' : '#ef4444'} />
               </View>
               <Text style={styles.metricLabel}>NET EXPORT</Text>
-              <Text style={[styles.metricValue, { color: stats.netExported >= 0 ? '#10b981' : '#ef4444' }]}>
+              <Text style={[styles.metricValue, { color: stats.netExported >= 0 ? '#3b82f6' : '#ef4444' }]}>
                 {stats.netExported >= 0 ? '+' : ''}{stats.netExported.toFixed(2)} <Text style={styles.metricUnit}>kWh</Text>
               </Text>
             </View>
@@ -666,7 +669,7 @@ const AnalyticsScreen = () => {
             {/* Total Revenue */}
             <View style={[styles.statCard, { flex: 1, marginLeft: 6 }]}>
               <View style={styles.statIconContainer}>
-                <MaterialCommunityIcons name="currency-inr" size={24} color="#f59e0b" />
+                <MaterialCommunityIcons name="currency-inr" size={24} color="#3b82f6" />
               </View>
               <Text style={styles.statLabel}>Total Revenue</Text>
               <Text style={styles.statValue}>{formatCurrency(analytics.totalRevenue)}</Text>
@@ -717,17 +720,98 @@ const AnalyticsScreen = () => {
         <Text style={styles.sectionTitleNew}>Graphical Analysis</Text>
 
         {chartData.generation && chartData.generation.length > 0 && chartData.labels[0] !== 'No Data' ? (
-          <>
-            {/* 1. Generation Trends */}
-            <View style={styles.chartCard}>
-              <View style={styles.chartCardHeader}>
-                <Text style={styles.chartCardTitle}>Generation Trends</Text>
-                <View style={styles.chartLegend}>
-                  <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
-                  <Text style={styles.legendText}>kW</Text>
-                </View>
+          <View style={styles.chartCard}>
+            {/* Chart Type Selector */}
+            <View style={styles.chartTypeSelector}>
+              <TouchableOpacity
+                style={[styles.chartTypeButton, selectedChartType === 'generation' && styles.chartTypeButtonActive]}
+                onPress={() => setSelectedChartType('generation')}
+              >
+                <MaterialCommunityIcons
+                  name="solar-power"
+                  size={16}
+                  color={selectedChartType === 'generation' ? '#ffffff' : '#6b7280'}
+                />
+                <Text style={[styles.chartTypeText, selectedChartType === 'generation' && styles.chartTypeTextActive]}>
+                  Generation
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.chartTypeButton, selectedChartType === 'consumption' && styles.chartTypeButtonActive]}
+                onPress={() => setSelectedChartType('consumption')}
+              >
+                <MaterialCommunityIcons
+                  name="flash"
+                  size={16}
+                  color={selectedChartType === 'consumption' ? '#ffffff' : '#6b7280'}
+                />
+                <Text style={[styles.chartTypeText, selectedChartType === 'consumption' && styles.chartTypeTextActive]}>
+                  Consumption
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.chartTypeButton, selectedChartType === 'comparison' && styles.chartTypeButtonActive]}
+                onPress={() => setSelectedChartType('comparison')}
+              >
+                <MaterialCommunityIcons
+                  name="compare"
+                  size={16}
+                  color={selectedChartType === 'comparison' ? '#ffffff' : '#6b7280'}
+                />
+                <Text style={[styles.chartTypeText, selectedChartType === 'comparison' && styles.chartTypeTextActive]}>
+                  Compare
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.chartTypeButton, selectedChartType === 'netExport' && styles.chartTypeButtonActive]}
+                onPress={() => setSelectedChartType('netExport')}
+              >
+                <MaterialCommunityIcons
+                  name="swap-horizontal"
+                  size={16}
+                  color={selectedChartType === 'netExport' ? '#ffffff' : '#6b7280'}
+                />
+                <Text style={[styles.chartTypeText, selectedChartType === 'netExport' && styles.chartTypeTextActive]}>
+                  Net Export
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Chart Header */}
+            <View style={styles.chartCardHeader}>
+              <Text style={styles.chartCardTitle}>
+                {selectedChartType === 'generation' && 'Generation Trends'}
+                {selectedChartType === 'consumption' && 'Consumption Patterns'}
+                {selectedChartType === 'comparison' && 'Generation vs Consumption'}
+                {selectedChartType === 'netExport' && 'Net Export Over Time'}
+              </Text>
+              <View style={styles.chartLegend}>
+                {selectedChartType === 'comparison' ? (
+                  <>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
+                      <Text style={styles.legendText}>Gen</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+                      <Text style={styles.legendText}>Con</Text>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View style={[styles.legendDot, {
+                      backgroundColor: selectedChartType === 'generation' ? '#10b981' :
+                                       selectedChartType === 'consumption' ? '#ef4444' : '#3b82f6'
+                    }]} />
+                    <Text style={styles.legendText}>kW</Text>
+                  </>
+                )}
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+            </View>
+
+            {/* Chart Content */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              {selectedChartType === 'generation' && (
                 <LineChart
                   data={{
                     labels: chartData.labels,
@@ -758,19 +842,8 @@ const AnalyticsScreen = () => {
                   withDots={true}
                   withShadow={false}
                 />
-              </ScrollView>
-            </View>
-
-            {/* 2. Consumption Patterns */}
-            <View style={styles.chartCard}>
-              <View style={styles.chartCardHeader}>
-                <Text style={styles.chartCardTitle}>Consumption Patterns</Text>
-                <View style={styles.chartLegend}>
-                  <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
-                  <Text style={styles.legendText}>kW</Text>
-                </View>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              )}
+              {selectedChartType === 'consumption' && (
                 <LineChart
                   data={{
                     labels: chartData.labels,
@@ -801,25 +874,8 @@ const AnalyticsScreen = () => {
                   withDots={true}
                   withShadow={false}
                 />
-              </ScrollView>
-            </View>
-
-            {/* 3. Generation vs Consumption */}
-            <View style={styles.chartCard}>
-              <View style={styles.chartCardHeader}>
-                <Text style={styles.chartCardTitle}>Generation vs Consumption</Text>
-                <View style={styles.chartLegend}>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
-                    <Text style={styles.legendText}>Gen</Text>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
-                    <Text style={styles.legendText}>Con</Text>
-                  </View>
-                </View>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              )}
+              {selectedChartType === 'comparison' && (
                 <LineChart
                   data={{
                     labels: chartData.labels,
@@ -857,19 +913,8 @@ const AnalyticsScreen = () => {
                   withDots={true}
                   withShadow={false}
                 />
-              </ScrollView>
-            </View>
-
-            {/* 4. Net Export Over Time */}
-            <View style={styles.chartCard}>
-              <View style={styles.chartCardHeader}>
-                <Text style={styles.chartCardTitle}>Net Export Over Time</Text>
-                <View style={styles.chartLegend}>
-                  <View style={[styles.legendDot, { backgroundColor: '#3b82f6' }]} />
-                  <Text style={styles.legendText}>kW</Text>
-                </View>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              )}
+              {selectedChartType === 'netExport' && (
                 <LineChart
                   data={{
                     labels: chartData.labels,
@@ -900,9 +945,9 @@ const AnalyticsScreen = () => {
                   withDots={true}
                   withShadow={false}
                 />
-              </ScrollView>
-            </View>
-          </>
+              )}
+            </ScrollView>
+          </View>
         ) : (
           <View style={styles.noDataContainer}>
             <MaterialCommunityIcons name="chart-line-variant" size={48} color="#d1d5db" />
@@ -943,11 +988,11 @@ const AnalyticsScreen = () => {
             return (
               <View key={transaction.id} style={styles.transactionItem}>
                 <View style={styles.transactionLeft}>
-                  <View style={[styles.transactionIcon, { backgroundColor: isSale ? '#d1fae5' : '#fef3c7' }]}>
-                    <MaterialCommunityIcons 
-                      name={isSale ? 'arrow-up' : 'arrow-down'} 
-                      size={18} 
-                      color={isSale ? '#10b981' : '#f59e0b'} 
+                  <View style={[styles.transactionIcon, { backgroundColor: isSale ? '#dbeafe' : '#e0f2fe' }]}>
+                    <MaterialCommunityIcons
+                      name={isSale ? 'arrow-up' : 'arrow-down'}
+                      size={18}
+                      color={isSale ? '#3b82f6' : '#0ea5e9'}
                     />
                   </View>
                   <View style={styles.transactionDetails}>
@@ -975,11 +1020,11 @@ const AnalyticsScreen = () => {
                   </View>
                 </View>
                 <View style={styles.transactionRight}>
-                  <Text style={[styles.transactionAmount, { color: isSale ? '#10b981' : '#ef4444' }]}>
+                  <Text style={[styles.transactionAmount, { color: isSale ? '#3b82f6' : '#0ea5e9' }]}>
                     {isSale ? '+' : '-'}{formatCurrency(transaction.amount || 0)}
                   </Text>
-                  <View style={[styles.statusBadge, { backgroundColor: transaction.status === 'completed' ? '#d1fae5' : '#fef3c7' }]}>
-                    <Text style={[styles.statusBadgeText, { color: transaction.status === 'completed' ? '#065f46' : '#92400e' }]}>
+                  <View style={[styles.statusBadge, { backgroundColor: transaction.status === 'completed' ? '#dbeafe' : '#e0f2fe' }]}>
+                    <Text style={[styles.statusBadgeText, { color: transaction.status === 'completed' ? '#1e40af' : '#0369a1' }]}>
                       {transaction.status === 'completed' ? 'Completed' : transaction.status}
                     </Text>
                   </View>
@@ -1032,9 +1077,10 @@ const AnalyticsScreen = () => {
         </View>
       )}
 
-      {/* Empty Space */}
-      <View style={{ height: 20 }} />
-      </ScrollView>
+          {/* Empty Space */}
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      </SafeAreaView>
     </LinearGradient>
   );
 };
@@ -1150,7 +1196,7 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: 14,
-    color: '#10b981',
+    color: '#3b82f6',
     fontWeight: '600',
   },
   transactionsLoadingContainer: {
@@ -1369,8 +1415,8 @@ const styles = StyleSheet.create({
   selectorRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 24,
-    marginTop: 16,
+    marginBottom: 20,
+    marginTop: 7,
     paddingHorizontal: 16,
   },
   siteInfoCard: {
@@ -1429,8 +1475,8 @@ const styles = StyleSheet.create({
   timeRangeContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
+    marginTop: 5,
+    marginBottom: 22,
     gap: 8,
   },
   timeRangeButton: {
@@ -1445,8 +1491,8 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   timeRangeButtonActive: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
   },
   timeRangeText: {
     fontSize: 15,
@@ -1565,19 +1611,22 @@ const styles = StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
+  safeArea: {
+    flex: 1,
+  },
   headerSimple: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 24,
     paddingBottom: 20,
   },
   headerTitleNew: {
-    fontSize: 22,
+    fontSize: 30,
     fontWeight: '700',
     color: '#1e293b',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   headerSubtitleNew: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#64748b',
   },
   energyMetricsSection: {
@@ -1585,10 +1634,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitleNew: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1e293b',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   metricsRow: {
     flexDirection: 'row',
@@ -1674,6 +1723,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+  },
+  chartTypeSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    gap: 4,
+  },
+  chartTypeButton: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    gap: 6,
+  },
+  chartTypeButtonActive: {
+    backgroundColor: '#3b82f6',
+  },
+  chartTypeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  chartTypeTextActive: {
+    color: '#ffffff',
   },
 });
 
