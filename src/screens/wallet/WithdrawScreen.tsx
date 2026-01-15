@@ -19,7 +19,6 @@ import { formatCurrency } from '@/utils/helpers';
 import { paymentService } from '@/services/payments/paymentService';
 import { getErrorMessage } from '@/utils/errorUtils';
 import { useTheme } from '@/contexts';
-import { getThemedColors } from '@/utils/themedStyles';
 
 type WithdrawScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -27,12 +26,11 @@ interface Props {
   navigation: WithdrawScreenNavigationProp;
 }
 
-const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000];
+const QUICK_AMOUNTS = [500, 1000, 2000, 5000];
 
 export default function WithdrawScreen({ navigation }: Props) {
   const { isDark } = useTheme();
-  const colors = getThemedColors(isDark);
-  
+
   const { wallet } = useWalletStore();
   const [amount, setAmount] = useState('');
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
@@ -54,7 +52,7 @@ export default function WithdrawScreen({ navigation }: Props) {
 
   const handleWithdraw = async () => {
     const withdrawAmount = parseFloat(amount);
-    
+
     if (!amount || isNaN(withdrawAmount) || withdrawAmount <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid amount');
       return;
@@ -87,11 +85,8 @@ export default function WithdrawScreen({ navigation }: Props) {
 
     setIsProcessing(true);
     try {
-      // Create bank account ID from account details (or use existing if saved)
-      // For now, we'll send account details directly
-      // In production, you'd save bank accounts and use bankAccountId
-      const bankAccountId = `${accountNumber}_${ifscCode}`; // Temporary ID
-      
+      const bankAccountId = `${accountNumber}_${ifscCode}`;
+
       const response = await paymentService.requestWithdrawal({
         amount: withdrawAmount,
         bankAccountId: bankAccountId,
@@ -99,7 +94,7 @@ export default function WithdrawScreen({ navigation }: Props) {
 
       if (response.success && response.data) {
         Alert.alert(
-          'Withdrawal Request Submitted ✅',
+          'Withdrawal Request Submitted',
           `Your withdrawal request of ${formatCurrency(withdrawAmount)} has been submitted successfully.\n\nRequest ID: ${response.data.requestId}\n\nIt will be processed within 2-3 business days.`,
           [
             {
@@ -123,51 +118,87 @@ export default function WithdrawScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <LinearGradient
-        colors={['#10b981', '#059669']}
-        style={styles.gradientHeader}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#ffffff" />
+    <LinearGradient
+      colors={isDark ? ['#1e293b', '#0f172a', '#0f172a'] : ['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.9)' }]}
+          >
+            <Ionicons name="arrow-back" size={22} color={isDark ? '#ffffff' : '#1e293b'} />
           </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Withdraw Cash</Text>
-            <Text style={styles.headerSubtitle}>Transfer to your bank account</Text>
-          </View>
+          <Text style={[styles.headerTitle, { color: isDark ? '#ffffff' : '#1e293b' }]}>Withdraw Cash</Text>
+          <View style={styles.headerPlaceholder} />
         </View>
-      </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          {/* Available Balance */}
-          <View style={styles.balanceCard}>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Balance Card */}
+          <View style={[styles.balanceCard, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
             <LinearGradient
-              colors={['#fef3c7', '#fde68a']}
-              style={styles.balanceCardGradient}
+              colors={['#dbeafe', '#bfdbfe']}
+              style={styles.balanceGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
-              <View style={styles.balanceHeader}>
-                <MaterialCommunityIcons name="wallet" size={24} color="#f59e0b" />
-                <Text style={styles.balanceLabel}>Available Balance</Text>
+              <View style={styles.balanceIconContainer}>
+                <Ionicons name="wallet" size={20} color="#0ea5e9" />
               </View>
+              <Text style={styles.balanceLabel}>AVAILABLE BALANCE</Text>
               <Text style={styles.balanceValue}>{formatCurrency(availableBalance)}</Text>
             </LinearGradient>
           </View>
 
-          {/* Quick Amounts */}
-          <View style={styles.quickAmounts}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Amounts</Text>
-            <View style={styles.quickAmountsGrid}>
+          {/* Amount Input Card */}
+          <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
+            <Text style={[styles.cardTitle, { color: isDark ? '#ffffff' : '#1e293b' }]}>Withdrawal Amount</Text>
+
+            <View style={[styles.amountInputContainer, {
+              backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+              borderColor: isDark ? '#334155' : '#e2e8f0'
+            }]}>
+              <Text style={[styles.currencySymbol, { color: isDark ? '#94a3b8' : '#64748b' }]}>₹</Text>
+              <TextInput
+                style={[styles.amountInput, { color: isDark ? '#ffffff' : '#1e293b' }]}
+                placeholder="0.00"
+                placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
+                keyboardType="decimal-pad"
+                value={amount}
+                onChangeText={(text) => {
+                  setAmount(text);
+                  setSelectedAmount(null);
+                }}
+              />
+              <View style={styles.amountActions}>
+                <Ionicons name="chevron-up" size={14} color={isDark ? '#64748b' : '#94a3b8'} />
+                <Ionicons name="chevron-down" size={14} color={isDark ? '#64748b' : '#94a3b8'} />
+              </View>
+            </View>
+
+            {/* Quick Amount Buttons */}
+            <View style={styles.quickAmountsContainer}>
               {QUICK_AMOUNTS.map((quickAmount) => {
+                const isSelected = selectedAmount === quickAmount;
                 const isDisabled = quickAmount > availableBalance;
                 return (
                   <TouchableOpacity
                     key={quickAmount}
                     style={[
                       styles.quickAmountButton,
-                      { backgroundColor: colors.card, borderColor: colors.border },
-                      selectedAmount === quickAmount && styles.quickAmountButtonActive,
+                      {
+                        backgroundColor: isDark ? '#0f172a' : '#f0f9ff',
+                        borderColor: isSelected ? '#0ea5e9' : (isDark ? '#334155' : '#e0f2fe'),
+                      },
+                      isSelected && styles.quickAmountButtonSelected,
                       isDisabled && styles.quickAmountButtonDisabled,
                     ]}
                     onPress={() => !isDisabled && handleQuickAmount(quickAmount)}
@@ -176,12 +207,12 @@ export default function WithdrawScreen({ navigation }: Props) {
                     <Text
                       style={[
                         styles.quickAmountText,
-                        { color: colors.text },
-                        selectedAmount === quickAmount && styles.quickAmountTextActive,
+                        { color: isDark ? '#e2e8f0' : '#475569' },
+                        isSelected && styles.quickAmountTextSelected,
                         isDisabled && styles.quickAmountTextDisabled,
                       ]}
                     >
-                      {formatCurrency(quickAmount)}
+                      + ₹{quickAmount}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -189,48 +220,26 @@ export default function WithdrawScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {/* Amount Input */}
-          <View style={styles.inputSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Withdrawal Amount</Text>
-            <View style={[styles.amountInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-              <Text style={[styles.currencySymbol, { color: colors.text }]}>₹</Text>
-              <TextInput
-                style={[styles.amountInput, { color: colors.inputText }]}
-                placeholder="0.00"
-                placeholderTextColor={colors.inputPlaceholder}
-                keyboardType="decimal-pad"
-                value={amount}
-                onChangeText={(text) => {
-                  setAmount(text);
-                  setSelectedAmount(null);
-                }}
-              />
-            </View>
-            <Text style={[styles.hint, { color: colors.textMuted }]}>Minimum withdrawal: ₹100</Text>
-          </View>
-
-          {/* Bank Details */}
-          <View style={styles.inputSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Bank Account Details</Text>
-            
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: colors.text }]}>Account Holder Name</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.inputText }]}
-                placeholder="Enter account holder name"
-                placeholderTextColor={colors.inputPlaceholder}
-                value={accountHolderName}
-                onChangeText={setAccountHolderName}
-                autoCapitalize="words"
-              />
+          {/* Bank Details Card */}
+          <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.cardIconContainer, { backgroundColor: isDark ? '#0f172a' : '#e0f2fe' }]}>
+                <MaterialCommunityIcons name="bank" size={20} color="#0ea5e9" />
+              </View>
+              <Text style={[styles.cardTitle, { color: isDark ? '#ffffff' : '#1e293b', marginBottom: 0 }]}>Bank Details</Text>
             </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: colors.text }]}>Account Number</Text>
+            {/* Account Number */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: isDark ? '#94a3b8' : '#64748b' }]}>ACCOUNT NUMBER</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.inputText }]}
+                style={[styles.textInput, {
+                  backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+                  borderColor: isDark ? '#334155' : '#e2e8f0',
+                  color: isDark ? '#ffffff' : '#1e293b'
+                }]}
                 placeholder="Enter account number"
-                placeholderTextColor={colors.inputPlaceholder}
+                placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
                 keyboardType="numeric"
                 value={accountNumber}
                 onChangeText={setAccountNumber}
@@ -238,35 +247,58 @@ export default function WithdrawScreen({ navigation }: Props) {
               />
             </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: colors.text }]}>IFSC Code</Text>
+            {/* IFSC Code */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: isDark ? '#94a3b8' : '#64748b' }]}>IFSC CODE</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.inputText }]}
-                placeholder="Enter IFSC code"
-                placeholderTextColor={colors.inputPlaceholder}
+                style={[styles.textInput, {
+                  backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+                  borderColor: isDark ? '#334155' : '#e2e8f0',
+                  color: isDark ? '#ffffff' : '#1e293b'
+                }]}
+                placeholder="E.G. HDFC0001234"
+                placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
                 value={ifscCode}
                 onChangeText={(text) => setIfscCode(text.toUpperCase())}
                 autoCapitalize="characters"
                 maxLength={11}
               />
             </View>
+
+            {/* Account Holder Name */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: isDark ? '#94a3b8' : '#64748b' }]}>ACCOUNT HOLDER NAME</Text>
+              <TextInput
+                style={[styles.textInput, {
+                  backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+                  borderColor: isDark ? '#334155' : '#e2e8f0',
+                  color: isDark ? '#ffffff' : '#1e293b'
+                }]}
+                placeholder="As per bank records"
+                placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
+                value={accountHolderName}
+                onChangeText={setAccountHolderName}
+                autoCapitalize="words"
+              />
+            </View>
           </View>
 
-          {/* Summary */}
-          <View style={[styles.summary, { backgroundColor: colors.card }]}>
+          {/* Summary Card */}
+          <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
             <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Withdrawal Amount</Text>
-              <Text style={[styles.summaryValue, { color: colors.text }]}>
+              <Text style={[styles.summaryLabel, { color: isDark ? '#94a3b8' : '#64748b' }]}>Withdrawal Amount</Text>
+              <Text style={[styles.summaryValue, { color: isDark ? '#ffffff' : '#1e293b' }]}>
                 {amount ? formatCurrency(parseFloat(amount) || 0) : formatCurrency(0)}
               </Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Processing Fee</Text>
-              <Text style={[styles.summaryValue, { color: colors.success }]}>Free</Text>
+              <Text style={[styles.summaryLabel, { color: isDark ? '#94a3b8' : '#64748b' }]}>Processing Fee</Text>
+              <Text style={[styles.summaryValueFree, { color: '#10b981' }]}>Free</Text>
             </View>
-            <View style={[styles.summaryRow, styles.summaryTotal, { borderTopColor: colors.border }]}>
-              <Text style={[styles.summaryTotalLabel, { color: colors.text }]}>You will receive</Text>
-              <Text style={[styles.summaryTotalValue, { color: colors.primary }]}>
+            <View style={[styles.summaryDivider, { backgroundColor: isDark ? '#334155' : '#e2e8f0' }]} />
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryTotalLabel, { color: isDark ? '#ffffff' : '#1e293b' }]}>You will receive</Text>
+              <Text style={styles.summaryTotalValue}>
                 {amount ? formatCurrency(parseFloat(amount) || 0) : formatCurrency(0)}
               </Text>
             </View>
@@ -274,15 +306,19 @@ export default function WithdrawScreen({ navigation }: Props) {
 
           {/* Info Note */}
           <View style={[styles.infoNote, { backgroundColor: isDark ? '#1e3a5f' : '#eff6ff' }]}>
-            <Ionicons name="information-circle" size={20} color="#3b82f6" />
+            <Ionicons name="information-circle" size={18} color="#3b82f6" />
             <Text style={[styles.infoText, { color: isDark ? '#93c5fd' : '#1e40af' }]}>
-              Withdrawals are processed within 2-3 business days. Please ensure your bank details are correct.
+              Withdrawals are processed within 2-3 business days. Ensure your bank details are correct.
             </Text>
           </View>
 
           {/* Submit Button */}
           <TouchableOpacity
-            style={[styles.submitButton, isProcessing && styles.submitButtonDisabled]}
+            style={[
+              styles.submitButton,
+              (!amount || parseFloat(amount) <= 0 || !accountNumber || !ifscCode || !accountHolderName || isProcessing) &&
+              styles.submitButtonDisabled
+            ]}
             onPress={handleWithdraw}
             disabled={
               isProcessing ||
@@ -292,273 +328,282 @@ export default function WithdrawScreen({ navigation }: Props) {
               !ifscCode ||
               !accountHolderName
             }
-            activeOpacity={0.8}
+            activeOpacity={0.9}
           >
             <LinearGradient
-              colors={['#10b981', '#059669']}
+              colors={['#0ea5e9', '#0284c7']}
               style={styles.submitButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
             >
               {isProcessing ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
                 <>
-                  <MaterialCommunityIcons name="bank-transfer" size={20} color="#ffffff" />
                   <Text style={styles.submitButtonText}>Request Withdrawal</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#ffffff" />
                 </>
               )}
             </LinearGradient>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f0fdf4',
   },
-  gradientHeader: {
-    paddingTop: 16,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  header: {
+  headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  headerContent: {
-    flex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '700',
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#d1fae5',
-    fontWeight: '500',
+  headerPlaceholder: {
+    width: 40,
   },
   scrollView: {
     flex: 1,
   },
-  content: {
+  scrollContent: {
     padding: 20,
+    paddingTop: 8,
+    paddingBottom: 32,
   },
+  // Balance Card
   balanceCard: {
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
-    marginBottom: 24,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 6,
+    elevation: 4,
   },
-  balanceCardGradient: {
-    padding: 20,
+  balanceGradient: {
+    padding: 24,
+    alignItems: 'center',
   },
-  balanceHeader: {
-    flexDirection: 'row',
+  balanceIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(14, 165, 233, 0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
-    gap: 8,
   },
   balanceLabel: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#374151',
-  },
-  balanceValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  quickAmounts: {
-    marginBottom: 24,
-  },
-  quickAmountsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  quickAmountButton: {
-    flex: 1,
-    minWidth: '30%',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    alignItems: 'center',
-  },
-  quickAmountButtonActive: {
-    backgroundColor: '#f0fdf4',
-    borderColor: '#10b981',
-  },
-  quickAmountButtonDisabled: {
-    opacity: 0.5,
-  },
-  quickAmountText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#111827',
-  },
-  quickAmountTextActive: {
-    color: '#10b981',
-    fontWeight: '600',
-  },
-  quickAmountTextDisabled: {
-    color: '#9ca3af',
-  },
-  inputSection: {
-    marginBottom: 24,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
+    color: '#0369a1',
+    letterSpacing: 1,
     marginBottom: 8,
   },
+  balanceValue: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#0c4a6e',
+  },
+  // Card Styles
+  card: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  cardIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  // Amount Input
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 12,
+    borderWidth: 1.5,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    backgroundColor: '#ffffff',
-    marginBottom: 8,
+    paddingVertical: 4,
+    marginBottom: 16,
   },
   currencySymbol: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '600',
-    color: '#6b7280',
     marginRight: 8,
   },
   amountInput: {
     flex: 1,
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '600',
-    color: '#111827',
     paddingVertical: 12,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
+  amountActions: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  // Quick Amounts
+  quickAmountsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  quickAmountButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#ffffff',
-    color: '#111827',
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  hint: {
-    fontSize: 12,
-    color: '#6b7280',
+  quickAmountButtonSelected: {
+    backgroundColor: '#e0f2fe',
+    borderColor: '#0ea5e9',
   },
-  summary: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  quickAmountButtonDisabled: {
+    opacity: 0.4,
   },
+  quickAmountText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  quickAmountTextSelected: {
+    color: '#0369a1',
+  },
+  quickAmountTextDisabled: {
+    color: '#9ca3af',
+  },
+  // Input Groups
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  textInput: {
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  // Summary
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-  },
-  summaryTotal: {
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    marginTop: 8,
-    paddingTop: 16,
+    paddingVertical: 10,
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    fontWeight: '500',
   },
   summaryValue: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#111827',
+    fontWeight: '600',
+  },
+  summaryValueFree: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  summaryDivider: {
+    height: 1,
+    marginVertical: 8,
   },
   summaryTotalLabel: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
   },
   summaryTotalValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#10b981',
+    color: '#0ea5e9',
   },
+  // Info Note
   infoNote: {
     flexDirection: 'row',
-    backgroundColor: '#dbeafe',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 24,
-    gap: 8,
+    alignItems: 'flex-start',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 20,
+    gap: 10,
   },
   infoText: {
     flex: 1,
     fontSize: 12,
-    color: '#1e40af',
     lineHeight: 18,
+    fontWeight: '500',
   },
+  // Submit Button
   submitButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#10b981',
+    shadowColor: '#0ea5e9',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
   submitButtonGradient: {
-    paddingVertical: 16,
+    paddingVertical: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   submitButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   submitButtonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
-

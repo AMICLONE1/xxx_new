@@ -7,12 +7,11 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
-  Alert,
   Share,
   Dimensions,
-  InteractionManager,
   ActivityIndicator,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -28,6 +27,7 @@ const screenWidth = Dimensions.get('window').width;
 type EnergyChartScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EnergyChart'>;
 
 type TimeRange = 'day' | 'week' | 'month';
+type ChartType = 'generation' | 'consumption' | 'comparison' | 'netExport';
 
 interface DataPoint {
   timestamp: Date;
@@ -37,17 +37,11 @@ interface DataPoint {
   index: number;
 }
 
-interface TooltipData {
-  visible: boolean;
-  x: number;
-  y: number;
-  dataPoint: DataPoint | null;
-}
-
 export default function EnergyChartScreen() {
   const navigation = useNavigation<EnergyChartScreenNavigationProp>();
   const { energyData, currentMeter } = useMeterStore();
   const [timeRange, setTimeRange] = useState<TimeRange>('day');
+  const [selectedChartType, setSelectedChartType] = useState<ChartType>('generation');
   const [showLogModal, setShowLogModal] = useState(false);
   const [selectedDataPoint, setSelectedDataPoint] = useState<DataPoint | null>(null);
   const [showDataPointModal, setShowDataPointModal] = useState(false);
@@ -57,7 +51,6 @@ export default function EnergyChartScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const isMountedRef = useRef(true);
 
-  // Track component mount state
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -107,9 +100,8 @@ export default function EnergyChartScreen() {
       index,
     }));
 
-    // Generate labels based on time range
     const labelInterval = timeRange === 'day' ? 8 : timeRange === 'week' ? 12 : 16;
-    
+
     return {
       labels: dataPoints.map((dp, i) => {
         if (i % labelInterval === 0) {
@@ -157,25 +149,15 @@ export default function EnergyChartScreen() {
       minGeneration: Math.min(...generations),
       avgConsumption: consumptions.reduce((a, b) => a + b, 0) / consumptions.length,
       maxConsumption: Math.max(...consumptions),
-      totalGenerated: generations.reduce((a, b) => a + b, 0) * 0.25, // 15-min intervals to kWh
+      totalGenerated: generations.reduce((a, b) => a + b, 0) * 0.25,
       totalConsumed: consumptions.reduce((a, b) => a + b, 0) * 0.25,
       netExported: netExports.reduce((a, b) => a + b, 0) * 0.25,
     };
   }, [filteredData]);
 
-  // Handle chart point press
   const handleDataPointClick = useCallback((dataPoint: DataPoint) => {
     setSelectedDataPoint(dataPoint);
     setShowDataPointModal(true);
-  }, []);
-
-  // Safe alert helper
-  const safeAlert = useCallback((title: string, message: string) => {
-    if (isMountedRef.current) {
-      InteractionManager.runAfterInteractions(() => {
-        Alert.alert(title, message);
-      });
-    }
   }, []);
 
   // Export data to CSV
@@ -188,9 +170,8 @@ export default function EnergyChartScreen() {
     setIsExporting(true);
     setExportMessage('Preparing CSV...');
     setShowExportModal(false);
-    
+
     try {
-      // Create CSV content
       const headers = 'Timestamp,Generation (kW),Consumption (kW),Net Export (kW)\n';
       const rows = filteredData.dataPoints.map(dp => {
         const timestamp = dp.timestamp.toISOString();
@@ -199,12 +180,11 @@ export default function EnergyChartScreen() {
 
       const csvContent = headers + rows;
 
-      // Share the data using built-in Share API
       const result = await Share.share({
         message: csvContent,
         title: `Energy Data - ${timeRange.toUpperCase()}`,
       });
-      
+
       if (result.action === Share.sharedAction) {
         setExportMessage('CSV exported successfully!');
       }
@@ -226,7 +206,7 @@ export default function EnergyChartScreen() {
     setIsExporting(true);
     setExportMessage('Preparing JSON...');
     setShowExportModal(false);
-    
+
     try {
       const exportData = {
         exportedAt: new Date().toISOString(),
@@ -243,12 +223,11 @@ export default function EnergyChartScreen() {
 
       const jsonContent = JSON.stringify(exportData, null, 2);
 
-      // Share the data using built-in Share API
       const result = await Share.share({
         message: jsonContent,
         title: `Energy Data JSON - ${timeRange.toUpperCase()}`,
       });
-      
+
       if (result.action === Share.sharedAction) {
         setExportMessage('JSON exported successfully!');
       }
@@ -260,19 +239,151 @@ export default function EnergyChartScreen() {
     }
   }, [filteredData, timeRange, currentMeter, stats]);
 
-  // Show export options - use modal instead of Alert
-  const showExportOptions = useCallback(() => {
-    setShowExportModal(true);
-  }, []);
-
-  // Format timestamp for display
   const formatTimestamp = (date: Date) => {
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   };
 
+  // Chart rendering based on selected type
+  const renderChart = () => {
+    const chartWidth = Math.max(screenWidth - 48, filteredData.dataPoints.length * 8);
+
+    const baseChartConfig = {
+      backgroundColor: '#ffffff',
+      backgroundGradientFrom: '#ffffff',
+      backgroundGradientTo: '#ffffff',
+      decimalPlaces: 2,
+      labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+      propsForBackgroundLines: {
+        strokeDasharray: '',
+        stroke: '#e5e7eb',
+        strokeWidth: 1,
+      },
+    };
+
+    switch (selectedChartType) {
+      case 'generation':
+        return (
+          <LineChart
+            data={{
+              labels: filteredData.labels,
+              datasets: [{
+                data: filteredData.dataPoints.length ? filteredData.dataPoints.map(dp => dp.generation) : [0],
+                color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                strokeWidth: 2,
+              }],
+            }}
+            width={chartWidth}
+            height={240}
+            chartConfig={{
+              ...baseChartConfig,
+              color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+              propsForDots: { r: '4', strokeWidth: '2', stroke: '#10b981' },
+            }}
+            bezier
+            style={styles.chart}
+            withDots={true}
+            withShadow={false}
+            onDataPointClick={({ index }) => {
+              if (filteredData.dataPoints[index]) {
+                handleDataPointClick(filteredData.dataPoints[index]);
+              }
+            }}
+          />
+        );
+
+      case 'consumption':
+        return (
+          <LineChart
+            data={{
+              labels: filteredData.labels,
+              datasets: [{
+                data: filteredData.dataPoints.length ? filteredData.dataPoints.map(dp => dp.consumption) : [0],
+                color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+                strokeWidth: 2,
+              }],
+            }}
+            width={chartWidth}
+            height={240}
+            chartConfig={{
+              ...baseChartConfig,
+              color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+              propsForDots: { r: '4', strokeWidth: '2', stroke: '#ef4444' },
+            }}
+            bezier
+            style={styles.chart}
+            withDots={true}
+            withShadow={false}
+            onDataPointClick={({ index }) => {
+              if (filteredData.dataPoints[index]) {
+                handleDataPointClick(filteredData.dataPoints[index]);
+              }
+            }}
+          />
+        );
+
+      case 'comparison':
+        return (
+          <LineChart
+            data={{
+              labels: filteredData.labels,
+              datasets: [
+                {
+                  data: filteredData.dataPoints.length ? filteredData.dataPoints.map(dp => dp.generation) : [0],
+                  color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                  strokeWidth: 2,
+                },
+                {
+                  data: filteredData.dataPoints.length ? filteredData.dataPoints.map(dp => dp.consumption) : [0],
+                  color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+                  strokeWidth: 2,
+                },
+              ],
+            }}
+            width={chartWidth}
+            height={240}
+            chartConfig={{
+              ...baseChartConfig,
+              color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+              propsForDots: { r: '3', strokeWidth: '1', stroke: '#10b981' },
+            }}
+            bezier
+            style={styles.chart}
+            withDots={false}
+            withShadow={false}
+          />
+        );
+
+      case 'netExport':
+        return (
+          <LineChart
+            data={{
+              labels: filteredData.labels,
+              datasets: [{
+                data: filteredData.dataPoints.length ? filteredData.dataPoints.map(dp => dp.netExport) : [0],
+                color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+                strokeWidth: 2,
+              }],
+            }}
+            width={chartWidth}
+            height={240}
+            chartConfig={{
+              ...baseChartConfig,
+              color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+              propsForDots: { r: '4', strokeWidth: '2', stroke: '#3b82f6' },
+            }}
+            bezier
+            style={styles.chart}
+            withDots={true}
+            withShadow={false}
+            fromZero={false}
+          />
+        );
+    }
+  };
+
   // Render log item
   const renderLogItem = ({ item, index }: { item: DataPoint; index: number }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.logItem}
       onPress={() => handleDataPointClick(item)}
     >
@@ -284,22 +395,28 @@ export default function EnergyChartScreen() {
       </View>
       <View style={styles.logItemValues}>
         <View style={styles.logItemValue}>
-          <Ionicons name="flash" size={14} color="#10b981" />
+          <View style={[styles.logValueIcon, { backgroundColor: '#dcfce7' }]}>
+            <Ionicons name="flash" size={12} color="#10b981" />
+          </View>
           <Text style={styles.logValueText}>{item.generation.toFixed(2)} kW</Text>
         </View>
         <View style={styles.logItemValue}>
-          <Ionicons name="flash-outline" size={14} color="#ef4444" />
+          <View style={[styles.logValueIcon, { backgroundColor: '#fee2e2' }]}>
+            <Ionicons name="flash-outline" size={12} color="#ef4444" />
+          </View>
           <Text style={styles.logValueText}>{item.consumption.toFixed(2)} kW</Text>
         </View>
         <View style={styles.logItemValue}>
-          <Ionicons 
-            name={item.netExport >= 0 ? 'arrow-up' : 'arrow-down'} 
-            size={14} 
-            color={item.netExport >= 0 ? '#10b981' : '#ef4444'} 
-          />
+          <View style={[styles.logValueIcon, { backgroundColor: item.netExport >= 0 ? '#dbeafe' : '#fee2e2' }]}>
+            <Ionicons
+              name={item.netExport >= 0 ? 'arrow-up' : 'arrow-down'}
+              size={12}
+              color={item.netExport >= 0 ? '#3b82f6' : '#ef4444'}
+            />
+          </View>
           <Text style={[
             styles.logValueText,
-            { color: item.netExport >= 0 ? '#10b981' : '#ef4444' }
+            { color: item.netExport >= 0 ? '#3b82f6' : '#ef4444' }
           ]}>
             {Math.abs(item.netExport).toFixed(2)} kW
           </Text>
@@ -310,68 +427,105 @@ export default function EnergyChartScreen() {
 
   if (!energyData.length) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="chart-line" size={64} color="#d1d5db" />
-          <Text style={styles.emptyText}>No energy data available</Text>
-          <Text style={styles.emptySubtext}>
-            Connect your meter to view energy generation charts
-          </Text>
-        </View>
-      </SafeAreaView>
+      <LinearGradient
+        colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+        style={styles.gradientBackground}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconContainer}>
+              <LinearGradient
+                colors={['#e0f2fe', '#bae6fd']}
+                style={styles.emptyIcon}
+              >
+                <MaterialCommunityIcons name="chart-line" size={64} color="#0ea5e9" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.emptyText}>No Energy Data Available</Text>
+            <Text style={styles.emptySubtext}>
+              Connect your meter to view energy{'\n'}generation charts and analytics
+            </Text>
+            <TouchableOpacity
+              style={styles.backButtonLarge}
+              onPress={() => navigation.goBack()}
+            >
+              <LinearGradient
+                colors={['#0ea5e9', '#0284c7']}
+                style={styles.backButtonGradient}
+              >
+                <Ionicons name="arrow-back" size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                <Text style={styles.backButtonText}>Go Back</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView 
-        ref={scrollViewRef}
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={true}
-      >
-        <View style={styles.content}>
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="arrow-back" size={24} color="#374151" />
-            </TouchableOpacity>
-            <Text style={styles.title}>Energy Charts</Text>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#1e293b" />
+              </TouchableOpacity>
+              <View>
+                <Text style={styles.title}>Energy Charts</Text>
+                <Text style={styles.subtitle}>Detailed Analytics</Text>
+              </View>
+            </View>
             <View style={styles.headerActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.actionButton}
-                onPress={showExportOptions}
+                onPress={() => setShowExportModal(true)}
                 disabled={isExporting}
               >
-                <Ionicons name="download-outline" size={20} color="#10b981" />
+                <Ionicons name="download-outline" size={20} color="#1e293b" />
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => setShowLogModal(true)}
               >
-                <Ionicons name="list-outline" size={20} color="#10b981" />
+                <Ionicons name="list-outline" size={20} color="#1e293b" />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Time Range Selector */}
-          <View style={styles.rangeSelector}>
+          <View style={styles.timeRangeContainer}>
             {(['day', 'week', 'month'] as TimeRange[]).map((range) => (
               <TouchableOpacity
                 key={range}
                 style={[
-                  styles.rangeButton,
-                  timeRange === range && styles.rangeButtonActive,
+                  styles.timeRangeButton,
+                  timeRange === range && styles.timeRangeButtonActive,
                 ]}
                 onPress={() => setTimeRange(range)}
               >
                 <Text
                   style={[
-                    styles.rangeButtonText,
-                    timeRange === range && styles.rangeButtonTextActive,
+                    styles.timeRangeText,
+                    timeRange === range && styles.timeRangeTextActive,
                   ]}
                 >
                   {range.charAt(0).toUpperCase() + range.slice(1)}
@@ -380,687 +534,675 @@ export default function EnergyChartScreen() {
             ))}
           </View>
 
-          {/* Statistics Cards */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statsRow}>
-              <View style={[styles.statCard, styles.statCardGreen]}>
-                <Text style={styles.statLabel}>Avg Generation</Text>
-                <Text style={[styles.statValue, styles.statValueGreen]}>
-                  {stats.avgGeneration.toFixed(2)} kW
-                </Text>
-              </View>
-              <View style={[styles.statCard, styles.statCardGreen]}>
-                <Text style={styles.statLabel}>Peak Generation</Text>
-                <Text style={[styles.statValue, styles.statValueGreen]}>
-                  {stats.maxGeneration.toFixed(2)} kW
-                </Text>
-              </View>
-            </View>
-            <View style={styles.statsRow}>
-              <View style={[styles.statCard, styles.statCardRed]}>
-                <Text style={styles.statLabel}>Avg Consumption</Text>
-                <Text style={[styles.statValue, styles.statValueRed]}>
-                  {stats.avgConsumption.toFixed(2)} kW
-                </Text>
-              </View>
-              <View style={[styles.statCard, styles.statCardRed]}>
-                <Text style={styles.statLabel}>Peak Consumption</Text>
-                <Text style={[styles.statValue, styles.statValueRed]}>
-                  {stats.maxConsumption.toFixed(2)} kW
-                </Text>
-              </View>
-            </View>
-            <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Total Generated</Text>
-                <Text style={[styles.statValue, styles.statValueGreen]}>
-                  {stats.totalGenerated.toFixed(2)} kWh
-                </Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Net Export</Text>
-                <Text style={[
-                  styles.statValue,
-                  stats.netExported >= 0 ? styles.statValueGreen : styles.statValueRed
-                ]}>
-                  {stats.netExported >= 0 ? '+' : ''}{stats.netExported.toFixed(2)} kWh
-                </Text>
-              </View>
-            </View>
-          </View>
+          {/* Key Metrics Section */}
+          <View style={styles.metricsSection}>
+            <Text style={styles.sectionTitle}>Key Metrics</Text>
 
-          {/* Generation Chart */}
-          <View style={styles.chartSection}>
-            <View style={styles.chartHeader}>
-              <Text style={styles.chartTitle}>Generation (kW)</Text>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
-                <Text style={styles.legendText}>Generation</Text>
-              </View>
-            </View>
-            <Text style={styles.chartHint}>Tap on points to see details</Text>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={true}
-              style={styles.chartScroll}
-            >
-              <View style={styles.chartWrapper}>
-                <LineChart
-                  data={filteredData}
-                  width={Math.max(screenWidth - 48, filteredData.dataPoints.length * 8)}
-                  height={280}
-                  chartConfig={{
-                    backgroundColor: '#ffffff',
-                    backgroundGradientFrom: '#ffffff',
-                    backgroundGradientTo: '#ffffff',
-                    decimalPlaces: 2,
-                    color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-                    style: {
-                      borderRadius: 16,
-                    },
-                    propsForDots: {
-                      r: '5',
-                      strokeWidth: '2',
-                      stroke: '#10b981',
-                    },
-                    propsForBackgroundLines: {
-                      strokeDasharray: '',
-                      stroke: '#e5e7eb',
-                      strokeWidth: 1,
-                    },
-                  }}
-                  bezier
-                  style={styles.chart}
-                  withInnerLines={true}
-                  withOuterLines={true}
-                  withVerticalLines={true}
-                  withHorizontalLines={true}
-                  withDots={true}
-                  withShadow={false}
-                  onDataPointClick={({ index }) => {
-                    if (filteredData.dataPoints[index]) {
-                      handleDataPointClick(filteredData.dataPoints[index]);
-                    }
-                  }}
-                  getDotColor={(dataPoint, index) => {
-                    // Highlight selected point
-                    if (selectedDataPoint && selectedDataPoint.index === index) {
-                      return '#059669';
-                    }
-                    return '#10b981';
-                  }}
-                />
-              </View>
-            </ScrollView>
-          </View>
-
-          {/* Consumption Chart */}
-          <View style={styles.chartSection}>
-            <View style={styles.chartHeader}>
-              <Text style={styles.chartTitle}>Consumption (kW)</Text>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
-                <Text style={styles.legendText}>Consumption</Text>
-              </View>
-            </View>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={true}
-              style={styles.chartScroll}
-            >
-              <View style={styles.chartWrapper}>
-                <LineChart
-                  data={{
-                    labels: filteredData.labels,
-                    datasets: [{
-                      data: filteredData.dataPoints.length ? 
-                        filteredData.dataPoints.map(dp => dp.consumption) : [0],
-                      color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
-                      strokeWidth: 2,
-                    }],
-                  }}
-                  width={Math.max(screenWidth - 48, filteredData.dataPoints.length * 8)}
-                  height={220}
-                  chartConfig={{
-                    backgroundColor: '#ffffff',
-                    backgroundGradientFrom: '#ffffff',
-                    backgroundGradientTo: '#ffffff',
-                    decimalPlaces: 2,
-                    color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-                    propsForDots: {
-                      r: '4',
-                      strokeWidth: '2',
-                      stroke: '#ef4444',
-                    },
-                    propsForBackgroundLines: {
-                      strokeDasharray: '',
-                      stroke: '#e5e7eb',
-                      strokeWidth: 1,
-                    },
-                  }}
-                  bezier
-                  style={styles.chart}
-                  withDots={true}
-                  withShadow={false}
-                  onDataPointClick={({ index }) => {
-                    if (filteredData.dataPoints[index]) {
-                      handleDataPointClick(filteredData.dataPoints[index]);
-                    }
-                  }}
-                />
-              </View>
-            </ScrollView>
-          </View>
-
-          {/* Generation vs Consumption Comparison */}
-          <View style={styles.chartSection}>
-            <View style={styles.chartHeader}>
-              <Text style={styles.chartTitle}>Generation vs Consumption</Text>
-              <View style={styles.legendContainer}>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
-                  <Text style={styles.legendText}>Gen</Text>
+            {/* Row 1: Avg Generation | Peak Generation */}
+            <View style={styles.metricsRow}>
+              <View style={styles.metricCard}>
+                <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
+                  <MaterialCommunityIcons name="solar-power" size={18} color="#10b981" />
                 </View>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
-                  <Text style={styles.legendText}>Con</Text>
+                <Text style={styles.metricLabel}>AVG GENERATION</Text>
+                <Text style={styles.metricValue}>
+                  {stats.avgGeneration.toFixed(2)} <Text style={styles.metricUnit}>kW</Text>
+                </Text>
+              </View>
+
+              <View style={styles.metricCard}>
+                <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
+                  <MaterialCommunityIcons name="lightning-bolt" size={18} color="#10b981" />
+                </View>
+                <Text style={styles.metricLabel}>PEAK GENERATION</Text>
+                <Text style={styles.metricValue}>
+                  {stats.maxGeneration.toFixed(2)} <Text style={styles.metricUnit}>kW</Text>
+                </Text>
+              </View>
+            </View>
+
+            {/* Row 2: Avg Consumption | Peak Consumption */}
+            <View style={styles.metricsRow}>
+              <View style={styles.metricCard}>
+                <View style={[styles.metricIcon, { backgroundColor: '#fee2e2' }]}>
+                  <MaterialCommunityIcons name="flash" size={18} color="#ef4444" />
+                </View>
+                <Text style={styles.metricLabel}>AVG CONSUMPTION</Text>
+                <Text style={styles.metricValue}>
+                  {stats.avgConsumption.toFixed(2)} <Text style={styles.metricUnit}>kW</Text>
+                </Text>
+              </View>
+
+              <View style={styles.metricCard}>
+                <View style={[styles.metricIcon, { backgroundColor: '#fee2e2' }]}>
+                  <MaterialCommunityIcons name="flash-alert" size={18} color="#ef4444" />
+                </View>
+                <Text style={styles.metricLabel}>PEAK CONSUMPTION</Text>
+                <Text style={styles.metricValue}>
+                  {stats.maxConsumption.toFixed(2)} <Text style={styles.metricUnit}>kW</Text>
+                </Text>
+              </View>
+            </View>
+
+            {/* Row 3: Total Generated | Net Export */}
+            <View style={styles.metricsRow}>
+              <View style={styles.metricCard}>
+                <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                  <MaterialCommunityIcons name="chart-bar" size={18} color="#3b82f6" />
+                </View>
+                <Text style={styles.metricLabel}>TOTAL GENERATED</Text>
+                <Text style={styles.metricValue}>
+                  {stats.totalGenerated.toFixed(2)} <Text style={styles.metricUnit}>kWh</Text>
+                </Text>
+              </View>
+
+              <View style={styles.metricCard}>
+                <View style={[styles.metricIcon, { backgroundColor: stats.netExported >= 0 ? '#dbeafe' : '#fee2e2' }]}>
+                  <MaterialCommunityIcons name="swap-horizontal" size={18} color={stats.netExported >= 0 ? '#3b82f6' : '#ef4444'} />
+                </View>
+                <Text style={styles.metricLabel}>NET EXPORT</Text>
+                <Text style={[styles.metricValue, { color: stats.netExported >= 0 ? '#3b82f6' : '#ef4444' }]}>
+                  {stats.netExported >= 0 ? '+' : ''}{stats.netExported.toFixed(2)} <Text style={styles.metricUnit}>kWh</Text>
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Graphical Analysis Section */}
+          <View style={styles.chartsSection}>
+            <Text style={styles.sectionTitle}>Graphical Analysis</Text>
+
+            <View style={styles.chartCard}>
+              {/* Chart Type Selector */}
+              <View style={styles.chartTypeSelector}>
+                <TouchableOpacity
+                  style={[styles.chartTypeButton, selectedChartType === 'generation' && styles.chartTypeButtonActive]}
+                  onPress={() => setSelectedChartType('generation')}
+                >
+                  <MaterialCommunityIcons
+                    name="solar-power"
+                    size={16}
+                    color={selectedChartType === 'generation' ? '#ffffff' : '#6b7280'}
+                  />
+                  <Text style={[styles.chartTypeText, selectedChartType === 'generation' && styles.chartTypeTextActive]}>
+                    Generation
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.chartTypeButton, selectedChartType === 'consumption' && styles.chartTypeButtonActive]}
+                  onPress={() => setSelectedChartType('consumption')}
+                >
+                  <MaterialCommunityIcons
+                    name="flash"
+                    size={16}
+                    color={selectedChartType === 'consumption' ? '#ffffff' : '#6b7280'}
+                  />
+                  <Text style={[styles.chartTypeText, selectedChartType === 'consumption' && styles.chartTypeTextActive]}>
+                    Consumption
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.chartTypeButton, selectedChartType === 'comparison' && styles.chartTypeButtonActive]}
+                  onPress={() => setSelectedChartType('comparison')}
+                >
+                  <MaterialCommunityIcons
+                    name="compare"
+                    size={16}
+                    color={selectedChartType === 'comparison' ? '#ffffff' : '#6b7280'}
+                  />
+                  <Text style={[styles.chartTypeText, selectedChartType === 'comparison' && styles.chartTypeTextActive]}>
+                    Compare
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.chartTypeButton, selectedChartType === 'netExport' && styles.chartTypeButtonActive]}
+                  onPress={() => setSelectedChartType('netExport')}
+                >
+                  <MaterialCommunityIcons
+                    name="swap-horizontal"
+                    size={16}
+                    color={selectedChartType === 'netExport' ? '#ffffff' : '#6b7280'}
+                  />
+                  <Text style={[styles.chartTypeText, selectedChartType === 'netExport' && styles.chartTypeTextActive]}>
+                    Net Export
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Chart Header */}
+              <View style={styles.chartCardHeader}>
+                <Text style={styles.chartCardTitle}>
+                  {selectedChartType === 'generation' && 'Generation Trends (kW)'}
+                  {selectedChartType === 'consumption' && 'Consumption Patterns (kW)'}
+                  {selectedChartType === 'comparison' && 'Generation vs Consumption'}
+                  {selectedChartType === 'netExport' && 'Net Export Over Time (kW)'}
+                </Text>
+                <View style={styles.chartLegend}>
+                  {selectedChartType === 'comparison' ? (
+                    <>
+                      <View style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
+                        <Text style={styles.legendText}>Gen</Text>
+                      </View>
+                      <View style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+                        <Text style={styles.legendText}>Con</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, {
+                        backgroundColor: selectedChartType === 'generation' ? '#10b981' :
+                                         selectedChartType === 'consumption' ? '#ef4444' : '#3b82f6'
+                      }]} />
+                      <Text style={styles.legendText}>kW</Text>
+                    </View>
+                  )}
                 </View>
               </View>
-            </View>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={true}
-              style={styles.chartScroll}
-            >
-              <View style={styles.chartWrapper}>
-                <LineChart
-                  data={{
-                    labels: filteredData.labels,
-                    datasets: [
-                      {
-                        data: filteredData.dataPoints.length ?
-                          filteredData.dataPoints.map(dp => dp.generation) : [0],
-                        color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
-                        strokeWidth: 2,
-                      },
-                      {
-                        data: filteredData.dataPoints.length ?
-                          filteredData.dataPoints.map(dp => dp.consumption) : [0],
-                        color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
-                        strokeWidth: 2,
-                      },
-                    ],
-                  }}
-                  width={Math.max(screenWidth - 48, filteredData.dataPoints.length * 8)}
-                  height={250}
-                  chartConfig={{
-                    backgroundColor: '#f0fdf4',
-                    backgroundGradientFrom: '#f0fdf4',
-                    backgroundGradientTo: '#fef2f2',
-                    decimalPlaces: 2,
-                    color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-                    propsForBackgroundLines: {
-                      strokeDasharray: '',
-                      stroke: '#d1d5db',
-                      strokeWidth: 1,
-                    },
-                  }}
-                  bezier
-                  style={styles.chart}
-                  withDots={false}
-                  withShadow={false}
-                />
-              </View>
-            </ScrollView>
-          </View>
 
-          {/* Net Export Chart */}
-          <View style={styles.chartSection}>
-            <View style={styles.chartHeader}>
-              <Text style={styles.chartTitle}>Net Export (kW)</Text>
-              <Text style={styles.chartSubtitle}>Positive = Export, Negative = Import</Text>
+              {/* Chart hint */}
+              <Text style={styles.chartHint}>
+                {selectedChartType !== 'comparison' ? 'Tap on points to see details' : 'Scroll horizontally for more data'}
+              </Text>
+
+              {/* Chart Content */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                {renderChart()}
+              </ScrollView>
             </View>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={true}
-              style={styles.chartScroll}
-            >
-              <View style={styles.chartWrapper}>
-                <LineChart
-                  data={{
-                    labels: filteredData.labels,
-                    datasets: [{
-                      data: filteredData.dataPoints.length ?
-                        filteredData.dataPoints.map(dp => dp.netExport) : [0],
-                      color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
-                      strokeWidth: 2,
-                    }],
-                  }}
-                  width={Math.max(screenWidth - 48, filteredData.dataPoints.length * 8)}
-                  height={200}
-                  chartConfig={{
-                    backgroundColor: '#ffffff',
-                    backgroundGradientFrom: '#ffffff',
-                    backgroundGradientTo: '#ffffff',
-                    decimalPlaces: 2,
-                    color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-                    propsForDots: {
-                      r: '3',
-                      strokeWidth: '1',
-                      stroke: '#3b82f6',
-                    },
-                    propsForBackgroundLines: {
-                      strokeDasharray: '',
-                      stroke: '#e5e7eb',
-                      strokeWidth: 1,
-                    },
-                  }}
-                  bezier
-                  style={styles.chart}
-                  withDots={true}
-                  withShadow={false}
-                  fromZero={false}
-                />
-              </View>
-            </ScrollView>
           </View>
 
           {/* Recent Data Log Preview */}
           <View style={styles.logPreviewSection}>
             <View style={styles.logPreviewHeader}>
-              <Text style={styles.logPreviewTitle}>Recent Data Log</Text>
+              <Text style={styles.sectionTitle}>Recent Data Log</Text>
               <TouchableOpacity onPress={() => setShowLogModal(true)}>
-                <Text style={styles.viewAllText}>View All →</Text>
+                <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.logPreviewList}>
+            <View style={styles.logPreviewCard}>
               {filteredData.dataPoints.slice(-5).reverse().map((dp, index) => (
-                <TouchableOpacity 
+                <TouchableOpacity
                   key={dp.timestamp.getTime()}
-                  style={styles.logPreviewItem}
+                  style={[
+                    styles.logPreviewItem,
+                    index !== Math.min(4, filteredData.dataPoints.length - 1) && styles.logPreviewItemBorder
+                  ]}
                   onPress={() => handleDataPointClick(dp)}
                 >
-                  <Text style={styles.logPreviewTime}>
-                    {dp.timestamp.toLocaleTimeString()}
-                  </Text>
-                  <Text style={styles.logPreviewGen}>
-                    ⚡ {dp.generation.toFixed(1)} kW
-                  </Text>
-                  <Text style={styles.logPreviewCon}>
-                    🔌 {dp.consumption.toFixed(1)} kW
-                  </Text>
+                  <View style={styles.logPreviewTime}>
+                    <Ionicons name="time-outline" size={14} color="#64748b" />
+                    <Text style={styles.logPreviewTimeText}>
+                      {dp.timestamp.toLocaleTimeString()}
+                    </Text>
+                  </View>
+                  <View style={styles.logPreviewValues}>
+                    <View style={styles.logPreviewValueItem}>
+                      <View style={[styles.logPreviewDot, { backgroundColor: '#10b981' }]} />
+                      <Text style={[styles.logPreviewValue, { color: '#10b981' }]}>
+                        {dp.generation.toFixed(1)} kW
+                      </Text>
+                    </View>
+                    <View style={styles.logPreviewValueItem}>
+                      <View style={[styles.logPreviewDot, { backgroundColor: '#ef4444' }]} />
+                      <Text style={[styles.logPreviewValue, { color: '#ef4444' }]}>
+                        {dp.consumption.toFixed(1)} kW
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
                 </TouchableOpacity>
               ))}
             </View>
           </View>
-        </View>
-      </ScrollView>
 
-      {/* Data Log Modal */}
-      <Modal
-        visible={showLogModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowLogModal(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Energy Data Log</Text>
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowLogModal(false)}
-            >
-              <Ionicons name="close" size={24} color="#111827" />
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.modalActions}>
-            <TouchableOpacity 
-              style={styles.exportButton}
-              onPress={exportToCSV}
-              disabled={isExporting}
-            >
-              <Ionicons name="document-text-outline" size={18} color="#ffffff" />
-              <Text style={styles.exportButtonText}>Export CSV</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.exportButton, styles.exportButtonSecondary]}
-              onPress={exportToJSON}
-              disabled={isExporting}
-            >
-              <Ionicons name="code-slash-outline" size={18} color="#10b981" />
-              <Text style={styles.exportButtonTextSecondary}>Export JSON</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Bottom Spacing */}
+          <View style={{ height: 32 }} />
+        </ScrollView>
 
-          <View style={styles.logStats}>
-            <Text style={styles.logStatsText}>
-              {filteredData.dataPoints.length} records • {timeRange} view
-            </Text>
-          </View>
-
-          <FlatList
-            data={[...filteredData.dataPoints].reverse()}
-            renderItem={renderLogItem}
-            keyExtractor={(item) => item.timestamp.getTime().toString()}
-            contentContainerStyle={styles.logList}
-            showsVerticalScrollIndicator={true}
-          />
-        </SafeAreaView>
-      </Modal>
-
-      {/* Data Point Detail Modal */}
-      <Modal
-        visible={showDataPointModal}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowDataPointModal(false)}
-      >
-        <TouchableOpacity 
-          style={styles.dataPointModalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDataPointModal(false)}
+        {/* Data Log Modal */}
+        <Modal
+          visible={showLogModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowLogModal(false)}
         >
-          <View style={styles.dataPointModalContent}>
-            {selectedDataPoint && (
-              <>
-                <View style={styles.dataPointModalHeader}>
-                  <Ionicons name="analytics" size={24} color="#10b981" />
-                  <Text style={styles.dataPointModalTitle}>Data Point Details</Text>
+          <SafeAreaView style={styles.modalContainer}>
+            <LinearGradient
+              colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+              style={styles.modalGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+            >
+              <View style={styles.modalHeader}>
+                <View>
+                  <Text style={styles.modalTitle}>Energy Data Log</Text>
+                  <Text style={styles.modalSubtitle}>{filteredData.dataPoints.length} records</Text>
                 </View>
-                
-                <View style={styles.dataPointModalTime}>
-                  <Ionicons name="time-outline" size={16} color="#6b7280" />
-                  <Text style={styles.dataPointModalTimeText}>
-                    {formatTimestamp(selectedDataPoint.timestamp)}
-                  </Text>
-                </View>
-
-                <View style={styles.dataPointModalValues}>
-                  <View style={styles.dataPointModalValueRow}>
-                    <View style={styles.dataPointModalValueIcon}>
-                      <Ionicons name="flash" size={20} color="#10b981" />
-                    </View>
-                    <View style={styles.dataPointModalValueInfo}>
-                      <Text style={styles.dataPointModalValueLabel}>Generation</Text>
-                      <Text style={[styles.dataPointModalValueText, { color: '#10b981' }]}>
-                        {selectedDataPoint.generation.toFixed(3)} kW
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.dataPointModalValueRow}>
-                    <View style={styles.dataPointModalValueIcon}>
-                      <Ionicons name="flash-outline" size={20} color="#ef4444" />
-                    </View>
-                    <View style={styles.dataPointModalValueInfo}>
-                      <Text style={styles.dataPointModalValueLabel}>Consumption</Text>
-                      <Text style={[styles.dataPointModalValueText, { color: '#ef4444' }]}>
-                        {selectedDataPoint.consumption.toFixed(3)} kW
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.dataPointModalValueRow}>
-                    <View style={styles.dataPointModalValueIcon}>
-                      <Ionicons 
-                        name={selectedDataPoint.netExport >= 0 ? 'trending-up' : 'trending-down'} 
-                        size={20} 
-                        color={selectedDataPoint.netExport >= 0 ? '#10b981' : '#ef4444'} 
-                      />
-                    </View>
-                    <View style={styles.dataPointModalValueInfo}>
-                      <Text style={styles.dataPointModalValueLabel}>
-                        Net {selectedDataPoint.netExport >= 0 ? 'Export' : 'Import'}
-                      </Text>
-                      <Text style={[
-                        styles.dataPointModalValueText, 
-                        { color: selectedDataPoint.netExport >= 0 ? '#10b981' : '#ef4444' }
-                      ]}>
-                        {Math.abs(selectedDataPoint.netExport).toFixed(3)} kW
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.dataPointModalValueRow}>
-                    <View style={styles.dataPointModalValueIcon}>
-                      <Ionicons name="calculator-outline" size={20} color="#3b82f6" />
-                    </View>
-                    <View style={styles.dataPointModalValueInfo}>
-                      <Text style={styles.dataPointModalValueLabel}>Energy (15 min)</Text>
-                      <Text style={[styles.dataPointModalValueText, { color: '#3b82f6' }]}>
-                        {(selectedDataPoint.generation * 0.25).toFixed(3)} kWh
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                <TouchableOpacity 
-                  style={styles.dataPointModalCloseBtn}
-                  onPress={() => setShowDataPointModal(false)}
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowLogModal(false)}
                 >
-                  <Text style={styles.dataPointModalCloseBtnText}>Close</Text>
+                  <Ionicons name="close" size={24} color="#1e293b" />
                 </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
+              </View>
 
-      {/* Export Modal */}
-      <Modal
-        visible={showExportModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowExportModal(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowExportModal(false)}
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.exportButtonPrimary}
+                  onPress={exportToCSV}
+                  disabled={isExporting}
+                >
+                  <Ionicons name="document-text-outline" size={18} color="#ffffff" />
+                  <Text style={styles.exportButtonPrimaryText}>Export CSV</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.exportButtonSecondary}
+                  onPress={exportToJSON}
+                  disabled={isExporting}
+                >
+                  <Ionicons name="code-slash-outline" size={18} color="#3b82f6" />
+                  <Text style={styles.exportButtonSecondaryText}>Export JSON</Text>
+                </TouchableOpacity>
+              </View>
+
+              <FlatList
+                data={[...filteredData.dataPoints].reverse()}
+                renderItem={renderLogItem}
+                keyExtractor={(item) => item.timestamp.getTime().toString()}
+                contentContainerStyle={styles.logList}
+                showsVerticalScrollIndicator={true}
+              />
+            </LinearGradient>
+          </SafeAreaView>
+        </Modal>
+
+        {/* Data Point Detail Modal */}
+        <Modal
+          visible={showDataPointModal}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShowDataPointModal(false)}
         >
-          <View style={styles.exportModalContent}>
-            <Text style={styles.exportModalTitle}>Export Energy Data</Text>
-            <Text style={styles.exportModalSubtitle}>
-              {filteredData.dataPoints.length} data points for {timeRange}
-            </Text>
-            
-            <TouchableOpacity 
-              style={styles.exportModalButton}
-              onPress={exportToCSV}
-              disabled={isExporting}
-            >
-              <Ionicons name="document-text-outline" size={24} color="#10b981" />
-              <View style={styles.exportButtonTextContainer}>
-                <Text style={styles.exportButtonTitle}>Export as CSV</Text>
-                <Text style={styles.exportButtonDesc}>Spreadsheet format</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowDataPointModal(false)}
+          >
+            <View style={styles.dataPointModalContent}>
+              {selectedDataPoint && (
+                <>
+                  <View style={styles.dataPointModalHeader}>
+                    <View style={styles.dataPointModalIconContainer}>
+                      <Ionicons name="analytics" size={24} color="#3b82f6" />
+                    </View>
+                    <Text style={styles.dataPointModalTitle}>Data Point Details</Text>
+                  </View>
 
-            <TouchableOpacity 
-              style={styles.exportModalButton}
-              onPress={exportToJSON}
-              disabled={isExporting}
-            >
-              <Ionicons name="code-slash-outline" size={24} color="#3b82f6" />
-              <View style={styles.exportButtonTextContainer}>
-                <Text style={styles.exportButtonTitle}>Export as JSON</Text>
-                <Text style={styles.exportButtonDesc}>Data format</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-            </TouchableOpacity>
+                  <View style={styles.dataPointModalTime}>
+                    <Ionicons name="time-outline" size={16} color="#64748b" />
+                    <Text style={styles.dataPointModalTimeText}>
+                      {formatTimestamp(selectedDataPoint.timestamp)}
+                    </Text>
+                  </View>
 
-            <TouchableOpacity 
-              style={styles.exportCancelButton}
-              onPress={() => setShowExportModal(false)}
-            >
-              <Text style={styles.exportCancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+                  <View style={styles.dataPointModalValues}>
+                    <View style={styles.dataPointModalValueRow}>
+                      <View style={[styles.dataPointModalValueIcon, { backgroundColor: '#dcfce7' }]}>
+                        <Ionicons name="flash" size={20} color="#10b981" />
+                      </View>
+                      <View style={styles.dataPointModalValueInfo}>
+                        <Text style={styles.dataPointModalValueLabel}>Generation</Text>
+                        <Text style={[styles.dataPointModalValueText, { color: '#10b981' }]}>
+                          {selectedDataPoint.generation.toFixed(3)} kW
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.dataPointModalValueRow}>
+                      <View style={[styles.dataPointModalValueIcon, { backgroundColor: '#fee2e2' }]}>
+                        <Ionicons name="flash-outline" size={20} color="#ef4444" />
+                      </View>
+                      <View style={styles.dataPointModalValueInfo}>
+                        <Text style={styles.dataPointModalValueLabel}>Consumption</Text>
+                        <Text style={[styles.dataPointModalValueText, { color: '#ef4444' }]}>
+                          {selectedDataPoint.consumption.toFixed(3)} kW
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.dataPointModalValueRow}>
+                      <View style={[styles.dataPointModalValueIcon, { backgroundColor: selectedDataPoint.netExport >= 0 ? '#dbeafe' : '#fee2e2' }]}>
+                        <Ionicons
+                          name={selectedDataPoint.netExport >= 0 ? 'trending-up' : 'trending-down'}
+                          size={20}
+                          color={selectedDataPoint.netExport >= 0 ? '#3b82f6' : '#ef4444'}
+                        />
+                      </View>
+                      <View style={styles.dataPointModalValueInfo}>
+                        <Text style={styles.dataPointModalValueLabel}>
+                          Net {selectedDataPoint.netExport >= 0 ? 'Export' : 'Import'}
+                        </Text>
+                        <Text style={[
+                          styles.dataPointModalValueText,
+                          { color: selectedDataPoint.netExport >= 0 ? '#3b82f6' : '#ef4444' }
+                        ]}>
+                          {Math.abs(selectedDataPoint.netExport).toFixed(3)} kW
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.dataPointModalValueRow}>
+                      <View style={[styles.dataPointModalValueIcon, { backgroundColor: '#f3e8ff' }]}>
+                        <Ionicons name="calculator-outline" size={20} color="#8b5cf6" />
+                      </View>
+                      <View style={styles.dataPointModalValueInfo}>
+                        <Text style={styles.dataPointModalValueLabel}>Energy (15 min)</Text>
+                        <Text style={[styles.dataPointModalValueText, { color: '#8b5cf6' }]}>
+                          {(selectedDataPoint.generation * 0.25).toFixed(3)} kWh
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.dataPointModalCloseBtn}
+                    onPress={() => setShowDataPointModal(false)}
+                  >
+                    <Text style={styles.dataPointModalCloseBtnText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Export Modal */}
+        <Modal
+          visible={showExportModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowExportModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowExportModal(false)}
+          >
+            <View style={styles.exportModalContent}>
+              <View style={styles.exportModalHeader}>
+                <View style={styles.exportModalIconContainer}>
+                  <MaterialCommunityIcons name="file-export" size={28} color="#3b82f6" />
+                </View>
+                <Text style={styles.exportModalTitle}>Export Energy Data</Text>
+                <Text style={styles.exportModalSubtitle}>
+                  {filteredData.dataPoints.length} data points for {timeRange}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.exportModalButton}
+                onPress={exportToCSV}
+                disabled={isExporting}
+              >
+                <View style={[styles.exportModalButtonIcon, { backgroundColor: '#dcfce7' }]}>
+                  <Ionicons name="document-text-outline" size={24} color="#10b981" />
+                </View>
+                <View style={styles.exportButtonTextContainer}>
+                  <Text style={styles.exportButtonTitle}>Export as CSV</Text>
+                  <Text style={styles.exportButtonDesc}>Spreadsheet format</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.exportModalButton}
+                onPress={exportToJSON}
+                disabled={isExporting}
+              >
+                <View style={[styles.exportModalButtonIcon, { backgroundColor: '#dbeafe' }]}>
+                  <Ionicons name="code-slash-outline" size={24} color="#3b82f6" />
+                </View>
+                <View style={styles.exportButtonTextContainer}>
+                  <Text style={styles.exportButtonTitle}>Export as JSON</Text>
+                  <Text style={styles.exportButtonDesc}>Data interchange format</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.exportCancelButton}
+                onPress={() => setShowExportModal(false)}
+              >
+                <Text style={styles.exportCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Export Status Message */}
+        {exportMessage ? (
+          <View style={styles.exportMessageContainer}>
+            {isExporting && <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />}
+            <Text style={styles.exportMessageText}>{exportMessage}</Text>
           </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Export Status Message */}
-      {exportMessage ? (
-        <View style={styles.exportMessageContainer}>
-          {isExporting && <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />}
-          <Text style={styles.exportMessageText}>{exportMessage}</Text>
-        </View>
-      ) : null}
-    </SafeAreaView>
+        ) : null}
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'transparent',
   },
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 16,
+  scrollContent: {
+    paddingHorizontal: 20,
     paddingBottom: 32,
   },
+  // Header Styles
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
+    gap : 7
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButton: {
-    padding: 4,
-    marginRight: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    flex: 1,
+    fontSize: 25,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#64748b',
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 5,
   },
   actionButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  rangeSelector: {
+  // Time Range Selector
+  timeRangeContainer: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 24,
   },
-  rangeButton: {
+  timeRangeButton: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     backgroundColor: '#ffffff',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  timeRangeButtonActive: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
+  timeRangeText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  timeRangeTextActive: {
+    color: '#ffffff',
+  },
+  // Metrics Section
+  metricsSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 16,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  metricIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 12,
   },
-  rangeButtonActive: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+  metricLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
-  rangeButtonText: {
-    fontSize: 14,
+  metricValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  metricUnit: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '400',
+  },
+  // Charts Section
+  chartsSection: {
+    marginBottom: 24,
+  },
+  chartCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  chartTypeSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    gap: 4,
+  },
+  chartTypeButton: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    gap: 6,
+  },
+  chartTypeButtonActive: {
+    backgroundColor: '#3b82f6',
+  },
+  chartTypeText: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#6b7280',
   },
-  rangeButtonTextActive: {
+  chartTypeTextActive: {
     color: '#ffffff',
   },
-  statsContainer: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  statCardGreen: {
-    borderLeftWidth: 3,
-    borderLeftColor: '#10b981',
-  },
-  statCardRed: {
-    borderLeftWidth: 3,
-    borderLeftColor: '#ef4444',
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#6b7280',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  statValueGreen: {
-    color: '#10b981',
-  },
-  statValueRed: {
-    color: '#ef4444',
-  },
-  chartSection: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  chartHeader: {
+  chartCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  chartTitle: {
+  chartCardTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#1e293b',
   },
-  chartSubtitle: {
-    fontSize: 11,
-    color: '#6b7280',
-    fontStyle: 'italic',
-  },
-  chartHint: {
-    fontSize: 11,
-    color: '#9ca3af',
-    marginBottom: 8,
-    fontStyle: 'italic',
-  },
-  legendContainer: {
+  chartLegend: {
     flexDirection: 'row',
     gap: 12,
   },
@@ -1076,152 +1218,194 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#64748b',
   },
-  chartScroll: {
-    marginHorizontal: -8,
-  },
-  chartWrapper: {
-    paddingHorizontal: 8,
+  chartHint: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginBottom: 12,
   },
   chart: {
     borderRadius: 12,
   },
+  // Log Preview Section
   logPreviewSection: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
     marginBottom: 16,
   },
   logPreviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  logPreviewTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    marginBottom: 16,
   },
   viewAllText: {
     fontSize: 14,
-    color: '#10b981',
-    fontWeight: '500',
+    color: '#3b82f6',
+    fontWeight: '600',
   },
-  logPreviewList: {
-    gap: 8,
+  logPreviewCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   logPreviewItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
+  },
+  logPreviewItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
   logPreviewTime: {
-    fontSize: 12,
-    color: '#6b7280',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     flex: 1,
   },
-  logPreviewGen: {
-    fontSize: 12,
-    color: '#10b981',
+  logPreviewTimeText: {
+    fontSize: 13,
+    color: '#64748b',
     fontWeight: '500',
-    marginHorizontal: 8,
   },
-  logPreviewCon: {
-    fontSize: 12,
-    color: '#ef4444',
-    fontWeight: '500',
+  logPreviewValues: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  logPreviewValueItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  logPreviewDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  logPreviewValue: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   // Modal Styles
   modalContainer: {
     flex: 1,
     backgroundColor: '#ffffff',
   },
+  modalGradient: {
+    flex: 1,
+  },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 2,
   },
   modalCloseButton: {
-    padding: 4,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   modalActions: {
     flexDirection: 'row',
     gap: 12,
-    padding: 16,
+    padding: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
-  exportButton: {
+  exportButtonPrimary: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#10b981',
-    paddingVertical: 12,
+    backgroundColor: '#3b82f6',
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 14,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  exportButtonSecondary: {
-    backgroundColor: '#f0fdf4',
-    borderWidth: 1,
-    borderColor: '#10b981',
-  },
-  exportButtonText: {
+  exportButtonPrimaryText: {
     color: '#ffffff',
     fontWeight: '600',
     fontSize: 14,
   },
-  exportButtonTextSecondary: {
-    color: '#10b981',
+  exportButtonSecondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#ffffff',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+  },
+  exportButtonSecondaryText: {
+    color: '#3b82f6',
     fontWeight: '600',
     fontSize: 14,
-  },
-  logStats: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  logStatsText: {
-    fontSize: 12,
-    color: '#6b7280',
   },
   logList: {
     padding: 16,
   },
   logItem: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   logItemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   logItemIndex: {
     fontSize: 12,
     color: '#9ca3af',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   logItemTime: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '500',
   },
   logItemValues: {
     flexDirection: 'row',
@@ -1230,14 +1414,21 @@ const styles = StyleSheet.create({
   logItemValue: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  logValueIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logValueText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#111827',
+    fontWeight: '600',
+    color: '#1e293b',
   },
-  // Modal Overlay (shared)
+  // Modal Overlay
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1246,59 +1437,65 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   // Data Point Modal
-  dataPointModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
   dataPointModalContent: {
     backgroundColor: '#ffffff',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 24,
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 360,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
   },
   dataPointModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 20,
+  },
+  dataPointModalIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#dbeafe',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   dataPointModalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
   },
   dataPointModalTime: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#f3f4f6',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 16,
+    backgroundColor: '#f8fafc',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginBottom: 20,
   },
   dataPointModalTimeText: {
-    fontSize: 13,
-    color: '#6b7280',
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
   },
   dataPointModalValues: {
-    gap: 12,
-    marginBottom: 20,
+    gap: 14,
+    marginBottom: 24,
   },
   dataPointModalValueRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
   dataPointModalValueIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1307,119 +1504,183 @@ const styles = StyleSheet.create({
   },
   dataPointModalValueLabel: {
     fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 2,
+    color: '#64748b',
+    marginBottom: 4,
+    fontWeight: '500',
   },
   dataPointModalValueText: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
   },
   dataPointModalCloseBtn: {
-    backgroundColor: '#10b981',
-    paddingVertical: 14,
-    borderRadius: 10,
+    backgroundColor: '#3b82f6',
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: 'center',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   dataPointModalCloseBtnText: {
     color: '#ffffff',
     fontWeight: '600',
     fontSize: 16,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-  // Export Modal Styles
+  // Export Modal
   exportModalContent: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 24,
     padding: 24,
-    width: '90%',
+    width: '100%',
     maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  exportModalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  exportModalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: '#dbeafe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   exportModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1e293b',
     marginBottom: 4,
     textAlign: 'center',
   },
   exportModalSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 24,
+    color: '#64748b',
     textAlign: 'center',
   },
   exportModalButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f8fafc',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
+  exportModalButtonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   exportButtonTextContainer: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 14,
   },
   exportButtonTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#1e293b',
   },
   exportButtonDesc: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: 13,
+    color: '#64748b',
     marginTop: 2,
   },
   exportCancelButton: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
   },
   exportCancelButtonText: {
     fontSize: 16,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: '#64748b',
+    fontWeight: '600',
   },
+  // Export Message
   exportMessageContainer: {
     position: 'absolute',
     bottom: 100,
     left: 20,
     right: 20,
-    backgroundColor: '#10b981',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    backgroundColor: '#3b82f6',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   exportMessageText: {
     color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  // Empty State
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyIconContainer: {
+    marginBottom: 24,
+  },
+  emptyIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 16,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  backButtonLarge: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  backButtonGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
-

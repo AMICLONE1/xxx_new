@@ -17,6 +17,7 @@ import { useTradingStore, useWalletStore } from '@/store';
 import { tradingService } from '@/services/api/tradingService';
 import { formatEnergy, formatCurrency } from '@/utils/helpers';
 import { getErrorMessage } from '@/utils/errorUtils';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type OrderScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -116,104 +117,116 @@ export default function OrderScreen({ navigation, route }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.content}>
-          {/* Header with Back Button */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="arrow-back" size={24} color="#374151" />
-            </TouchableOpacity>
-            <Text style={styles.title}>Place Order</Text>
-          </View>
+    <LinearGradient 
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      >
 
-          <View style={styles.sellerInfo}>
-            <Text style={styles.sellerLabel}>Seller</Text>
-            <Text style={styles.sellerName}>{sellerName}</Text>
-          </View>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView style={styles.scrollView}>
+          <View style={styles.content}>
+            {/* Header with Back Button */}
+            <View style={styles.header}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#374151" />
+              </TouchableOpacity>
+              <Text style={styles.title}>Place Order</Text>
+            </View>
 
-          <View style={styles.priceInfo}>
-            <Text style={styles.priceLabel}>Price per unit</Text>
-            <Text style={styles.priceValue}>{formatCurrency(pricePerUnit)}</Text>
-          </View>
+            <View style={styles.sellerInfo}>
+              <Text style={styles.sellerLabel}>Seller</Text>
+              <Text style={styles.sellerName}>{sellerName}</Text>
+            </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Energy Amount (kWh)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter amount"
-              keyboardType="decimal-pad"
-              value={energyAmount}
-              onChangeText={setEnergyAmount}
-            />
-            <Text style={styles.hint}>
-              Available: {formatEnergy(availableEnergy, 'kWh')}
-            </Text>
-          </View>
+            <View style={styles.priceInfo}>
+              <Text style={styles.priceLabel}>Price per unit</Text>
+              <Text style={styles.priceValue}>{formatCurrency(pricePerUnit)}</Text>
+            </View>
 
-          <View style={styles.summary}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Energy</Text>
-              <Text style={styles.summaryValue}>
-                {formatEnergy(energyValue, 'kWh')}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Energy Amount (kWh)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter amount"
+                keyboardType="decimal-pad"
+                value={energyAmount}
+                onChangeText={setEnergyAmount}
+              />
+              <Text style={styles.hint}>
+                Available: {formatEnergy(availableEnergy, 'kWh')}
               </Text>
             </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Price per unit</Text>
-              <Text style={styles.summaryValue}>
-                {formatCurrency(pricePerUnit)}
-              </Text>
-            </View>
-            <View style={[styles.summaryRow, styles.summaryTotal]}>
-              <Text style={styles.summaryTotalLabel}>Total</Text>
-              <Text style={styles.summaryTotalValue}>
-                {formatCurrency(totalPrice)}
-              </Text>
-            </View>
-          </View>
 
-          {wallet && (
-            <View style={styles.balanceInfo}>
-              <Text style={styles.balanceLabel}>Wallet Balance</Text>
-              <Text style={styles.balanceValue}>
-                {formatCurrency(wallet.cashBalance)}
-              </Text>
-              {!canAfford && (
-                <Text style={styles.balanceWarning}>
-                  Insufficient balance. Top up required.
+            <View style={styles.summary}>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Energy</Text>
+                <Text style={styles.summaryValue}>
+                  {formatEnergy(energyValue, 'kWh')}
                 </Text>
-              )}
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Price per unit</Text>
+                <Text style={styles.summaryValue}>
+                  {formatCurrency(pricePerUnit)}
+                </Text>
+              </View>
+              <View style={[styles.summaryRow, styles.summaryTotal]}>
+                <Text style={styles.summaryTotalLabel}>Total</Text>
+                <Text style={styles.summaryTotalValue}>
+                  {formatCurrency(totalPrice)}
+                </Text>
+              </View>
             </View>
-          )}
 
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              (!canAfford || isSubmitting) && styles.submitButtonDisabled,
-            ]}
-            onPress={handlePlaceOrder}
-            disabled={!canAfford || isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.submitButtonText}>Place Order</Text>
+            {wallet && (
+              <View style={styles.balanceInfo}>
+                <Text style={styles.balanceLabel}>Wallet Balance</Text>
+                <Text style={styles.balanceValue}>
+                  {formatCurrency(wallet.cashBalance)}
+                </Text>
+                {!canAfford && (
+                  <Text style={styles.balanceWarning}>
+                    Insufficient balance. Top up required.
+                  </Text>
+                )}
+              </View>
             )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                (!canAfford || isSubmitting) && styles.submitButtonDisabled,
+              ]}
+              onPress={handlePlaceOrder}
+              disabled={!canAfford || isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.submitButtonText}>Place Order</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
+    
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    // backgroundColor: '#f9fafb',
   },
   scrollView: {
     flex: 1,
@@ -240,14 +253,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
+    elevation : 3
   },
   sellerLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#6b7280',
     marginBottom: 4,
   },
   sellerName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#111827',
   },
@@ -256,25 +270,26 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
+    elevation : 3
   },
   priceLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#6b7280',
     marginBottom: 4,
   },
   priceValue: {
-    fontSize: 24,
+    fontSize: 25,
     fontWeight: 'bold',
-    color: '#10b981',
+    color: '#3b82f6',
   },
   inputContainer: {
     marginBottom: 24,
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   input: {
     borderWidth: 1,
@@ -286,15 +301,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   hint: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#6b7280',
-    marginTop: 4,
+    marginTop: 7,
   },
   summary: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
+    elevation : 3
   },
   summaryRow: {
     flexDirection: 'row',
@@ -309,11 +325,11 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#6b7280',
   },
   summaryValue: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
     color: '#111827',
   },
@@ -325,7 +341,7 @@ const styles = StyleSheet.create({
   summaryTotalValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#10b981',
+    color: '#3b82f6',
   },
   balanceInfo: {
     backgroundColor: '#fef3c7',
@@ -349,7 +365,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   submitButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#3b82f6',
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',
