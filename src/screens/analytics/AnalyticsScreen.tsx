@@ -629,86 +629,120 @@ const AnalyticsScreen = () => {
 
       {/* Stats Cards in 2x2 Grid */}
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#10b981" />
-          <Text style={styles.loadingText}>Loading analytics...</Text>
+        <View style={styles.loadingContainerNew}>
+          <View style={styles.loadingIconContainer}>
+            <ActivityIndicator size="large" color="#3b82f6" />
+          </View>
+          <Text style={styles.loadingTextNew}>Loading analytics...</Text>
+          <Text style={styles.loadingSubtext}>Fetching your energy data</Text>
         </View>
       ) : error ? (
-        <View style={styles.errorContainer}>
-          <MaterialCommunityIcons name="alert-circle" size={48} color="#ef4444" />
-          <Text style={styles.errorText}>Error Loading Analytics</Text>
-          <Text style={styles.errorSubtext}>{error}</Text>
+        <View style={styles.errorContainerNew}>
+          <View style={styles.errorIconContainer}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+          </View>
+          <Text style={styles.errorTextNew}>Error Loading Analytics</Text>
+          <Text style={styles.errorSubtextNew}>{error}</Text>
           <TouchableOpacity
-            style={styles.retryButton}
+            style={styles.retryButtonNew}
             onPress={() => loadAnalytics()}
           >
             <LinearGradient
-              colors={['#10b981', '#059669']}
-              style={styles.retryButtonGradient}
+              colors={['#3b82f6', '#2563eb']}
+              style={styles.retryButtonGradientNew}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
             >
-              <MaterialCommunityIcons name="refresh" size={20} color="#ffffff" />
-              <Text style={styles.retryButtonText}>Retry</Text>
+              <MaterialCommunityIcons name="refresh" size={18} color="#ffffff" />
+              <Text style={styles.retryButtonTextNew}>Try Again</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
       ) : analytics ? (
-        <View style={styles.statsContainer}>
-          <View style={styles.statsRow}>
-            {/* Energy Generated */}
-            <View style={[styles.statCard, { flex: 1, marginRight: 6 }]}>
-              <View style={styles.statIconContainer}>
-                <MaterialCommunityIcons name="lightning-bolt" size={24} color="#10b981" />
+        <View style={styles.analyticsStatsSection}>
+          <Text style={styles.sectionTitleNew}>Trading Overview</Text>
+
+          {/* Row 1: Energy Generated | Total Revenue */}
+          <View style={styles.metricsRow}>
+            <View style={styles.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: '#e0f2fe' }]}>
+                <MaterialCommunityIcons name="lightning-bolt" size={18} color="#0ea5e9" />
               </View>
-              <Text style={styles.statLabel}>Energy Generated</Text>
-              <Text style={styles.statValue}>{formatEnergy(analytics.energyGenerated)}</Text>
-              <Text style={styles.statChange}>
-                {analytics.trends.generation.startsWith('+') ? '↑' : '↓'} {analytics.trends.generation} this month
-              </Text>
+              <Text style={styles.metricLabel}>ENERGY GENERATED</Text>
+              <Text style={styles.metricValue}>{formatEnergy(analytics.energyGenerated)}</Text>
+              <View style={styles.trendBadge}>
+                <MaterialCommunityIcons
+                  name={analytics.trends.generation.startsWith('+') ? 'trending-up' : 'trending-down'}
+                  size={12}
+                  color={analytics.trends.generation.startsWith('+') ? '#10b981' : '#ef4444'}
+                />
+                <Text style={[styles.trendText, { color: analytics.trends.generation.startsWith('+') ? '#10b981' : '#ef4444' }]}>
+                  {analytics.trends.generation}
+                </Text>
+              </View>
             </View>
 
-            {/* Total Revenue */}
-            <View style={[styles.statCard, { flex: 1, marginLeft: 6 }]}>
-              <View style={styles.statIconContainer}>
-                <MaterialCommunityIcons name="currency-inr" size={24} color="#3b82f6" />
+            <View style={styles.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                <MaterialCommunityIcons name="currency-inr" size={18} color="#3b82f6" />
               </View>
-              <Text style={styles.statLabel}>Total Revenue</Text>
-              <Text style={styles.statValue}>{formatCurrency(analytics.totalRevenue)}</Text>
-              <Text style={styles.statChange}>
-                {analytics.trends.revenue.startsWith('+') ? '↑' : '↓'} {analytics.trends.revenue} this month
-              </Text>
+              <Text style={styles.metricLabel}>TOTAL REVENUE</Text>
+              <Text style={styles.metricValue}>{formatCurrency(analytics.totalRevenue)}</Text>
+              <View style={styles.trendBadge}>
+                <MaterialCommunityIcons
+                  name={analytics.trends.revenue.startsWith('+') ? 'trending-up' : 'trending-down'}
+                  size={12}
+                  color={analytics.trends.revenue.startsWith('+') ? '#10b981' : '#ef4444'}
+                />
+                <Text style={[styles.trendText, { color: analytics.trends.revenue.startsWith('+') ? '#10b981' : '#ef4444' }]}>
+                  {analytics.trends.revenue}
+                </Text>
+              </View>
             </View>
           </View>
 
-          <View style={styles.statsRow}>
-            {/* Active Trades */}
-            <View style={[styles.statCard, { flex: 1, marginRight: 6 }]}>
-              <View style={styles.statIconContainer}>
-                <MaterialCommunityIcons name="trending-up" size={24} color="#3b82f6" />
+          {/* Row 2: Active Trades | Efficiency */}
+          <View style={styles.metricsRow}>
+            <View style={styles.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: '#ccfbf1' }]}>
+                <MaterialCommunityIcons name="swap-horizontal" size={18} color="#14b8a6" />
               </View>
-              <Text style={styles.statLabel}>Active Trades</Text>
-              <Text style={styles.statValue}>{analytics.activeTrades}</Text>
-              <Text style={styles.statChange}>{analytics.completedTrades} completed</Text>
+              <Text style={styles.metricLabel}>ACTIVE TRADES</Text>
+              <Text style={styles.metricValue}>{analytics.activeTrades}</Text>
+              <View style={styles.trendBadge}>
+                <MaterialCommunityIcons name="check-circle" size={12} color="#10b981" />
+                <Text style={[styles.trendText, { color: '#64748b' }]}>
+                  {analytics.completedTrades} completed
+                </Text>
+              </View>
             </View>
 
-            {/* Efficiency Rating */}
-            <View style={[styles.statCard, { flex: 1, marginLeft: 6 }]}>
-              <View style={styles.statIconContainer}>
-                <MaterialCommunityIcons name="star" size={24} color="#ec4899" />
+            <View style={styles.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: '#ede9fe' }]}>
+                <MaterialCommunityIcons name="star" size={18} color="#8b5cf6" />
               </View>
-              <Text style={styles.statLabel}>Efficiency</Text>
-              <Text style={styles.statValue}>{analytics.efficiency.toFixed(1)}%</Text>
-              <Text style={styles.statChange}>
-                {analytics.efficiency >= 90 ? 'Excellent' : analytics.efficiency >= 70 ? 'Good' : 'Fair'}
-              </Text>
+              <Text style={styles.metricLabel}>EFFICIENCY</Text>
+              <Text style={styles.metricValue}>{analytics.efficiency.toFixed(1)}%</Text>
+              <View style={[styles.efficiencyBadge, {
+                backgroundColor: analytics.efficiency >= 90 ? '#dcfce7' : analytics.efficiency >= 70 ? '#fef3c7' : '#fee2e2'
+              }]}>
+                <Text style={[styles.efficiencyBadgeText, {
+                  color: analytics.efficiency >= 90 ? '#10b981' : analytics.efficiency >= 70 ? '#f59e0b' : '#ef4444'
+                }]}>
+                  {analytics.efficiency >= 90 ? 'Excellent' : analytics.efficiency >= 70 ? 'Good' : 'Fair'}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
       ) : (
-        <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="chart-line" size={64} color="#d1d5db" />
-          <Text style={styles.emptyText}>No analytics data available</Text>
-          <Text style={styles.emptySubtext}>
-            {sites.length === 0 
+        <View style={styles.emptyContainerNew}>
+          <View style={styles.emptyIconContainer}>
+            <MaterialCommunityIcons name="chart-line-variant" size={48} color="#94a3b8" />
+          </View>
+          <Text style={styles.emptyTextNew}>No Analytics Data</Text>
+          <Text style={styles.emptySubtextNew}>
+            {sites.length === 0
               ? 'Register a meter to view analytics'
               : 'Analytics data will appear here once available'}
           </Text>
@@ -1753,6 +1787,158 @@ const styles = StyleSheet.create({
   },
   chartTypeTextActive: {
     color: '#ffffff',
+  },
+  // New styles for redesigned stats section
+  loadingContainerNew: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 40,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  loadingIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#eff6ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  loadingTextNew: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  errorContainerNew: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 40,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  errorIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#fef2f2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  errorTextNew: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+  },
+  errorSubtextNew: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  retryButtonNew: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  retryButtonGradientNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    gap: 8,
+  },
+  retryButtonTextNew: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  analyticsStatsSection: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  trendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+  },
+  trendText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  efficiencyBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  efficiencyBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  emptyContainerNew: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 40,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyTextNew: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+  },
+  emptySubtextNew: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 
