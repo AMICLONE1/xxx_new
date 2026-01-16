@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList, UserType } from '@/types';
 import { getErrorMessage, logError } from '@/utils/errorUtils';
 import {
@@ -27,15 +28,19 @@ import { authService } from '@/services/api/authService';
 import { useAuthStore } from '@/store';
 
 type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
+type SignUpScreenRouteProp = RouteProp<RootStackParamList, 'SignUp'>;
 
 interface Props {
   navigation: SignUpScreenNavigationProp;
+  route: SignUpScreenRouteProp;
 }
 
-export default function SignUpScreen({ navigation }: Props) {
+export default function SignUpScreen({ navigation, route }: Props) {
+  // Get userType from route params
+  const userType = route.params.userType;
+
   // Form state
   const [name, setName] = useState('');
-  const [userType, setUserType] = useState<UserType | null>(null);
   const [email, setEmail] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
@@ -48,7 +53,6 @@ export default function SignUpScreen({ navigation }: Props) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Touched state
-  const [userTypeTouched, setUserTypeTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   const [mobileTouched, setMobileTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
@@ -86,13 +90,9 @@ export default function SignUpScreen({ navigation }: Props) {
     [termsAccepted]
   );
 
-  // User type validation
-  const isUserTypeValid = userType !== null;
-
   // Form validity
   const isFormValid = useMemo(() => {
     return (
-      isUserTypeValid &&
       emailValidation.isValid &&
       mobileValidation.isValid &&
       passwordValidation.isValid &&
@@ -100,7 +100,6 @@ export default function SignUpScreen({ navigation }: Props) {
       termsValidation.isValid
     );
   }, [
-    isUserTypeValid,
     emailValidation.isValid,
     mobileValidation.isValid,
     passwordValidation.isValid,
@@ -120,7 +119,6 @@ export default function SignUpScreen({ navigation }: Props) {
 
   const handleSignUp = async () => {
     // Mark all fields as touched
-    setUserTypeTouched(true);
     setEmailTouched(true);
     setMobileTouched(true);
     setPasswordTouched(true);
@@ -205,88 +203,28 @@ export default function SignUpScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
+            {/* Back Button */}
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={24} color="#0ea5e9" />
+            </TouchableOpacity>
+
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Join PowerNetPro</Text>
 
-            {/* User Type Selection */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>I want to *</Text>
-              <View style={styles.userTypeContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.userTypeCard,
-                    userType === 'buyer' && styles.userTypeCardSelected,
-                  ]}
-                  onPress={() => {
-                    setUserType('buyer');
-                    setUserTypeTouched(true);
-                    if (serverError) setServerError('');
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={[
-                    styles.userTypeIconContainer,
-                    userType === 'buyer' && styles.userTypeIconContainerSelected,
-                  ]}>
-                    <MaterialCommunityIcons
-                      name="cart-outline"
-                      size={28}
-                      color={userType === 'buyer' ? '#ffffff' : '#0ea5e9'}
-                    />
-                  </View>
-                  <Text style={[
-                    styles.userTypeTitle,
-                    userType === 'buyer' && styles.userTypeTitleSelected,
-                  ]}>Buy Energy</Text>
-                  <Text style={styles.userTypeDescription}>
-                    Purchase energy from local producers
-                  </Text>
-                  {userType === 'buyer' && (
-                    <View style={styles.selectedBadge}>
-                      <Ionicons name="checkmark-circle" size={20} color="#0ea5e9" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.userTypeCard,
-                    userType === 'seller' && styles.userTypeCardSelected,
-                  ]}
-                  onPress={() => {
-                    setUserType('seller');
-                    setUserTypeTouched(true);
-                    if (serverError) setServerError('');
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={[
-                    styles.userTypeIconContainer,
-                    userType === 'seller' && styles.userTypeIconContainerSelected,
-                  ]}>
-                    <MaterialCommunityIcons
-                      name="solar-power"
-                      size={28}
-                      color={userType === 'seller' ? '#ffffff' : '#0ea5e9'}
-                    />
-                  </View>
-                  <Text style={[
-                    styles.userTypeTitle,
-                    userType === 'seller' && styles.userTypeTitleSelected,
-                  ]}>Sell Energy</Text>
-                  <Text style={styles.userTypeDescription}>
-                    Sell your excess solar energy
-                  </Text>
-                  {userType === 'seller' && (
-                    <View style={styles.selectedBadge}>
-                      <Ionicons name="checkmark-circle" size={20} color="#0ea5e9" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-              {userTypeTouched && !isUserTypeValid && (
-                <Text style={styles.errorText}>Please select whether you want to buy or sell energy</Text>
-              )}
+            {/* Selected User Type Badge */}
+            <View style={styles.userTypeBadge}>
+              <MaterialCommunityIcons
+                name={userType === 'buyer' ? 'cart-outline' : 'solar-power'}
+                size={20}
+                color="#0ea5e9"
+              />
+              <Text style={styles.userTypeBadgeText}>
+                Signing up as {userType === 'buyer' ? 'Energy Buyer' : 'Energy Seller'}
+              </Text>
             </View>
 
             {/* Full Name Input */}
@@ -323,8 +261,8 @@ export default function SignUpScreen({ navigation }: Props) {
                   emailTouched && !emailValidation.isValid && email.length > 0
                     ? styles.inputError
                     : emailTouched && emailValidation.isValid
-                    ? styles.inputSuccess
-                    : null,
+                      ? styles.inputSuccess
+                      : null,
                 ]}
               >
                 <Ionicons
@@ -369,8 +307,8 @@ export default function SignUpScreen({ navigation }: Props) {
                   mobileTouched && !mobileValidation.isValid && mobileNumber.length > 0
                     ? styles.inputError
                     : mobileTouched && mobileValidation.isValid
-                    ? styles.inputSuccess
-                    : null,
+                      ? styles.inputSuccess
+                      : null,
                 ]}
               >
                 <Text style={styles.countryCode}>{INDIA_COUNTRY_CODE}</Text>
@@ -406,8 +344,8 @@ export default function SignUpScreen({ navigation }: Props) {
                   passwordTouched && !passwordValidation.isValid
                     ? styles.inputError
                     : passwordTouched && passwordValidation.isValid
-                    ? styles.inputSuccess
-                    : null,
+                      ? styles.inputSuccess
+                      : null,
                 ]}
               >
                 <Ionicons
@@ -533,8 +471,8 @@ export default function SignUpScreen({ navigation }: Props) {
                   confirmPasswordTouched && !doPasswordsMatch && confirmPassword.length > 0
                     ? styles.inputError
                     : confirmPasswordTouched && doPasswordsMatch && confirmPassword.length > 0
-                    ? styles.inputSuccess
-                    : null,
+                      ? styles.inputSuccess
+                      : null,
                 ]}
               >
                 <Ionicons
@@ -672,6 +610,20 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
@@ -694,7 +646,25 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     marginBottom: 8,
   },
-  // User Type Selection Styles
+  // User Type Badge Styles
+  userTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0f9ff',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    gap: 8,
+  },
+  userTypeBadgeText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0ea5e9',
+  },
   userTypeContainer: {
     flexDirection: 'row',
     gap: 12,

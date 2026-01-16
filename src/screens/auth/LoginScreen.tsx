@@ -36,15 +36,15 @@ export default function LoginScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Touched state for validation display
   const [identifierTouched, setIdentifierTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [termsTouched, setTermsTouched] = useState(false);
-  
+
   // Error state
   const [serverError, setServerError] = useState('');
-  
+
   const { setUser, setToken } = useAuthStore();
 
   // Memoized validation
@@ -124,8 +124,8 @@ export default function LoginScreen({ navigation }: Props) {
 
       // Prepare credentials based on identifier type
       const credentials = {
-        email: identifierValidation.type === 'email' 
-          ? identifierValidation.formattedValue 
+        email: identifierValidation.type === 'email'
+          ? identifierValidation.formattedValue
           : '', // Will be handled by backend when mobile is provided
         password: password,
         ...(identifierValidation.type === 'mobile' && {
@@ -155,7 +155,7 @@ export default function LoginScreen({ navigation }: Props) {
         }
         await setToken(response.data.token);
         setUser(response.data.user);
-        
+
         // Navigation will happen automatically via AppNavigator when isAuthenticated becomes true
         if (__DEV__) {
           console.log('✅ User authenticated, AppNavigator will show Main screen automatically');
@@ -194,174 +194,174 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={styles.title}>PowerNetPro</Text>
             <Text style={styles.subtitle}>Democratizing Energy</Text>
 
-          {/* Email or Mobile Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email or Mobile Number</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                identifierTouched && !identifierValidation.isValid && identifier.length > 0
-                  ? styles.inputError
-                  : identifierTouched && identifierValidation.isValid
-                  ? styles.inputSuccess
-                  : null,
-              ]}
-            >
-              {identifierType === 'mobile' && (
-                <Text style={styles.countryCode}>{INDIA_COUNTRY_CODE}</Text>
-              )}
-              <TextInput
+            {/* Email or Mobile Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email or Mobile Number</Text>
+              <View
                 style={[
-                  styles.input,
-                  identifierType === 'mobile' && styles.inputWithPrefix,
+                  styles.inputWrapper,
+                  identifierTouched && !identifierValidation.isValid && identifier.length > 0
+                    ? styles.inputError
+                    : identifierTouched && identifierValidation.isValid
+                      ? styles.inputSuccess
+                      : null,
                 ]}
-                placeholder={getPlaceholder()}
-                placeholderTextColor="#94a3b8"
-                keyboardType={getKeyboardType()}
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={identifier}
-                onChangeText={(text) => {
-                  setIdentifier(text);
-                  if (serverError) setServerError('');
-                }}
-                onBlur={() => setIdentifierTouched(true)}
-                autoFocus
-              />
-              {identifierTouched && identifier.length > 0 && (
-                <Ionicons
-                  name={identifierValidation.isValid ? 'checkmark-circle' : 'alert-circle'}
-                  size={20}
-                  color={identifierValidation.isValid ? '#0ea5e9' : '#ef4444'}
-                />
-              )}
-            </View>
-            {identifierTouched && !identifierValidation.isValid && identifier.length > 0 && (
-              <Text style={styles.errorText}>{identifierValidation.error}</Text>
-            )}
-          </View>
-
-          {/* Password Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                passwordTouched && !isPasswordValid && password.length > 0
-                  ? styles.inputError
-                  : null,
-              ]}
-            >
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                placeholderTextColor="#94a3b8"
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (serverError) setServerError('');
-                }}
-                onBlur={() => setPasswordTouched(true)}
-              />
-              <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setShowPassword(!showPassword)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={22}
-                  color="#64748b"
+                {identifierType === 'mobile' && (
+                  <Text style={styles.countryCode}>{INDIA_COUNTRY_CODE}</Text>
+                )}
+                <TextInput
+                  style={[
+                    styles.input,
+                    identifierType === 'mobile' && styles.inputWithPrefix,
+                  ]}
+                  placeholder={getPlaceholder()}
+                  placeholderTextColor="#94a3b8"
+                  keyboardType={getKeyboardType()}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={identifier}
+                  onChangeText={(text) => {
+                    setIdentifier(text);
+                    if (serverError) setServerError('');
+                  }}
+                  onBlur={() => setIdentifierTouched(true)}
+                  autoFocus
                 />
-              </TouchableOpacity>
-            </View>
-            {passwordTouched && !isPasswordValid && password.length === 0 && (
-              <Text style={styles.errorText}>Password is required</Text>
-            )}
-
-            {/* Forgot Password Link */}
-            <TouchableOpacity
-              style={styles.forgotPasswordButton}
-              onPress={() => navigation.navigate('ForgotPassword')}
-            >
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Server Error */}
-          {serverError ? (
-            <View style={styles.serverErrorContainer}>
-              <Ionicons name="alert-circle" size={16} color="#ef4444" />
-              <Text style={styles.serverErrorText}>{serverError}</Text>
-            </View>
-          ) : null}
-
-          {/* Terms & Conditions Checkbox */}
-          <View style={styles.termsContainer}>
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() => {
-                setTermsAccepted(!termsAccepted);
-                setTermsTouched(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
-                {termsAccepted && (
-                  <Ionicons name="checkmark" size={14} color="#ffffff" />
+                {identifierTouched && identifier.length > 0 && (
+                  <Ionicons
+                    name={identifierValidation.isValid ? 'checkmark-circle' : 'alert-circle'}
+                    size={20}
+                    color={identifierValidation.isValid ? '#0ea5e9' : '#ef4444'}
+                  />
                 )}
               </View>
-              <Text style={styles.termsText}>
-                I agree to the{' '}
-                <Text
-                  style={styles.termsLink}
-                  onPress={() => navigation.navigate('TermsConditions')}
+              {identifierTouched && !identifierValidation.isValid && identifier.length > 0 && (
+                <Text style={styles.errorText}>{identifierValidation.error}</Text>
+              )}
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Password</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  passwordTouched && !isPasswordValid && password.length > 0
+                    ? styles.inputError
+                    : null,
+                ]}
+              >
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#94a3b8"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (serverError) setServerError('');
+                  }}
+                  onBlur={() => setPasswordTouched(true)}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  Terms & Conditions
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color="#64748b"
+                  />
+                </TouchableOpacity>
+              </View>
+              {passwordTouched && !isPasswordValid && password.length === 0 && (
+                <Text style={styles.errorText}>Password is required</Text>
+              )}
+
+              {/* Forgot Password Link */}
+              <TouchableOpacity
+                style={styles.forgotPasswordButton}
+                onPress={() => navigation.navigate('ForgotPassword')}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Server Error */}
+            {serverError ? (
+              <View style={styles.serverErrorContainer}>
+                <Ionicons name="alert-circle" size={16} color="#ef4444" />
+                <Text style={styles.serverErrorText}>{serverError}</Text>
+              </View>
+            ) : null}
+
+            {/* Terms & Conditions Checkbox */}
+            <View style={styles.termsContainer}>
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => {
+                  setTermsAccepted(!termsAccepted);
+                  setTermsTouched(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+                  {termsAccepted && (
+                    <Ionicons name="checkmark" size={14} color="#ffffff" />
+                  )}
+                </View>
+                <Text style={styles.termsText}>
+                  I agree to the{' '}
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => navigation.navigate('TermsConditions')}
+                  >
+                    Terms & Conditions
+                  </Text>
+                  {' '}and{' '}
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => navigation.navigate('TermsConditions')}
+                  >
+                    Privacy Policy
+                  </Text>
                 </Text>
-                {' '}and{' '}
-                <Text
-                  style={styles.termsLink}
-                  onPress={() => navigation.navigate('TermsConditions')}
-                >
-                  Privacy Policy
-                </Text>
+              </TouchableOpacity>
+              {termsTouched && !termsValidation.isValid && (
+                <Text style={styles.termsError}>{termsValidation.error}</Text>
+              )}
+            </View>
+
+            {/* Sign In Button */}
+            <TouchableOpacity
+              style={[
+                styles.button,
+                (!isFormValid || isLoading) && styles.buttonDisabled,
+              ]}
+              onPress={handleLogin}
+              disabled={!isFormValid || isLoading}
+            >
+              <Text style={styles.buttonText}>
+                {isLoading ? 'Signing In...' : 'Sign In'}
               </Text>
             </TouchableOpacity>
-            {termsTouched && !termsValidation.isValid && (
-              <Text style={styles.termsError}>{termsValidation.error}</Text>
-            )}
+
+            {/* Sign Up Link */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('UserTypeSelection')}
+              style={styles.linkButton}
+            >
+              <Text style={styles.linkText}>
+                Don't have an account? <Text style={styles.linkTextBold}>Sign Up</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Sign In Button */}
-          <TouchableOpacity
-            style={[
-              styles.button,
-              (!isFormValid || isLoading) && styles.buttonDisabled,
-            ]}
-            onPress={handleLogin}
-            disabled={!isFormValid || isLoading}
-          >
-            <Text style={styles.buttonText}>
-              {isLoading ? 'Signing In...' : 'Sign In'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Sign Up Link */}
-          <TouchableOpacity
-            onPress={() => navigation.navigate('SignUp')}
-            style={styles.linkButton}
-          >
-            <Text style={styles.linkText}>
-              Don't have an account? <Text style={styles.linkTextBold}>Sign Up</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
