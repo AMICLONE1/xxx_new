@@ -90,6 +90,20 @@ interface Props {
   navigation: HomeScreenNavigationProp;
 }
 
+// Helper function to get greeting based on time of day
+const getGreeting = (): string => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return 'Good Morning';
+  } else if (hour >= 12 && hour < 17) {
+    return 'Good Afternoon';
+  } else if (hour >= 17 && hour < 21) {
+    return 'Good Evening';
+  } else {
+    return 'Good Night';
+  }
+};
+
 export default function HomeScreen({ navigation }: Props) {
   const { isDark } = useTheme();
   const colors = getThemedColors(isDark);
@@ -101,7 +115,8 @@ export default function HomeScreen({ navigation }: Props) {
   const [dailyYield, setDailyYield] = useState(0);
   const [isSelling, setIsSelling] = useState(false);
   const [currentPrice, setCurrentPrice] = useState(6.50);
-  
+  const [greeting, setGreeting] = useState(getGreeting());
+
   // Memoized navigation handlers to prevent unnecessary re-renders
   const navigateToMeterRegistration = useCallback(() => navigation.navigate('MeterRegistration'), [navigation]);
   const navigateToMarketplace = useCallback(() => navigation.navigate('Marketplace'), [navigation]);
@@ -115,7 +130,7 @@ export default function HomeScreen({ navigation }: Props) {
   // ============================================
   // DYNAMIC ENERGY NODES
   // ============================================
-  
+
   // Determine which energy nodes to show based on user's assets
   const visibleEnergyNodes = useMemo(() => {
     // Default to showing all nodes if user data not available (for demo/dev)
@@ -161,12 +176,22 @@ export default function HomeScreen({ navigation }: Props) {
     isCharging: currentGeneration > 0,
   }), [currentGeneration, isSelling]);
 
+  // Update greeting based on time of day
+  useEffect(() => {
+    setGreeting(getGreeting());
+    // Update greeting every minute to handle time boundary changes
+    const interval = setInterval(() => {
+      setGreeting(getGreeting());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     // Calculate current generation and daily yield from energy data
     if (energyData.length > 0) {
       const latest = energyData[0];
       setCurrentGeneration(latest.generation);
-      
+
       // Calculate daily yield (sum of generation for today)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -263,8 +288,8 @@ export default function HomeScreen({ navigation }: Props) {
         {/* Header with Greeting and Notification */}
         <View style={styles.headerContainer}>
           <View style={styles.greetingSection}>
-            <Text style={styles.greetingText}>Good Morning,</Text>
-            <Text style={styles.userName}>Alex Solar</Text>
+            <Text style={styles.greetingText}>{greeting},</Text>
+            <Text style={styles.userName}>{user?.name || 'User'}</Text>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
             <Ionicons name="notifications-outline" size={24} color="#1e293b" />
@@ -283,7 +308,7 @@ export default function HomeScreen({ navigation }: Props) {
                 <Text style={styles.heroCardTitle}>TODAY'S GENERATION</Text>
                 <Text style={styles.heroCardValueNew}>{formatEnergy(dailyYield, 'kWh')}</Text>
                 <View style={styles.peakEfficiencyBadge}>
-                  <Ionicons name="trending-up" size={12} color="#10b981" />
+                  <Ionicons name="trending-up" size={12} color="#3b82f6" />
                   <Text style={styles.peakEfficiencyText}>Peak Efficiency</Text>
                 </View>
               </View>
@@ -307,22 +332,22 @@ export default function HomeScreen({ navigation }: Props) {
               onPress={navigateToMarketplace}
               activeOpacity={0.9}
             >
-              <View style={styles.actionButtonIconContainer}>
-                <MaterialCommunityIcons name="car-electric" size={24} color="#ffffff" />
+              <View style={[styles.actionButtonIconContainer, { backgroundColor: 'rgba(25, 137, 242, 1)' }]}>
+                <MaterialCommunityIcons name="car-electric" size={24} color="#7dd3fc" />
               </View>
               <Text style={styles.actionButtonLabel}>Charge EV</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionButtonNew, styles.actionButtonSell]}
+              style={styles.actionButtonNew}
               onPress={() => {
                 setIsSelling(!isSelling);
                 navigateToTradingBot();
               }}
               activeOpacity={0.9}
             >
-              <View style={styles.actionButtonIconContainer}>
-                <MaterialCommunityIcons name="currency-usd" size={24} color="#ffffff" />
+              <View style={[styles.actionButtonIconContainer, { backgroundColor: 'rgba(25, 137, 242, 1)' }]}>
+                <MaterialCommunityIcons name="currency-usd" size={24} color="#93c5fd" />
               </View>
               <Text style={styles.actionButtonLabel}>Sell Surplus</Text>
             </TouchableOpacity>
@@ -398,8 +423,8 @@ export default function HomeScreen({ navigation }: Props) {
           <View style={styles.statsGrid}>
             {/* Current Power */}
             <View style={styles.statCardSmallNew}>
-              <View style={styles.statIconCircleSmall}>
-                <MaterialCommunityIcons name="lightning-bolt" size={18} color="#f59e0b" />
+              <View style={[styles.statIconCircleSmall, { backgroundColor: '#e0f2fe' }]}>
+                <MaterialCommunityIcons name="lightning-bolt" size={18} color="#0ea5e9" />
               </View>
               <Text style={styles.statLabelSmall}>Current Power</Text>
               <Text style={styles.statValueSmall}>{formatEnergy(currentGeneration, 'kW')}</Text>
@@ -407,8 +432,8 @@ export default function HomeScreen({ navigation }: Props) {
 
             {/* Carbon Saved */}
             <View style={styles.statCardSmallNew}>
-              <View style={[styles.statIconCircleSmall, { backgroundColor: '#dcfce7' }]}>
-                <MaterialCommunityIcons name="leaf" size={18} color="#10b981" />
+              <View style={[styles.statIconCircleSmall, { backgroundColor: '#dbeafe' }]}>
+                <MaterialCommunityIcons name="leaf" size={18} color="#3b82f6" />
               </View>
               <Text style={styles.statLabelSmall}>Carbon Saved</Text>
               <Text style={styles.statValueSmall}>{carbonSaved.toFixed(1)} kg</Text>
@@ -429,8 +454,8 @@ export default function HomeScreen({ navigation }: Props) {
 
               <View style={styles.marketPriceTrendContainer}>
                 <View style={styles.marketPriceTrendRow}>
-                  <Ionicons name="trending-up" size={14} color="#10b981" />
-                  <Text style={styles.statTrendTextLarge}>+2.4%</Text>
+                  <Ionicons name="trending-up" size={14} color="#0ea5e9" />
+                  <Text style={[styles.statTrendTextLarge, { color: '#0ea5e9' }]}>+2.4%</Text>
                 </View>
                 <Text style={styles.statSubtextSmall}>vs yesterday</Text>
               </View>
@@ -853,7 +878,6 @@ const styles = StyleSheet.create({
   peakEfficiencyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#dcfce7',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -863,7 +887,7 @@ const styles = StyleSheet.create({
   peakEfficiencyText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#10b981',
+    color: '#3b82f6',
   },
   heroCardRight: {
     marginLeft: 16,
@@ -879,7 +903,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 6,
-    borderColor: '#10b981',
+    borderColor: '#3b82f6',
     borderTopColor: '#e0f2fe',
     borderRightColor: '#e0f2fe',
     justifyContent: 'center',
@@ -894,7 +918,7 @@ const styles = StyleSheet.create({
   circularProgressText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#10b981',
+    color: '#3b82f6',
   },
   circularProgressLabel: {
     fontSize: 10,
@@ -908,7 +932,7 @@ const styles = StyleSheet.create({
   },
   actionButtonNew: {
     flex: 1,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#1766e4ff',
     borderRadius: 20,
     padding: 20,
     alignItems: 'center',
@@ -919,13 +943,13 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   actionButtonSell: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#1766e4ff',
   },
   actionButtonIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    // backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -967,15 +991,16 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   statCardSmallNew: {
-    width: (width - 52) / 2,
+    flex: 1,
     backgroundColor: '#ffffff',
     borderRadius: 20,
-    padding: 16,
-    shadowColor: '#000',
+    padding: 18,
+    // shadowColor: '#0ea5e9',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
     elevation: 3,
+    minHeight: 120,
   },
   statCardFullWidth: {
     width: width - 40,
@@ -1006,10 +1031,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   statIconCircleSmall: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#fef3c7',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#e0f2fe',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -1214,7 +1239,7 @@ const styles = StyleSheet.create({
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    height : 82,
+    height: 82,
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,

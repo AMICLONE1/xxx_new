@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { TradingBotConfig } from '@/types';
 import { MIN_SELL_PRICE, MAX_SELL_PRICE, DEFAULT_RESERVE_POWER } from '@/utils/constants';
+import { useTheme } from '@/contexts';
+import { getThemedColors } from '@/utils/themedStyles';
 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
@@ -31,6 +33,9 @@ interface Props {
 }
 
 export default function TradingBotScreen({ navigation, config, onSave }: Props) {
+  const { isDark } = useTheme();
+  const colors = getThemedColors(isDark);
+
   const [enabled, setEnabled] = useState(config?.enabled || false);
   const [reservePower, setReservePower] = useState(
     config?.reservePower || DEFAULT_RESERVE_POWER
@@ -71,48 +76,63 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
   };
 
   const priorityOptions = [
-    { value: 'neighbors' as const, label: 'Neighbors First', icon: 'home-group' },
-    { value: 'grid' as const, label: 'Grid First', icon: 'transmission-tower' },
+    { value: 'neighbors' as const, label: 'Neighbors', icon: 'home-group' },
+    { value: 'grid' as const, label: 'Grid', icon: 'transmission-tower' },
     { value: 'both' as const, label: 'Both', icon: 'swap-horizontal' },
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <LinearGradient
-        colors={['#10b981', '#059669']}
-        style={styles.gradientHeader}
-      >
+    <LinearGradient
+      colors={isDark ? ['#1f2937', '#111827', '#0f172a'] : ['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: isDark ? colors.cardElevated : '#ffffff' }]}
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color="#ffffff" />
+            <Ionicons name="arrow-back" size={20} color="#3b82f6" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Trading Bot (Auto-Pilot)</Text>
-            <Text style={styles.headerSubtitle}>Set and forget rules for automated trading</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Trading Bot</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Auto-pilot trading rules</Text>
           </View>
-          <MaterialCommunityIcons name="robot" size={32} color="#ffffff" />
+          <View style={[styles.robotIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+            <MaterialCommunityIcons name="robot" size={24} color="#3b82f6" />
+          </View>
         </View>
-      </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          {/* Enable/Disable */}
-          <View style={styles.section}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Enable/Disable Card */}
+          <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
             <View style={styles.switchRow}>
+              <View style={[styles.switchIconContainer, { backgroundColor: enabled ? (isDark ? '#1e3a5f' : '#dbeafe') : (isDark ? colors.backgroundSecondary : '#f1f5f9') }]}>
+                <MaterialCommunityIcons
+                  name={enabled ? "robot" : "robot-off"}
+                  size={22}
+                  color={enabled ? "#3b82f6" : colors.textMuted}
+                />
+              </View>
               <View style={styles.switchLabelContainer}>
-                <Text style={styles.switchLabel}>Enable Auto-Selling</Text>
-                <Text style={styles.switchHint}>
-                  Automatically sell excess energy based on your rules
+                <Text style={[styles.switchLabel, { color: colors.text }]}>Enable Auto-Selling</Text>
+                <Text style={[styles.switchHint, { color: colors.textSecondary }]}>
+                  Automatically sell excess energy
                 </Text>
               </View>
               <Switch
                 value={enabled}
                 onValueChange={setEnabled}
-                trackColor={{ false: '#d1d5db', true: '#10b981' }}
+                trackColor={{ false: isDark ? '#374151' : '#d1d5db', true: '#3b82f6' }}
                 thumbColor="#ffffff"
               />
             </View>
@@ -120,63 +140,74 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
 
           {enabled && (
             <>
-              {/* Reserve Power */}
-              <View style={styles.section}>
+              {/* Reserve Power Card */}
+              <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
                 <View style={styles.sectionHeader}>
-                  <MaterialCommunityIcons name="battery-charging" size={24} color="#10b981" />
+                  <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+                    <MaterialCommunityIcons name="battery-charging" size={20} color="#3b82f6" />
+                  </View>
                   <View style={styles.sectionHeaderText}>
-                    <Text style={styles.label}>Reserve Power</Text>
-                    <Text style={styles.hint}>
-                      Keep this percentage of battery for your home use
+                    <Text style={[styles.label, { color: colors.text }]}>Reserve Power</Text>
+                    <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                      Keep this % for home use
                     </Text>
                   </View>
                 </View>
+
                 <View style={styles.sliderContainer}>
-                  <Text style={styles.sliderValue}>{reservePower}%</Text>
+                  <Text style={[styles.sliderValue, { color: '#3b82f6' }]}>{reservePower}%</Text>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
                     maximumValue={100}
                     value={reservePower}
-                    onValueChange={setReservePower}
-                    minimumTrackTintColor="#10b981"
-                    maximumTrackTintColor="#e5e7eb"
-                    thumbTintColor="#10b981"
+                    onValueChange={(value) => setReservePower(Math.round(value))}
+                    minimumTrackTintColor="#3b82f6"
+                    maximumTrackTintColor={isDark ? '#374151' : '#e5e7eb'}
+                    thumbTintColor="#3b82f6"
                   />
                   <View style={styles.sliderLabels}>
-                    <Text style={styles.sliderLabel}>0%</Text>
-                    <Text style={styles.sliderLabel}>100%</Text>
+                    <Text style={[styles.sliderLabel, { color: colors.textMuted }]}>0%</Text>
+                    <Text style={[styles.sliderLabel, { color: colors.textMuted }]}>100%</Text>
                   </View>
                 </View>
-                <TextInput
-                  style={styles.input}
-                  value={reservePower.toString()}
-                  onChangeText={(text) => {
-                    const value = parseInt(text, 10);
-                    if (!isNaN(value) && value >= 0 && value <= 100) {
-                      setReservePower(value);
-                    }
-                  }}
-                  keyboardType="numeric"
-                  placeholder="40"
-                />
+
+                <View style={[styles.inputContainer, { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: isDark ? colors.border : '#e2e8f0' }]}>
+                  <MaterialCommunityIcons name="percent" size={18} color={colors.textMuted} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    value={reservePower.toString()}
+                    onChangeText={(text) => {
+                      const value = parseInt(text, 10);
+                      if (!isNaN(value) && value >= 0 && value <= 100) {
+                        setReservePower(value);
+                      }
+                    }}
+                    keyboardType="numeric"
+                    placeholder="40"
+                    placeholderTextColor={colors.inputPlaceholder}
+                  />
+                </View>
               </View>
 
-              {/* Minimum Sell Price */}
-              <View style={styles.section}>
+              {/* Minimum Sell Price Card */}
+              <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
                 <View style={styles.sectionHeader}>
-                  <MaterialCommunityIcons name="currency-inr" size={24} color="#10b981" />
+                  <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+                    <MaterialCommunityIcons name="currency-inr" size={20} color="#3b82f6" />
+                  </View>
                   <View style={styles.sectionHeaderText}>
-                    <Text style={styles.label}>Minimum Sell Price</Text>
-                    <Text style={styles.hint}>
-                      Only sell if the market price is above this amount (₹/unit)
+                    <Text style={[styles.label, { color: colors.text }]}>Minimum Sell Price</Text>
+                    <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                      Only sell above this price
                     </Text>
                   </View>
                 </View>
-                <View style={styles.priceInputContainer}>
-                  <Text style={styles.currencySymbol}>₹</Text>
+
+                <View style={[styles.priceInputContainer, { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: isDark ? colors.border : '#e2e8f0' }]}>
+                  <Text style={[styles.currencySymbol, { color: '#3b82f6' }]}>₹</Text>
                   <TextInput
-                    style={styles.priceInput}
+                    style={[styles.priceInput, { color: colors.text }]}
                     value={minSellPrice.toString()}
                     onChangeText={(text) => {
                       const value = parseFloat(text);
@@ -186,42 +217,66 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
                     }}
                     keyboardType="decimal-pad"
                     placeholder="8.00"
+                    placeholderTextColor={colors.inputPlaceholder}
                   />
-                  <Text style={styles.unitText}>/unit</Text>
+                  <View style={[styles.unitBadge, { backgroundColor: isDark ? colors.border : '#e2e8f0' }]}>
+                    <Text style={[styles.unitText, { color: colors.textSecondary }]}>per unit</Text>
+                  </View>
+                </View>
+
+                <View style={styles.priceRange}>
+                  <Text style={[styles.priceRangeText, { color: colors.textMuted }]}>
+                    Range: ₹{MIN_SELL_PRICE} - ₹{MAX_SELL_PRICE}
+                  </Text>
                 </View>
               </View>
 
-              {/* Priority */}
-              <View style={styles.section}>
+              {/* Priority Card */}
+              <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
                 <View style={styles.sectionHeader}>
-                  <MaterialCommunityIcons name="sort" size={24} color="#10b981" />
+                  <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+                    <MaterialCommunityIcons name="sort" size={20} color="#3b82f6" />
+                  </View>
                   <View style={styles.sectionHeaderText}>
-                    <Text style={styles.label}>Selling Priority</Text>
-                    <Text style={styles.hint}>
-                      Choose where to sell your excess energy first
+                    <Text style={[styles.label, { color: colors.text }]}>Selling Priority</Text>
+                    <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                      Where to sell first
                     </Text>
                   </View>
                 </View>
+
                 <View style={styles.priorityOptions}>
                   {priorityOptions.map((option) => (
                     <TouchableOpacity
                       key={option.value}
                       style={[
                         styles.priorityOption,
-                        priority === option.value && styles.priorityOptionActive,
+                        {
+                          backgroundColor: priority === option.value
+                            ? (isDark ? '#1e3a5f' : '#dbeafe')
+                            : (isDark ? colors.backgroundSecondary : '#f8fafc'),
+                          borderColor: priority === option.value
+                            ? '#3b82f6'
+                            : (isDark ? colors.border : '#e2e8f0'),
+                        },
                       ]}
                       onPress={() => setPriority(option.value)}
                       activeOpacity={0.7}
                     >
-                      <MaterialCommunityIcons
-                        name={option.icon as any}
-                        size={24}
-                        color={priority === option.value ? '#10b981' : '#6b7280'}
-                      />
+                      <View style={[
+                        styles.priorityIconContainer,
+                        { backgroundColor: priority === option.value ? '#3b82f6' : (isDark ? colors.card : '#ffffff') }
+                      ]}>
+                        <MaterialCommunityIcons
+                          name={option.icon as any}
+                          size={20}
+                          color={priority === option.value ? '#ffffff' : colors.textMuted}
+                        />
+                      </View>
                       <Text
                         style={[
                           styles.priorityOptionText,
-                          priority === option.value && styles.priorityOptionTextActive,
+                          { color: priority === option.value ? '#3b82f6' : colors.textSecondary },
                         ]}
                       >
                         {option.label}
@@ -233,205 +288,263 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
             </>
           )}
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
+          {/* Save Button */}
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handleSave}
+            activeOpacity={0.8}
+          >
             <LinearGradient
-              colors={['#10b981', '#059669']}
+              colors={['#3b82f6', '#2563eb']}
               style={styles.saveButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
             >
-              <MaterialCommunityIcons name="content-save" size={20} color="#ffffff" />
+              <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
               <Text style={styles.saveButtonText}>Save Configuration</Text>
             </LinearGradient>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+          {/* Cancel Button */}
+          <TouchableOpacity
+            style={[styles.cancelButton, { backgroundColor: isDark ? colors.card : '#ffffff', borderColor: isDark ? colors.border : '#e2e8f0' }]}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f0fdf4',
-  },
-  gradientHeader: {
-    paddingTop: 16,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   backButton: {
-    padding: 4,
-    marginRight: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   headerContent: {
     flex: 1,
+    marginLeft: 16,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontSize: 28,
+    fontWeight: '700',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 13,
-    color: '#d1fae5',
+    fontSize: 14,
     fontWeight: '500',
+  },
+  robotIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 20,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  section: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
+  // Section Card
+  sectionCard: {
+    borderRadius: 24,
     padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
-    elevation: 4,
+    elevation: 6,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16,
-    gap: 12,
+    marginBottom: 20,
+  },
+  sectionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   sectionHeaderText: {
     flex: 1,
   },
+  // Switch Row
   switchRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  switchIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   switchLabelContainer: {
     flex: 1,
-    marginRight: 16,
+    marginRight: 12,
   },
   switchLabel: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 4,
   },
   switchHint: {
     fontSize: 13,
-    color: '#6b7280',
     lineHeight: 18,
   },
+  // Labels
   label: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 4,
   },
   hint: {
     fontSize: 13,
-    color: '#6b7280',
     lineHeight: 18,
   },
+  // Slider
   sliderContainer: {
     marginBottom: 16,
   },
   sliderValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#10b981',
+    fontSize: 36,
+    fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   slider: {
     width: '100%',
     height: 40,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   sliderLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
   sliderLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    fontWeight: '500',
+  },
+  // Input
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 52,
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 12,
-    padding: 12,
+    flex: 1,
     fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#ffffff',
+    fontWeight: '500',
   },
+  // Price Input
   priceInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 12,
+    borderWidth: 1.5,
+    borderRadius: 14,
     paddingHorizontal: 16,
-    backgroundColor: '#ffffff',
+    height: 56,
   },
   currencySymbol: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#6b7280',
+    fontSize: 24,
+    fontWeight: '700',
     marginRight: 8,
   },
   priceInput: {
     flex: 1,
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '600',
-    color: '#111827',
-    paddingVertical: 12,
+  },
+  unitBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   unitText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginLeft: 8,
+    fontSize: 12,
+    fontWeight: '600',
   },
+  priceRange: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  priceRangeText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  // Priority Options
   priorityOptions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   priorityOption: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    gap: 8,
+    gap: 10,
   },
-  priorityOptionActive: {
-    borderColor: '#10b981',
-    backgroundColor: '#f0fdf4',
+  priorityIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   priorityOptionText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#6b7280',
+    fontSize: 12,
+    fontWeight: '600',
     textAlign: 'center',
   },
-  priorityOptionTextActive: {
-    color: '#10b981',
-    fontWeight: '600',
-  },
+  // Save Button
   saveButton: {
     borderRadius: 16,
     overflow: 'hidden',
     marginTop: 8,
-    shadowColor: '#10b981',
+    marginBottom: 12,
+    shadowColor: '#3b82f6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -446,6 +559,19 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Cancel Button
+  cancelButton: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    marginBottom: 20,
+  },
+  cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

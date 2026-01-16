@@ -1299,31 +1299,36 @@ export default function AadhaarScanScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <LinearGradient
-        colors={['#10b981', '#059669']}
-        style={styles.gradientHeader}
-      >
-        <View style={styles.header}>
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.headerContainer}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
+            activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={24} color="#ffffff" />
+            <Ionicons name="arrow-back" size={22} color="#1e293b" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Scan Aadhaar Card</Text>
-            <Text style={styles.headerSubtitle}>Upload and extract details</Text>
+            <Text style={styles.headerTitle}>Aadhaar Card</Text>
+            <Text style={styles.headerSubtitle}>Upload and verify details</Text>
+          </View>
+          <View style={styles.headerIconWrapper}>
+            <MaterialCommunityIcons name="card-account-details" size={24} color="#0ea5e9" />
           </View>
         </View>
-      </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          {/* Upload Section - Always visible */}
-          <View style={styles.uploadSection}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          {/* Upload Card */}
+          <View style={styles.uploadCard}>
             <View style={styles.uploadIconContainer}>
-              <MaterialCommunityIcons name="card-account-details" size={64} color="#10b981" />
+              <MaterialCommunityIcons name="card-account-details" size={48} color="#0ea5e9" />
             </View>
             <Text style={styles.uploadTitle}>Upload Aadhaar Image</Text>
             <Text style={styles.uploadSubtitle}>
@@ -1332,7 +1337,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
 
             {imageUri && isProcessing && (
               <View style={styles.processingContainer}>
-                <ActivityIndicator size="large" color="#10b981" />
+                <ActivityIndicator size="large" color="#0ea5e9" />
                 <Text style={styles.processingText}>Processing image with OCR...</Text>
               </View>
             )}
@@ -1347,20 +1352,18 @@ export default function AadhaarScanScreen({ navigation }: Props) {
               style={styles.uploadButton}
               onPress={handleUploadImage}
               disabled={isProcessing}
-              activeOpacity={0.7}
+              activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#10b981', '#059669']}
+                colors={['#0ea5e9', '#0284c7']}
                 style={styles.uploadButtonGradient}
               >
-                <Ionicons name="camera" size={24} color="#ffffff" />
+                <Ionicons name="camera" size={22} color="#ffffff" />
                 <Text style={styles.uploadButtonText}>
                   {imageUri ? 'Upload Another Image' : 'Upload Aadhaar Image'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
-
-            {/* Back Side Upload - REMOVED: User can fill address manually */}
 
             {/* Manual Entry Option */}
             {!showForm && (
@@ -1374,7 +1377,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                     address: '',
                   });
                   setShowForm(true);
-                  setIsManualEntry(true); // Mark as manual entry
+                  setIsManualEntry(true);
                   setImageUri(null);
                 }}
                 activeOpacity={0.7}
@@ -1384,10 +1387,15 @@ export default function AadhaarScanScreen({ navigation }: Props) {
             )}
           </View>
 
-          {/* Form Section - Appears below upload button after OCR */}
+          {/* Form Section */}
           {showForm && (
-            <View style={styles.formSection}>
-              <Text style={styles.formHelperText}>Please verify your Aadhaar details</Text>
+            <View style={styles.formCard}>
+              <View style={styles.formHeader}>
+                <Text style={styles.formTitle}>Verify Details</Text>
+                <View style={styles.formBadge}>
+                  <Text style={styles.formBadgeText}>Required</Text>
+                </View>
+              </View>
 
               {/* Full Name */}
               <View style={styles.inputContainer}>
@@ -1397,11 +1405,11 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                   value={extractedData.fullName}
                   onChangeText={(text) => setExtractedData({ ...extractedData, fullName: text })}
                   placeholder="Enter full name"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#94a3b8"
                 />
               </View>
 
-              {/* Aadhaar Number (Read-only if from OCR, editable if manual) */}
+              {/* Aadhaar Number */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Aadhaar Number</Text>
                 <TextInput
@@ -1415,23 +1423,19 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                   }
                   editable={isManualEntry}
                   placeholder={isManualEntry ? "Enter 12-digit Aadhaar number" : "XXXX-XXXX-XXXX"}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#94a3b8"
                   keyboardType="numeric"
                   maxLength={isManualEntry ? 12 : undefined}
                   onChangeText={(text) => {
-                    // Only allow digits
                     const digitsOnly = text.replace(/\D/g, '');
                     if (digitsOnly.length <= 12) {
                       setExtractedData({ ...extractedData, aadhaarNumber: digitsOnly });
                     }
                   }}
                 />
-                {!isManualEntry && (
-                  <Text style={styles.readOnlyHint}>This field cannot be edited (extracted from image)</Text>
-                )}
-                {isManualEntry && (
-                  <Text style={styles.readOnlyHint}>Enter your 12-digit Aadhaar number</Text>
-                )}
+                <Text style={styles.inputHint}>
+                  {isManualEntry ? 'Enter your 12-digit Aadhaar number' : 'Extracted from image (read-only)'}
+                </Text>
               </View>
 
               {/* Date of Birth */}
@@ -1445,9 +1449,9 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                     setExtractedData({ ...extractedData, dateOfBirth: formatted });
                   }}
                   placeholder="DD/MM/YYYY"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#94a3b8"
                   keyboardType="numeric"
-                  maxLength={10} // DD/MM/YYYY = 10 characters
+                  maxLength={10}
                 />
               </View>
 
@@ -1459,7 +1463,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                   value={extractedData.address}
                   onChangeText={(text) => setExtractedData({ ...extractedData, address: text })}
                   placeholder="Enter address"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#94a3b8"
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
@@ -1467,30 +1471,28 @@ export default function AadhaarScanScreen({ navigation }: Props) {
               </View>
 
               {/* Confirmation Checkbox */}
-              <View style={styles.checkboxContainer}>
-                <TouchableOpacity
-                  style={styles.checkbox}
-                  onPress={() => setIsConfirmed(!isConfirmed)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.checkboxBox, isConfirmed && styles.checkboxBoxChecked]}>
-                    {isConfirmed && <Ionicons name="checkmark" size={16} color="#ffffff" />}
-                  </View>
-                  <Text style={styles.checkboxLabel}>
-                    I confirm the above Aadhaar details are correct
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => setIsConfirmed(!isConfirmed)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkboxBox, isConfirmed && styles.checkboxBoxChecked]}>
+                  {isConfirmed && <Ionicons name="checkmark" size={16} color="#ffffff" />}
+                </View>
+                <Text style={styles.checkboxLabel}>
+                  I confirm the above Aadhaar details are correct
+                </Text>
+              </TouchableOpacity>
 
               {/* Submit Button */}
               <TouchableOpacity
                 style={[styles.submitButton, !isConfirmed && styles.submitButtonDisabled]}
                 onPress={handleSubmit}
                 disabled={!isConfirmed}
-                activeOpacity={0.7}
+                activeOpacity={0.9}
               >
                 <LinearGradient
-                  colors={isConfirmed ? ['#10b981', '#059669'] : ['#9ca3af', '#6b7280']}
+                  colors={isConfirmed ? ['#0ea5e9', '#0284c7'] : ['#94a3b8', '#64748b']}
                   style={styles.submitButtonGradient}
                 >
                   <Text style={styles.submitButtonText}>Submit for Verification</Text>
@@ -1518,106 +1520,148 @@ export default function AadhaarScanScreen({ navigation }: Props) {
               </TouchableOpacity>
             </View>
           )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+          {/* Info Banner */}
+          <View style={styles.infoBanner}>
+            <Ionicons name="shield-checkmark" size={18} color="#64748b" />
+            <Text style={styles.infoBannerText}>
+              Your Aadhaar details are securely processed and encrypted. We never store your images.
+            </Text>
+          </View>
+
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: 'transparent',
   },
-  gradientHeader: {
-    paddingTop: 16,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  header: {
+  headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   backButton: {
-    padding: 4,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerContent: {
     flex: 1,
+    marginLeft: 12,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 4,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1e293b',
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#d1fae5',
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  headerIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 20,
+  scrollContent: {
+    paddingHorizontal: 20,
   },
-  uploadSection: {
+  // Upload Card
+  uploadCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
     alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   uploadIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#ecfdf5',
+    width: 88,
+    height: 88,
+    borderRadius: 24,
+    backgroundColor: '#e0f2fe',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   uploadTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
     marginBottom: 8,
   },
   uploadSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: 13,
+    color: '#64748b',
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
     lineHeight: 20,
   },
   processingContainer: {
     alignItems: 'center',
-    marginVertical: 24,
-    padding: 24,
+    marginVertical: 20,
+    padding: 20,
   },
   processingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6b7280',
+    color: '#64748b',
   },
   imagePreviewContainer: {
     width: '100%',
-    maxHeight: 300,
+    maxHeight: 200,
     borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 24,
-    backgroundColor: '#f3f4f6',
+    marginBottom: 20,
+    backgroundColor: '#f1f5f9',
   },
   imagePreview: {
     width: '100%',
-    height: 300,
+    height: 200,
   },
   uploadButton: {
     borderRadius: 16,
     overflow: 'hidden',
     width: '100%',
-    shadowColor: '#10b981',
+    shadowColor: '#0ea5e9',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 6,
   },
@@ -1626,87 +1670,122 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
   uploadButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
   },
-  formSection: {
-    marginTop: 32,
+  manualEntryButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
   },
-  formHelperText: {
+  manualEntryButtonText: {
+    color: '#0ea5e9',
     fontSize: 14,
-    color: '#6b7280',
+    fontWeight: '600',
+  },
+  // Form Card
+  formCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  formHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
-    fontWeight: '500',
+  },
+  formTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  formBadge: {
+    backgroundColor: '#dbeafe',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  formBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#3b82f6',
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1e293b',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
     padding: 16,
     fontSize: 16,
-    color: '#111827',
+    color: '#1e293b',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#e2e8f0',
   },
   readOnlyInput: {
-    backgroundColor: '#f3f4f6',
-    color: '#6b7280',
+    backgroundColor: '#f1f5f9',
+    color: '#64748b',
   },
-  readOnlyHint: {
+  inputHint: {
     fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
+    color: '#94a3b8',
+    marginTop: 6,
   },
   textArea: {
     minHeight: 100,
     paddingTop: 16,
+    textAlignVertical: 'top',
   },
   checkboxContainer: {
-    marginBottom: 24,
-  },
-  checkbox: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 24,
     gap: 12,
   },
   checkboxBox: {
     width: 24,
     height: 24,
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#d1d5db',
+    borderColor: '#cbd5e1',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#ffffff',
   },
   checkboxBoxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: '#0ea5e9',
+    borderColor: '#0ea5e9',
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#374151',
+    color: '#475569',
     flex: 1,
+    lineHeight: 20,
   },
   submitButton: {
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 12,
-    shadowColor: '#10b981',
+    shadowColor: '#0ea5e9',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 6,
   },
@@ -1725,69 +1804,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   retakeButton: {
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: 'center',
   },
   retakeButtonText: {
-    color: '#10b981',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  manualEntryButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  manualEntryButtonText: {
-    color: '#10b981',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  backSideSection: {
-    marginTop: 24,
-    paddingTop: 24,
-    width: '100%',
-  },
-  backSideDivider: {
-    height: 1,
-    backgroundColor: '#e5e7eb',
-    marginBottom: 20,
-  },
-  backSideTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  backSideSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  backSideButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    width: '100%',
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  backSideButtonGradient: {
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  backSideButtonText: {
-    color: '#ffffff',
+    color: '#0ea5e9',
     fontSize: 15,
     fontWeight: '600',
+  },
+  // Info Banner
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  infoBannerText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#64748b',
+    lineHeight: 18,
+  },
+  bottomSpacer: {
+    height: 32,
   },
 });
 

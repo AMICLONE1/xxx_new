@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
@@ -21,8 +22,6 @@ import {
 } from '@/utils/authValidation';
 import { authService } from '@/services/api/authService';
 import { useAuthStore } from '@/store';
-import { useTheme } from '@/contexts';
-import { getThemedColors } from '@/utils/themedStyles';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -31,23 +30,21 @@ interface Props {
 }
 
 export default function LoginScreen({ navigation }: Props) {
-  const { isDark } = useTheme();
-  const colors = getThemedColors(isDark);
   // Form state
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Touched state for validation display
   const [identifierTouched, setIdentifierTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [termsTouched, setTermsTouched] = useState(false);
-  
+
   // Error state
   const [serverError, setServerError] = useState('');
-  
+
   const { setUser, setToken } = useAuthStore();
 
   // Memoized validation
@@ -127,8 +124,8 @@ export default function LoginScreen({ navigation }: Props) {
 
       // Prepare credentials based on identifier type
       const credentials = {
-        email: identifierValidation.type === 'email' 
-          ? identifierValidation.formattedValue 
+        email: identifierValidation.type === 'email'
+          ? identifierValidation.formattedValue
           : '', // Will be handled by backend when mobile is provided
         password: password,
         ...(identifierValidation.type === 'mobile' && {
@@ -158,7 +155,7 @@ export default function LoginScreen({ navigation }: Props) {
         }
         await setToken(response.data.token);
         setUser(response.data.user);
-        
+
         // Navigation will happen automatically via AppNavigator when isAuthenticated becomes true
         if (__DEV__) {
           console.log('✅ User authenticated, AppNavigator will show Main screen automatically');
@@ -178,198 +175,204 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.primary }]}>PowerNetPro</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Democratizing Energy</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            <Text style={styles.title}>PowerNetPro</Text>
+            <Text style={styles.subtitle}>Democratizing Energy</Text>
 
-          {/* Email or Mobile Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.text }]}>Email or Mobile Number</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
-                identifierTouched && !identifierValidation.isValid && identifier.length > 0
-                  ? styles.inputError
-                  : identifierTouched && identifierValidation.isValid
-                  ? styles.inputSuccess
-                  : null,
-              ]}
-            >
-              {identifierType === 'mobile' && (
-                <Text style={[styles.countryCode, { color: colors.text }]}>{INDIA_COUNTRY_CODE}</Text>
-              )}
-              <TextInput
+            {/* Email or Mobile Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email or Mobile Number</Text>
+              <View
                 style={[
-                  styles.input,
-                  { color: colors.inputText },
-                  identifierType === 'mobile' && styles.inputWithPrefix,
+                  styles.inputWrapper,
+                  identifierTouched && !identifierValidation.isValid && identifier.length > 0
+                    ? styles.inputError
+                    : identifierTouched && identifierValidation.isValid
+                      ? styles.inputSuccess
+                      : null,
                 ]}
-                placeholder={getPlaceholder()}
-                placeholderTextColor={colors.inputPlaceholder}
-                keyboardType={getKeyboardType()}
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={identifier}
-                onChangeText={(text) => {
-                  setIdentifier(text);
-                  if (serverError) setServerError('');
-                }}
-                onBlur={() => setIdentifierTouched(true)}
-                autoFocus
-              />
-              {identifierTouched && identifier.length > 0 && (
-                <Ionicons
-                  name={identifierValidation.isValid ? 'checkmark-circle' : 'alert-circle'}
-                  size={20}
-                  color={identifierValidation.isValid ? colors.success : colors.error}
-                />
-              )}
-            </View>
-            {identifierTouched && !identifierValidation.isValid && identifier.length > 0 && (
-              <Text style={[styles.errorText, { color: colors.error }]}>{identifierValidation.error}</Text>
-            )}
-          </View>
-
-          {/* Password Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.text }]}>Password</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
-                passwordTouched && !isPasswordValid && password.length > 0
-                  ? styles.inputError
-                  : null,
-              ]}
-            >
-              <TextInput
-                style={[styles.input, { color: colors.inputText }]}
-                placeholder="Enter your password"
-                placeholderTextColor={colors.inputPlaceholder}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (serverError) setServerError('');
-                }}
-                onBlur={() => setPasswordTouched(true)}
-              />
-              <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setShowPassword(!showPassword)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={22}
-                  color={colors.textSecondary}
+                {identifierType === 'mobile' && (
+                  <Text style={styles.countryCode}>{INDIA_COUNTRY_CODE}</Text>
+                )}
+                <TextInput
+                  style={[
+                    styles.input,
+                    identifierType === 'mobile' && styles.inputWithPrefix,
+                  ]}
+                  placeholder={getPlaceholder()}
+                  placeholderTextColor="#94a3b8"
+                  keyboardType={getKeyboardType()}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={identifier}
+                  onChangeText={(text) => {
+                    setIdentifier(text);
+                    if (serverError) setServerError('');
+                  }}
+                  onBlur={() => setIdentifierTouched(true)}
+                  autoFocus
                 />
-              </TouchableOpacity>
-            </View>
-            {passwordTouched && !isPasswordValid && password.length === 0 && (
-              <Text style={[styles.errorText, { color: colors.error }]}>Password is required</Text>
-            )}
-            
-            {/* Forgot Password Link */}
-            <TouchableOpacity
-              style={styles.forgotPasswordButton}
-              onPress={() => navigation.navigate('ForgotPassword')}
-            >
-              <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Forgot Password?</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Server Error */}
-          {serverError ? (
-            <View style={[styles.serverErrorContainer, { backgroundColor: colors.errorBackground }]}>
-              <Ionicons name="alert-circle" size={16} color={colors.error} />
-              <Text style={[styles.serverErrorText, { color: colors.error }]}>{serverError}</Text>
-            </View>
-          ) : null}
-
-          {/* Terms & Conditions Checkbox */}
-          <View style={styles.termsContainer}>
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() => {
-                setTermsAccepted(!termsAccepted);
-                setTermsTouched(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.checkbox, { borderColor: colors.inputBorder }, termsAccepted && styles.checkboxChecked]}>
-                {termsAccepted && (
-                  <Ionicons name="checkmark" size={14} color="#ffffff" />
+                {identifierTouched && identifier.length > 0 && (
+                  <Ionicons
+                    name={identifierValidation.isValid ? 'checkmark-circle' : 'alert-circle'}
+                    size={20}
+                    color={identifierValidation.isValid ? '#0ea5e9' : '#ef4444'}
+                  />
                 )}
               </View>
-              <Text style={[styles.termsText, { color: colors.textSecondary }]}>
-                I agree to the{' '}
-                <Text
-                  style={[styles.termsLink, { color: colors.primary }]}
-                  onPress={() => navigation.navigate('TermsConditions')}
+              {identifierTouched && !identifierValidation.isValid && identifier.length > 0 && (
+                <Text style={styles.errorText}>{identifierValidation.error}</Text>
+              )}
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Password</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  passwordTouched && !isPasswordValid && password.length > 0
+                    ? styles.inputError
+                    : null,
+                ]}
+              >
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#94a3b8"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (serverError) setServerError('');
+                  }}
+                  onBlur={() => setPasswordTouched(true)}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  Terms & Conditions
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color="#64748b"
+                  />
+                </TouchableOpacity>
+              </View>
+              {passwordTouched && !isPasswordValid && password.length === 0 && (
+                <Text style={styles.errorText}>Password is required</Text>
+              )}
+
+              {/* Forgot Password Link */}
+              <TouchableOpacity
+                style={styles.forgotPasswordButton}
+                onPress={() => navigation.navigate('ForgotPassword')}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Server Error */}
+            {serverError ? (
+              <View style={styles.serverErrorContainer}>
+                <Ionicons name="alert-circle" size={16} color="#ef4444" />
+                <Text style={styles.serverErrorText}>{serverError}</Text>
+              </View>
+            ) : null}
+
+            {/* Terms & Conditions Checkbox */}
+            <View style={styles.termsContainer}>
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => {
+                  setTermsAccepted(!termsAccepted);
+                  setTermsTouched(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+                  {termsAccepted && (
+                    <Ionicons name="checkmark" size={14} color="#ffffff" />
+                  )}
+                </View>
+                <Text style={styles.termsText}>
+                  I agree to the{' '}
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => navigation.navigate('TermsConditions')}
+                  >
+                    Terms & Conditions
+                  </Text>
+                  {' '}and{' '}
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => navigation.navigate('TermsConditions')}
+                  >
+                    Privacy Policy
+                  </Text>
                 </Text>
-                {' '}and{' '}
-                <Text
-                  style={[styles.termsLink, { color: colors.primary }]}
-                  onPress={() => navigation.navigate('TermsConditions')}
-                >
-                  Privacy Policy
-                </Text>
+              </TouchableOpacity>
+              {termsTouched && !termsValidation.isValid && (
+                <Text style={styles.termsError}>{termsValidation.error}</Text>
+              )}
+            </View>
+
+            {/* Sign In Button */}
+            <TouchableOpacity
+              style={[
+                styles.button,
+                (!isFormValid || isLoading) && styles.buttonDisabled,
+              ]}
+              onPress={handleLogin}
+              disabled={!isFormValid || isLoading}
+            >
+              <Text style={styles.buttonText}>
+                {isLoading ? 'Signing In...' : 'Sign In'}
               </Text>
             </TouchableOpacity>
-            {termsTouched && !termsValidation.isValid && (
-              <Text style={[styles.termsError, { color: colors.error }]}>{termsValidation.error}</Text>
-            )}
+
+            {/* Sign Up Link */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('UserTypeSelection')}
+              style={styles.linkButton}
+            >
+              <Text style={styles.linkText}>
+                Don't have an account? <Text style={styles.linkTextBold}>Sign Up</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Sign In Button */}
-          <TouchableOpacity
-            style={[
-              styles.button,
-              { backgroundColor: colors.primary },
-              (!isFormValid || isLoading) && styles.buttonDisabled,
-            ]}
-            onPress={handleLogin}
-            disabled={!isFormValid || isLoading}
-          >
-            <Text style={styles.buttonText}>
-              {isLoading ? 'Signing In...' : 'Sign In'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Sign Up Link */}
-          <TouchableOpacity
-            onPress={() => navigation.navigate('SignUp')}
-            style={styles.linkButton}
-          >
-            <Text style={[styles.linkText, { color: colors.textSecondary }]}>
-              Don't have an account? <Text style={[styles.linkTextBold, { color: colors.primary }]}>Sign Up</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     flexGrow: 1,
@@ -382,13 +385,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#10b981',
+    color: '#0ea5e9',
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: '#64748b',
     textAlign: 'center',
     marginBottom: 48,
   },
@@ -398,26 +401,27 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1e293b',
     marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    borderColor: '#bae6fd',
+    borderRadius: 12,
     paddingHorizontal: 12,
+    backgroundColor: '#ffffff',
   },
   inputError: {
-    borderColor: '#ef4444',
+    borderColor: '#f87171',
   },
   inputSuccess: {
-    borderColor: '#10b981',
+    borderColor: '#0ea5e9',
   },
   countryCode: {
     fontSize: 16,
-    color: '#374151',
+    color: '#1e293b',
     fontWeight: '500',
     marginRight: 4,
   },
@@ -425,7 +429,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#111827',
+    color: '#1e293b',
   },
   inputWithPrefix: {
     paddingLeft: 4,
@@ -444,7 +448,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: 14,
-    color: '#10b981',
+    color: '#0ea5e9',
     fontWeight: '500',
   },
   serverErrorContainer: {
@@ -452,7 +456,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fef2f2',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
   },
   serverErrorText: {
@@ -471,26 +475,27 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 4,
+    borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#d1d5db',
+    borderColor: '#bae6fd',
     marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
+    backgroundColor: '#ffffff',
   },
   checkboxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: '#0ea5e9',
+    borderColor: '#0ea5e9',
   },
   termsText: {
     flex: 1,
     fontSize: 14,
-    color: '#4b5563',
+    color: '#64748b',
     lineHeight: 22,
   },
   termsLink: {
-    color: '#10b981',
+    color: '#0ea5e9',
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
@@ -501,11 +506,16 @@ const styles = StyleSheet.create({
     marginLeft: 34,
   },
   button: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#0ea5e9',
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginBottom: 24,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -521,10 +531,10 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#64748b',
   },
   linkTextBold: {
-    color: '#10b981',
+    color: '#0ea5e9',
     fontWeight: '600',
   },
 });

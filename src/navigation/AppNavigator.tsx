@@ -9,6 +9,8 @@ import { useAuthStore } from '@/store';
 // Auth Screens
 import LoginScreen from '@/screens/auth/LoginScreen';
 import SignUpScreen from '@/screens/auth/SignUpScreen';
+import UserTypeSelectionScreen from '@/screens/auth/UserTypeSelectionScreen';
+import PPAAgreementScreen from '@/screens/auth/PPAAgreementScreen';
 import OTPScreen from '@/screens/auth/OTPScreen';
 import OnboardingScreen from '@/screens/auth/OnboardingScreen';
 import TermsConditionsScreen from '@/screens/auth/TermsConditionsScreen';
@@ -61,87 +63,90 @@ const MainTabNavigator = () => {
     <MainTabs.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#10b981',
-        tabBarInactiveTintColor: '#6b7280',
+        tabBarActiveTintColor: '#3b82f6',
+        tabBarInactiveTintColor: '#64748b',
         tabBarStyle: {
-          backgroundColor: '#ffffff',
+          backgroundColor: '#f0f9ff',
           borderTopWidth: 1,
-          borderTopColor: '#e5e7eb',
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          borderTopColor: '#e0f2fe',
+          height: 92,
+          paddingTop: 12,
+          paddingBottom: 12,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
         },
+        tabBarIconStyle: {
+          marginBottom: 0,
+        },
       }}
     >
-      <MainTabs.Screen 
-        name="Home" 
+      <MainTabs.Screen
+        name="Home"
         component={HomeScreen}
         options={{
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons 
-              name={focused ? 'home' : 'home-outline'} 
-              size={size} 
-              color={color} 
+            <Ionicons
+              name={focused ? 'home' : 'home-outline'}
+              size={size}
+              color={color}
             />
           ),
           tabBarLabel: 'Home',
         }}
       />
-      <MainTabs.Screen 
-        name="Analytics" 
+      <MainTabs.Screen
+        name="Analytics"
         component={AnalyticsScreen}
         options={{
           tabBarIcon: ({ color, size, focused }) => (
-            <MaterialCommunityIcons 
-              name={focused ? 'chart-line' : 'chart-line'} 
-              size={size} 
-              color={color} 
+            <MaterialCommunityIcons
+              name={focused ? 'chart-line' : 'chart-line'}
+              size={size}
+              color={color}
             />
           ),
           tabBarLabel: 'Analytics',
         }}
       />
-      <MainTabs.Screen 
-        name="Marketplace" 
+      <MainTabs.Screen
+        name="Marketplace"
         component={MarketplaceScreen}
         options={{
           tabBarIcon: ({ color, size, focused }) => (
-            <MaterialCommunityIcons 
-              name={focused ? 'store' : 'store-outline'} 
-              size={size} 
-              color={color} 
+            <MaterialCommunityIcons
+              name={focused ? 'store' : 'store-outline'}
+              size={size}
+              color={color}
             />
           ),
           tabBarLabel: 'Marketplace',
         }}
       />
-      <MainTabs.Screen 
-        name="Wallet" 
+      <MainTabs.Screen
+        name="Wallet"
         component={WalletScreen}
         options={{
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons 
-              name={focused ? 'wallet' : 'wallet-outline'} 
-              size={size} 
-              color={color} 
+            <Ionicons
+              name={focused ? 'wallet' : 'wallet-outline'}
+              size={size}
+              color={color}
             />
           ),
           tabBarLabel: 'Wallet',
         }}
       />
-      <MainTabs.Screen 
-        name="Profile" 
+      <MainTabs.Screen
+        name="Profile"
         component={ProfileScreen}
         options={{
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons 
-              name={focused ? 'person' : 'person-outline'} 
-              size={size} 
-              color={color} 
+            <Ionicons
+              name={focused ? 'person' : 'person-outline'}
+              size={size}
+              color={color}
             />
           ),
           tabBarLabel: 'Profile',
@@ -160,6 +165,8 @@ export const AppNavigator = () => {
         {!isAuthenticated ? (
           <>
             <RootStack.Screen name="Login" component={LoginScreen} />
+            <RootStack.Screen name="UserTypeSelection" component={UserTypeSelectionScreen} />
+            <RootStack.Screen name="PPAAgreement" component={PPAAgreementScreen} />
             <RootStack.Screen name="SignUp" component={SignUpScreen} />
             <RootStack.Screen name="TermsConditions" component={TermsConditionsScreen} />
             <RootStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />

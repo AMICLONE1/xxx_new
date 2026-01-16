@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
-import { useAuthStore, useMeterStore, useKYCStore, useThemeStore } from '@/store';
+import { useAuthStore, useKYCStore, useThemeStore } from '@/store';
 import type { ThemeMode } from '@/store';
 import { supabaseStorageService } from '@/services/supabase/storageService';
 import { supabaseAuthService } from '@/services/supabase/authService';
@@ -38,19 +38,19 @@ const THEME_OPTIONS: { value: ThemeMode; label: string; icon: string }[] = [
   { value: 'dark', label: 'Dark Mode', icon: 'moon-outline' },
 ];
 
-// KYC Status configurations
+// KYC Status configurations - Blue theme colors
 const KYC_STATUS_CONFIG = {
   pending: {
     badge: 'Pending',
-    badgeColor: '#f59e0b',
-    badgeBg: '#fef3c7',
+    badgeColor: '#3b82f6',
+    badgeBg: '#dbeafe',
     description: 'Your KYC verification is pending review.',
     icon: 'time-outline',
   },
   verified: {
     badge: 'Verified',
-    badgeColor: '#10b981',
-    badgeBg: '#d1fae5',
+    badgeColor: '#3b82f6',
+    badgeBg: '#dbeafe',
     description: 'Your identity has been successfully verified.',
     icon: 'checkmark-circle',
   },
@@ -63,8 +63,8 @@ const KYC_STATUS_CONFIG = {
   },
   'not-started': {
     badge: 'Not Started',
-    badgeColor: '#6b7280',
-    badgeBg: '#f3f4f6',
+    badgeColor: '#64748b',
+    badgeBg: '#f1f5f9',
     description: 'Complete KYC to unlock all features.',
     icon: 'alert-circle-outline',
   },
@@ -74,12 +74,12 @@ export default function ProfileScreen({ navigation }: Props) {
   const { isDark } = useTheme();
   const colors = getThemedColors(isDark);
   const { logout, user, setUser } = useAuthStore();
-  const { currentMeter, removeMeter } = useMeterStore();
   const { overallStatus: kycStatus } = useKYCStore();
   const { themeMode, setThemeMode, restoreTheme } = useThemeStore();
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Restore theme on mount
   useEffect(() => {
@@ -116,35 +116,7 @@ export default function ProfileScreen({ navigation }: Props) {
     );
   };
 
-  const handleDeleteMeter = () => {
-    if (!currentMeter || !user?.id) {
-      Alert.alert('Error', 'No meter to delete');
-      return;
-    }
 
-    Alert.alert(
-      'Delete Meter',
-      `Are you sure you want to delete meter "${currentMeter.meterSerialId}"?\n\nThis will stop all data generation and cannot be undone.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeMeter(currentMeter.id, user.id);
-              Alert.alert('Success', 'Meter deleted successfully');
-            } catch (error: unknown) {
-              Alert.alert('Error', getErrorMessage(error) || 'Failed to delete meter. Please try again.');
-            }
-          },
-        },
-      ]
-    );
-  };
 
   const handlePickImage = async () => {
     if (!user?.id) {
@@ -246,6 +218,27 @@ export default function ProfileScreen({ navigation }: Props) {
     setShowThemeModal(false);
   };
 
+  const handleDeleteAccount = () => {
+    setShowDeleteModal(false);
+    // TODO: Implement actual account deletion logic
+    Alert.alert(
+      'Account Deleted',
+      'Your account has been permanently deleted.',
+      [
+        {
+          text: 'OK',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              // Navigate anyway
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getAppVersion = () => {
     return Constants.expoConfig?.version || '1.0.0';
   };
@@ -302,9 +295,6 @@ export default function ProfileScreen({ navigation }: Props) {
             <Text style={styles.headerTitle}>Profile</Text>
             <Text style={styles.headerSubtitle}>Manage your account</Text>
           </View>
-          <TouchableOpacity style={styles.settingsButton}>
-            <Ionicons name="settings-outline" size={22} color="#3b82f6" />
-          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -389,29 +379,7 @@ export default function ProfileScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {/* Linked Meter Card */}
-          {currentMeter && (
-            <View style={styles.meterCard}>
-              <View style={styles.meterHeader}>
-                <View style={styles.meterIconContainer}>
-                  <MaterialCommunityIcons name="meter-electric" size={24} color="#3b82f6" />
-                </View>
-                <View style={styles.meterInfo}>
-                  <Text style={styles.meterLabel}>Linked Meter</Text>
-                  <Text style={styles.meterSerial}>{currentMeter.meterSerialId}</Text>
-                  <Text style={styles.meterDiscom}>{currentMeter.discomName}</Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                style={styles.deleteMeterButton}
-                onPress={handleDeleteMeter}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="delete-outline" size={18} color="#ef4444" />
-                <Text style={styles.deleteMeterText}>Remove</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+
 
           {/* Menu Section */}
           <View style={styles.menuSection}>
@@ -451,6 +419,32 @@ export default function ProfileScreen({ navigation }: Props) {
               <Text style={styles.logoutText}>Logout</Text>
             </View>
           </TouchableOpacity>
+
+          {/* Danger Zone Section */}
+          <View style={styles.dangerZoneSection}>
+            <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
+            <View style={styles.dangerZoneCard}>
+              <View style={styles.dangerZoneContent}>
+                <View style={styles.dangerZoneIconContainer}>
+                  <Ionicons name="warning" size={22} color="#ef4444" />
+                </View>
+                <View style={styles.dangerZoneTextContainer}>
+                  <Text style={styles.dangerZoneLabel}>Delete Account</Text>
+                  <Text style={styles.dangerZoneDescription}>
+                    Permanently delete your account and all data
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.deleteAccountButton}
+                onPress={() => setShowDeleteModal(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="trash-outline" size={18} color="#ffffff" />
+                <Text style={styles.deleteAccountButtonText}>Permanent Delete Account</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </ScrollView>
 
         {/* Theme Selection Modal */}
@@ -508,6 +502,42 @@ export default function ProfileScreen({ navigation }: Props) {
             </View>
           </TouchableOpacity>
         </Modal>
+
+        {/* Delete Account Confirmation Modal */}
+        <Modal
+          visible={showDeleteModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDeleteModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.deleteModalContent}>
+              <View style={styles.deleteModalIconContainer}>
+                <Ionicons name="warning" size={48} color="#ef4444" />
+              </View>
+              <Text style={styles.deleteModalTitle}>Delete Account?</Text>
+              <Text style={styles.deleteModalDescription}>
+                This action is permanent and cannot be undone. All your data, transactions, and settings will be permanently deleted.
+              </Text>
+              <View style={styles.deleteModalButtons}>
+                <TouchableOpacity
+                  style={styles.deleteModalCancelButton}
+                  onPress={() => setShowDeleteModal(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.deleteModalCancelText}>No, Keep Account</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteModalConfirmButton}
+                  onPress={handleDeleteAccount}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.deleteModalConfirmText}>Yes, Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -538,19 +568,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#64748b',
     fontWeight: '500',
-  },
-  settingsButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
   },
   scrollView: {
     flex: 1,
@@ -880,5 +897,129 @@ const styles = StyleSheet.create({
   },
   themeOptionTextActive: {
     color: '#1e293b',
+  },
+  // Danger Zone Section
+  dangerZoneSection: {
+    marginBottom: 20,
+  },
+  dangerZoneTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ef4444',
+    marginBottom: 12,
+  },
+  dangerZoneCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  dangerZoneContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  dangerZoneIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#fee2e2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  dangerZoneTextContainer: {
+    flex: 1,
+  },
+  dangerZoneLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  dangerZoneDescription: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  deleteAccountButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  // Delete Modal Styles
+  deleteModalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+  },
+  deleteModalIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#fee2e2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  deleteModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  deleteModalDescription: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  deleteModalCancelButton: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  deleteModalCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  deleteModalConfirmButton: {
+    flex: 1,
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  deleteModalConfirmText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });

@@ -117,6 +117,26 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
     #map { width: 100%; height: 100vh; }
     .mapboxgl-ctrl-logo { display: none !important; }
     .mapboxgl-ctrl-attrib { display: none !important; }
+    .mapboxgl-popup-content {
+      background: transparent !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      border-radius: 16px !important;
+    }
+    .mapboxgl-popup-tip {
+      display: none !important;
+    }
+    .mapboxgl-popup-close-button {
+      color: #94a3b8 !important;
+      font-size: 20px !important;
+      right: 8px !important;
+      top: 8px !important;
+    }
+    .mapboxgl-popup-close-button:hover {
+      color: #f8fafc !important;
+      background: rgba(255,255,255,0.1) !important;
+      border-radius: 50%;
+    }
   </style>
 </head>
 <body>
@@ -179,7 +199,7 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
         el.style.width = '40px';
         el.style.height = '40px';
         el.style.borderRadius = '50%';
-        el.style.backgroundColor = seller.greenEnergy ? '#10b981' : '#059669';
+        el.style.backgroundColor = seller.greenEnergy ? '#3b82f6' : '#1d4ed8';
         el.style.border = '3px solid #ffffff';
         el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
         el.style.display = 'flex';
@@ -200,55 +220,72 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
           el.style.transform = 'scale(1)';
         });
         
-        // Create detailed popup
+        // Create detailed popup with dark theme
         const popupContent = \`
-          <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 200px;">
-            <h3 style="margin: 0 0 8px 0; color: #111827; font-size: 16px; font-weight: 600;">
+          <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 220px; background: #1a1a2e; padding: 16px; border-radius: 16px; border: 1px solid #2a2a4e;">
+            <h3 style="margin: 0 0 14px 0; color: #f8fafc; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+              <span style="width: 32px; height: 32px; background: rgba(59, 130, 246, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center;">👤</span>
               \${seller.name}
             </h3>
-            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px;">
-              <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="color: #6b7280;">💰 Price:</span>
-                <span style="color: #111827; font-weight: 600;">₹\${seller.price}/kWh</span>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
+              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
+                <span style="width: 28px; height: 28px; background: rgba(59, 130, 246, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">💰</span>
+                <div style="flex: 1;">
+                  <div style="color: #94a3b8; font-size: 11px;">Price</div>
+                  <div style="color: #f1f5f9; font-weight: 600;">₹\${seller.price}/kWh</div>
+                </div>
               </div>
               \${seller.availableEnergy ? \`
-              <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="color: #6b7280;">⚡ Available:</span>
-                <span style="color: #111827; font-weight: 600;">\${seller.availableEnergy} kWh</span>
+              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
+                <span style="width: 28px; height: 28px; background: rgba(245, 158, 11, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">⚡</span>
+                <div style="flex: 1;">
+                  <div style="color: #94a3b8; font-size: 11px;">Available</div>
+                  <div style="color: #f1f5f9; font-weight: 600;">\${seller.availableEnergy} kWh</div>
+                </div>
               </div>
               \` : ''}
               \${seller.rating ? \`
-              <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="color: #6b7280;">⭐ Rating:</span>
-                <span style="color: #111827; font-weight: 600;">\${seller.rating.toFixed(1)}</span>
+              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
+                <span style="width: 28px; height: 28px; background: rgba(251, 191, 36, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">⭐</span>
+                <div style="flex: 1;">
+                  <div style="color: #94a3b8; font-size: 11px;">Rating</div>
+                  <div style="color: #f1f5f9; font-weight: 600;">\${seller.rating.toFixed(1)}</div>
+                </div>
               </div>
               \` : ''}
               \${seller.distance ? \`
-              <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="color: #6b7280;">📍 Distance:</span>
-                <span style="color: #111827; font-weight: 600;">\${seller.distance.toFixed(1)} km</span>
+              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
+                <span style="width: 28px; height: 28px; background: rgba(16, 185, 129, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">📍</span>
+                <div style="flex: 1;">
+                  <div style="color: #94a3b8; font-size: 11px;">Distance</div>
+                  <div style="color: #f1f5f9; font-weight: 600;">\${seller.distance.toFixed(1)} km</div>
+                </div>
               </div>
               \` : ''}
             </div>
             <button 
               onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type: 'MARKER_CLICK', id: '\${seller.id}', markerType: 'seller'}))"
               style="
-                margin-top: 12px;
+                margin-top: 14px;
                 width: 100%;
-                padding: 8px 16px;
-                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                padding: 12px 16px;
+                background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
                 color: white;
                 border: none;
-                border-radius: 8px;
-                font-weight: 600;
+                border-radius: 10px;
+                font-weight: 700;
                 font-size: 14px;
                 cursor: pointer;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
               "
-              onmouseover="this.style.opacity='0.9'"
-              onmouseout="this.style.opacity='1'"
+              onmouseover="this.style.transform='scale(1.02)'"
+              onmouseout="this.style.transform='scale(1)'"
             >
-              View Details
+              👁️ View Details
             </button>
           </div>
         \`;
@@ -301,59 +338,79 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
           el.style.transform = 'scale(1)';
         });
         
-        // Create detailed popup
+        // Create detailed popup with dark theme
         const popupContent = \`
-          <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 200px;">
-            <h3 style="margin: 0 0 8px 0; color: #111827; font-size: 16px; font-weight: 600;">
+          <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 220px; background: #1a1a2e; padding: 16px; border-radius: 16px; border: 1px solid #2a2a4e;">
+            <h3 style="margin: 0 0 14px 0; color: #f8fafc; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+              <span style="width: 32px; height: 32px; background: rgba(245, 158, 11, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center;">👤</span>
               \${buyer.name}
             </h3>
-            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px;">
-              <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="color: #6b7280;">💰 Max Price:</span>
-                <span style="color: #111827; font-weight: 600;">₹\${buyer.maxPrice}/kWh</span>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
+              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
+                <span style="width: 28px; height: 28px; background: rgba(59, 130, 246, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">💰</span>
+                <div style="flex: 1;">
+                  <div style="color: #94a3b8; font-size: 11px;">Max Price</div>
+                  <div style="color: #f1f5f9; font-weight: 600;">₹\${buyer.maxPrice}/kWh</div>
+                </div>
               </div>
-              <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="color: #6b7280;">⚡ Needed:</span>
-                <span style="color: #111827; font-weight: 600;">\${buyer.energyNeeded} kWh</span>
+              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
+                <span style="width: 28px; height: 28px; background: rgba(245, 158, 11, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">⚡</span>
+                <div style="flex: 1;">
+                  <div style="color: #94a3b8; font-size: 11px;">Energy Needed</div>
+                  <div style="color: #f1f5f9; font-weight: 600;">\${buyer.energyNeeded} kWh</div>
+                </div>
               </div>
               \${buyer.rating ? \`
-              <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="color: #6b7280;">⭐ Rating:</span>
-                <span style="color: #111827; font-weight: 600;">\${buyer.rating.toFixed(1)}</span>
+              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
+                <span style="width: 28px; height: 28px; background: rgba(251, 191, 36, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">⭐</span>
+                <div style="flex: 1;">
+                  <div style="color: #94a3b8; font-size: 11px;">Rating</div>
+                  <div style="color: #f1f5f9; font-weight: 600;">\${buyer.rating.toFixed(1)}</div>
+                </div>
               </div>
               \` : ''}
               \${buyer.distance ? \`
-              <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="color: #6b7280;">📍 Distance:</span>
-                <span style="color: #111827; font-weight: 600;">\${buyer.distance.toFixed(1)} km</span>
+              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
+                <span style="width: 28px; height: 28px; background: rgba(16, 185, 129, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">📍</span>
+                <div style="flex: 1;">
+                  <div style="color: #94a3b8; font-size: 11px;">Distance</div>
+                  <div style="color: #f1f5f9; font-weight: 600;">\${buyer.distance.toFixed(1)} km</div>
+                </div>
               </div>
               \` : ''}
               \${buyer.preferredDeliveryWindow ? \`
-              <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="color: #6b7280;">🕐 Window:</span>
-                <span style="color: #111827; font-weight: 600;">\${buyer.preferredDeliveryWindow}</span>
+              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
+                <span style="width: 28px; height: 28px; background: rgba(139, 92, 246, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">🕐</span>
+                <div style="flex: 1;">
+                  <div style="color: #94a3b8; font-size: 11px;">Delivery Window</div>
+                  <div style="color: #f1f5f9; font-weight: 600;">\${buyer.preferredDeliveryWindow}</div>
+                </div>
               </div>
               \` : ''}
             </div>
             <button 
               onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type: 'MARKER_CLICK', id: '\${buyer.id}', markerType: 'buyer'}))"
               style="
-                margin-top: 12px;
+                margin-top: 14px;
                 width: 100%;
-                padding: 8px 16px;
-                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                padding: 12px 16px;
+                background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
                 color: white;
                 border: none;
-                border-radius: 8px;
-                font-weight: 600;
+                border-radius: 10px;
+                font-weight: 700;
                 font-size: 14px;
                 cursor: pointer;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
               "
-              onmouseover="this.style.opacity='0.9'"
-              onmouseout="this.style.opacity='1'"
+              onmouseover="this.style.transform='scale(1.02)'"
+              onmouseout="this.style.transform='scale(1)'"
             >
-              View Details
+              👁️ View Details
             </button>
           </div>
         \`;
@@ -417,28 +474,28 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
 
     // Initial markers
     const initialSellers = ${JSON.stringify((sellers || []).map(s => ({
-      id: s.id,
-      name: s.name,
-      lat: s.location.lat,
-      lng: s.location.lng,
-      price: s.pricePerUnit,
-      availableEnergy: s.availableEnergy || 0,
-      rating: s.rating || 0,
-      distance: s.distance || 0,
-      greenEnergy: s.greenEnergy || false,
-    })))};
+    id: s.id,
+    name: s.name,
+    lat: s.location.lat,
+    lng: s.location.lng,
+    price: s.pricePerUnit,
+    availableEnergy: s.availableEnergy || 0,
+    rating: s.rating || 0,
+    distance: s.distance || 0,
+    greenEnergy: s.greenEnergy || false,
+  })))};
     
     const initialBuyers = ${JSON.stringify((buyers || []).map(b => ({
-      id: b.id,
-      name: b.name,
-      lat: b.location.lat,
-      lng: b.location.lng,
-      maxPrice: b.maxPricePerUnit,
-      energyNeeded: b.energyNeeded,
-      rating: b.rating || 0,
-      distance: b.distance || 0,
-      preferredDeliveryWindow: b.preferredDeliveryWindow || '',
-    })))};
+    id: b.id,
+    name: b.name,
+    lat: b.location.lat,
+    lng: b.location.lng,
+    maxPrice: b.maxPricePerUnit,
+    energyNeeded: b.energyNeeded,
+    rating: b.rating || 0,
+    distance: b.distance || 0,
+    preferredDeliveryWindow: b.preferredDeliveryWindow || '',
+  })))};
 
     if (initialSellers.length > 0 || initialBuyers.length > 0) {
       addMarkers(initialSellers, initialBuyers);
@@ -457,7 +514,7 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
   const handleMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      
+
       if (data.type === 'MAP_READY' && onMapReady) {
         onMapReady();
       } else if (data.type === 'MARKER_CLICK' && onMarkerClick) {

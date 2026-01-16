@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
   TextInput,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +21,8 @@ import { ocrService, ExpoGoDetectedError, OCRNotAvailableError } from '@/service
 import { useKYCStore, useAuthStore } from '@/store';
 import { getErrorMessage } from '@/utils/errorUtils';
 import * as FileSystem from 'expo-file-system/legacy';
+
+const { width } = Dimensions.get('window');
 
 type ElectricityBillScanScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ElectricityBillScan'>;
 
@@ -69,11 +72,11 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
     if (checkExpoGo && __DEV__) {
       console.log('📱 Running in Expo Go - OCR disabled');
     }
-    
+
     // Check if OCR can be used for this document
     const ocrAllowed = canUseOCR('electricity_bill');
     const docStatus = getDocumentStatus('electricity_bill');
-    
+
     if (!ocrAllowed) {
       console.log('[ElectricityBillScan] OCR not allowed, status:', docStatus);
       if (docStatus === 'verified') {
@@ -98,10 +101,10 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
   const formatDate = (text: string): string => {
     // Remove all non-digits
     const digitsOnly = text.replace(/\D/g, '');
-    
+
     // Limit to 8 digits (DDMMYYYY)
     const limited = digitsOnly.slice(0, 8);
-    
+
     // Add slashes automatically
     if (limited.length <= 2) {
       return limited;
@@ -379,7 +382,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
       setIsManualEntry(true);
       return;
     }
-    
+
     await proceedWithUpload();
   };
 
@@ -472,14 +475,14 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
       billAmount: '',
       serviceAddress: '',
     };
-    
+
     // Reset ALL state variables
     setExtractedData(emptyData);
     setShowForm(false);
     setIsConfirmed(false);
     setIsManualEntry(false);
     setImageUri(null);
-    
+
     // Now start processing with fresh state
     setIsProcessing(true);
     setImageUri(uri);
@@ -512,7 +515,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
       let ocrResult;
       try {
         ocrResult = await ocrService.recognizeText(uri);
-        
+
         if (__DEV__) {
           console.log('✅ Bill OCR completed! Text extracted (length:', ocrResult.text.length, 'chars)');
         }
@@ -523,7 +526,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
         if (__DEV__) {
           console.error('❌ Bill OCR Error:', ocrError instanceof Error ? ocrError.name : 'Unknown');
         }
-        
+
         // Any OCR error - silently fall back to manual entry
         console.log('[ElectricityBillScan] OCR unavailable - using manual entry');
         setExtractedData(emptyData);
@@ -537,7 +540,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
       // STEP 2: DATA EXTRACTION (STRICT)
       // ============================================
       const ocrText = ocrResult.text;
-      
+
       if (__DEV__) {
         if (ocrText.length > 0) {
           console.log('✅ OCR text extracted (length:', ocrText.length, 'chars)');
@@ -545,9 +548,9 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
           console.log('ℹ️ No OCR text detected - using manual entry mode');
         }
       }
-      
+
       const extracted = extractBillData(ocrText);
-      
+
       if (__DEV__) {
         console.log('📊 Bill Extraction Complete');
       }
@@ -557,20 +560,20 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
       // ============================================
       setExtractedData(extracted);
       setShowForm(true);
-      
+
       // Determine if manual entry based on whether key fields were found
       const hasKeyFields = extracted.consumerNumber || extracted.meterNumber;
       setIsManualEntry(!hasKeyFields);
-      
+
       // ============================================
       // STEP 4: IMAGE DELETION (SECURITY)
       // ============================================
       await deleteImage();
-      
+
       if (__DEV__) {
         console.log('✅ Bill Form displayed with extracted data');
       }
-      
+
       // Show success message
       setTimeout(() => {
         const extractedFields = [];
@@ -584,18 +587,18 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
         if (extracted.unitsConsumed) extractedFields.push('Units');
         if (extracted.billAmount) extractedFields.push('Amount');
         if (extracted.serviceAddress) extractedFields.push('Address');
-        
-        const summary = extractedFields.length > 0 
+
+        const summary = extractedFields.length > 0
           ? `Extracted: ${extractedFields.join(', ')}`
           : 'No data extracted. Please enter details manually.';
-        
+
         Alert.alert(
           'OCR Complete ✅',
           `${summary}\n\nPlease verify and edit if needed.`,
           [{ text: 'OK' }]
         );
       }, 500);
-      
+
     } catch (error: unknown) {
       // CRITICAL: Always delete image on error
       await deleteImage();
@@ -603,7 +606,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
       if (__DEV__) {
         console.error('❌ Unexpected error in Bill processImage:', error);
       }
-      
+
       Alert.alert(
         'Processing Error',
         'An unexpected error occurred. Please try again or enter details manually.',
@@ -668,51 +671,65 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <LinearGradient
-        colors={['#10b981', '#059669']}
-        style={styles.gradientHeader}
-      >
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#ffffff" />
+            <Ionicons name="arrow-back" size={24} color="#1e293b" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Scan Electricity Bill</Text>
             <Text style={styles.headerSubtitle}>Upload and extract details</Text>
           </View>
+          <View style={styles.headerRight}>
+            <View style={styles.statusBadge}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>KYC</Text>
+            </View>
+          </View>
         </View>
-      </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Expo Go Warning Banner */}
           {isExpoGo && (
             <View style={styles.expoGoWarning}>
-              <Ionicons name="information-circle" size={20} color="#92400e" />
+              <Ionicons name="information-circle" size={20} color="#0369a1" />
               <Text style={styles.expoGoWarningText}>
                 Auto text extraction unavailable. You can upload an image or enter details manually.
               </Text>
             </View>
           )}
 
-          {/* Upload Section - Always visible */}
-          <View style={styles.uploadSection}>
+          {/* Upload Card */}
+          <View style={styles.uploadCard}>
             <View style={styles.uploadIconContainer}>
-              <MaterialCommunityIcons name="file-document" size={64} color="#10b981" />
+              <LinearGradient
+                colors={['#0ea5e9', '#0284c7']}
+                style={styles.uploadIconGradient}
+              >
+                <MaterialCommunityIcons name="file-document-outline" size={36} color="#ffffff" />
+              </LinearGradient>
             </View>
-            <Text style={styles.uploadTitle}>Upload Electricity Bill Image</Text>
+            <Text style={styles.uploadTitle}>Upload Electricity Bill</Text>
             <Text style={styles.uploadSubtitle}>
-              Take a clear photo or select from gallery. Ensure all text is visible.
+              Take a clear photo or select from gallery.{'\n'}Ensure all text is visible.
             </Text>
 
             {imageUri && isProcessing && (
               <View style={styles.processingContainer}>
-                <ActivityIndicator size="large" color="#10b981" />
-                <Text style={styles.processingText}>Processing image with OCR...</Text>
+                <View style={styles.processingCard}>
+                  <ActivityIndicator size="large" color="#0ea5e9" />
+                  <Text style={styles.processingText}>Processing image with OCR...</Text>
+                </View>
               </View>
             )}
 
@@ -726,15 +743,15 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
               style={styles.uploadButton}
               onPress={handleUploadImage}
               disabled={isProcessing}
-              activeOpacity={0.7}
+              activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#10b981', '#059669']}
+                colors={['#0ea5e9', '#0284c7']}
                 style={styles.uploadButtonGradient}
               >
-                <Ionicons name="camera" size={24} color="#ffffff" />
+                <Ionicons name="camera" size={22} color="#ffffff" />
                 <Text style={styles.uploadButtonText}>
-                  {imageUri ? 'Upload Another Image' : 'Upload Electricity Bill Image'}
+                  {imageUri ? 'Upload Another Image' : 'Upload Electricity Bill'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -762,200 +779,243 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.manualEntryButtonText}>Enter Details Manually</Text>
+                <Text style={styles.manualEntryButtonText}>or Enter Details Manually</Text>
               </TouchableOpacity>
             )}
           </View>
 
           {/* Form Section - Appears below upload button after OCR */}
           {showForm && (
-            <View style={styles.formSection}>
-              <Text style={styles.formHelperText}>Please verify your electricity bill details</Text>
+            <View style={styles.formCard}>
+              <View style={styles.formHeader}>
+                <View style={styles.formIconContainer}>
+                  <Ionicons name="document-text-outline" size={20} color="#0ea5e9" />
+                </View>
+                <Text style={styles.formTitle}>Bill Details</Text>
+              </View>
+              <Text style={styles.formHelperText}>Please verify and confirm your electricity bill details</Text>
 
               {/* Consumer Name */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Consumer Name</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.consumerName}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, consumerName: text.toUpperCase() })}
-                  placeholder="Enter consumer name"
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="characters"
-                  maxLength={100}
-                />
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={extractedData.consumerName}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, consumerName: text.toUpperCase() })}
+                    placeholder="Enter consumer name"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="characters"
+                    maxLength={100}
+                  />
+                </View>
               </View>
 
               {/* Consumer Number */}
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Consumer / Account Number *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.consumerNumber}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, consumerNumber: text.toUpperCase() })}
-                  placeholder="Enter consumer number"
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="characters"
-                  maxLength={20}
-                />
+                <View style={styles.labelRow}>
+                  <Text style={styles.inputLabel}>Consumer / Account Number</Text>
+                  <Text style={styles.requiredBadge}>Required</Text>
+                </View>
+                <View style={styles.inputWrapper}>
+                  <MaterialCommunityIcons name="identifier" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={extractedData.consumerNumber}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, consumerNumber: text.toUpperCase() })}
+                    placeholder="Enter consumer number"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="characters"
+                    maxLength={20}
+                  />
+                </View>
               </View>
 
               {/* Meter Number */}
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Meter Number *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.meterNumber}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, meterNumber: text.toUpperCase() })}
-                  placeholder="Enter meter number"
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="characters"
-                  maxLength={20}
-                />
-                <Text style={styles.inputHint}>* At least one of Consumer Number or Meter Number is required</Text>
+                <View style={styles.labelRow}>
+                  <Text style={styles.inputLabel}>Meter Number</Text>
+                  <Text style={styles.requiredBadge}>Required</Text>
+                </View>
+                <View style={styles.inputWrapper}>
+                  <MaterialCommunityIcons name="meter-electric-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={extractedData.meterNumber}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, meterNumber: text.toUpperCase() })}
+                    placeholder="Enter meter number"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="characters"
+                    maxLength={20}
+                  />
+                </View>
+                <Text style={styles.inputHint}>At least one of Consumer Number or Meter Number is required</Text>
               </View>
 
               {/* DISCOM / Electricity Provider */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Electricity Provider (DISCOM)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.discomName}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, discomName: text })}
-                  placeholder="e.g., MSEDCL, Tata Power, Adani"
-                  placeholderTextColor="#9ca3af"
-                  maxLength={50}
-                />
+                <View style={styles.inputWrapper}>
+                  <MaterialCommunityIcons name="office-building-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={extractedData.discomName}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, discomName: text })}
+                    placeholder="e.g., MSEDCL, Tata Power, Adani"
+                    placeholderTextColor="#94a3b8"
+                    maxLength={50}
+                  />
+                </View>
+              </View>
+
+              {/* Two Column Row: Bill Date & Due Date */}
+              <View style={styles.twoColumnRow}>
+                <View style={styles.halfInputContainer}>
+                  <Text style={styles.inputLabel}>Bill Date</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="calendar-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      value={extractedData.billDate}
+                      onChangeText={(text) => {
+                        const formatted = formatDate(text);
+                        setExtractedData({ ...extractedData, billDate: formatted });
+                      }}
+                      placeholder="DD/MM/YYYY"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="numeric"
+                      maxLength={10}
+                    />
+                  </View>
+                </View>
+                <View style={styles.halfInputContainer}>
+                  <Text style={styles.inputLabel}>Due Date</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="calendar-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      value={extractedData.dueDate}
+                      onChangeText={(text) => {
+                        const formatted = formatDate(text);
+                        setExtractedData({ ...extractedData, dueDate: formatted });
+                      }}
+                      placeholder="DD/MM/YYYY"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="numeric"
+                      maxLength={10}
+                    />
+                  </View>
+                </View>
               </View>
 
               {/* Billing Period */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Billing Period</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.billingPeriod}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, billingPeriod: text })}
-                  placeholder="e.g., Jan 2024 - Feb 2024"
-                  placeholderTextColor="#9ca3af"
-                  maxLength={50}
-                />
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="time-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={extractedData.billingPeriod}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, billingPeriod: text })}
+                    placeholder="e.g., Jan 2024 - Feb 2024"
+                    placeholderTextColor="#94a3b8"
+                    maxLength={50}
+                  />
+                </View>
               </View>
 
-              {/* Bill Date */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Bill Date</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.billDate}
-                  onChangeText={(text) => {
-                    const formatted = formatDate(text);
-                    setExtractedData({ ...extractedData, billDate: formatted });
-                  }}
-                  placeholder="DD/MM/YYYY"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
-              </View>
-
-              {/* Due Date */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Due Date</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.dueDate}
-                  onChangeText={(text) => {
-                    const formatted = formatDate(text);
-                    setExtractedData({ ...extractedData, dueDate: formatted });
-                  }}
-                  placeholder="DD/MM/YYYY"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
-              </View>
-
-              {/* Units Consumed */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Units Consumed (kWh)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.unitsConsumed}
-                  onChangeText={(text) => {
-                    const formatted = formatNumeric(text);
-                    setExtractedData({ ...extractedData, unitsConsumed: formatted });
-                  }}
-                  placeholder="Enter units consumed"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
-              </View>
-
-              {/* Bill Amount */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Bill Amount (₹)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.billAmount}
-                  onChangeText={(text) => {
-                    const formatted = formatNumeric(text);
-                    setExtractedData({ ...extractedData, billAmount: formatted });
-                  }}
-                  placeholder="Enter bill amount"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
-                  maxLength={15}
-                />
+              {/* Two Column Row: Units & Amount */}
+              <View style={styles.twoColumnRow}>
+                <View style={styles.halfInputContainer}>
+                  <Text style={styles.inputLabel}>Units (kWh)</Text>
+                  <View style={styles.inputWrapper}>
+                    <MaterialCommunityIcons name="lightning-bolt-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      value={extractedData.unitsConsumed}
+                      onChangeText={(text) => {
+                        const formatted = formatNumeric(text);
+                        setExtractedData({ ...extractedData, unitsConsumed: formatted });
+                      }}
+                      placeholder="Units"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="numeric"
+                      maxLength={10}
+                    />
+                  </View>
+                </View>
+                <View style={styles.halfInputContainer}>
+                  <Text style={styles.inputLabel}>Bill Amount (₹)</Text>
+                  <View style={styles.inputWrapper}>
+                    <MaterialCommunityIcons name="currency-inr" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      value={extractedData.billAmount}
+                      onChangeText={(text) => {
+                        const formatted = formatNumeric(text);
+                        setExtractedData({ ...extractedData, billAmount: formatted });
+                      }}
+                      placeholder="Amount"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="numeric"
+                      maxLength={15}
+                    />
+                  </View>
+                </View>
               </View>
 
               {/* Service Address */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Service Address</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={extractedData.serviceAddress}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, serviceAddress: text })}
-                  placeholder="Enter service address"
-                  placeholderTextColor="#9ca3af"
-                  multiline
-                  numberOfLines={3}
-                  maxLength={200}
-                  textAlignVertical="top"
-                />
+                <View style={[styles.inputWrapper, styles.textAreaWrapper]}>
+                  <Ionicons name="location-outline" size={18} color="#64748b" style={[styles.inputIcon, { alignSelf: 'flex-start', marginTop: 16 }]} />
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={extractedData.serviceAddress}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, serviceAddress: text })}
+                    placeholder="Enter service address"
+                    placeholderTextColor="#94a3b8"
+                    multiline
+                    numberOfLines={3}
+                    maxLength={200}
+                    textAlignVertical="top"
+                  />
+                </View>
               </View>
 
               {/* Confirmation Checkbox */}
-              <View style={styles.checkboxContainer}>
-                <TouchableOpacity
-                  style={styles.checkbox}
-                  onPress={() => setIsConfirmed(!isConfirmed)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.checkboxBox, isConfirmed && styles.checkboxBoxChecked]}>
-                    {isConfirmed && <Ionicons name="checkmark" size={16} color="#ffffff" />}
-                  </View>
-                  <Text style={styles.checkboxLabel}>
-                    I confirm the above electricity bill details are correct
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => setIsConfirmed(!isConfirmed)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkboxBox, isConfirmed && styles.checkboxBoxChecked]}>
+                  {isConfirmed && <Ionicons name="checkmark" size={16} color="#ffffff" />}
+                </View>
+                <Text style={styles.checkboxLabel}>
+                  I confirm the above electricity bill details are correct
+                </Text>
+              </TouchableOpacity>
 
               {/* Submit Button */}
               <TouchableOpacity
                 style={[styles.submitButton, !isConfirmed && styles.submitButtonDisabled]}
                 onPress={handleSubmit}
                 disabled={!isConfirmed || isProcessing}
-                activeOpacity={0.7}
+                activeOpacity={0.9}
               >
                 <LinearGradient
-                  colors={isConfirmed ? ['#10b981', '#059669'] : ['#9ca3af', '#6b7280']}
+                  colors={isConfirmed ? ['#0ea5e9', '#0284c7'] : ['#94a3b8', '#64748b']}
                   style={styles.submitButtonGradient}
                 >
                   {isProcessing ? (
                     <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
-                    <Text style={styles.submitButtonText}>Submit for Verification</Text>
+                    <>
+                      <Ionicons name="shield-checkmark-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                      <Text style={styles.submitButtonText}>Submit for Verification</Text>
+                    </>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
@@ -983,125 +1043,195 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                 }}
                 activeOpacity={0.7}
               >
+                <Ionicons name="refresh-outline" size={18} color="#0ea5e9" style={{ marginRight: 6 }} />
                 <Text style={styles.retakeButtonText}>Scan Another Image</Text>
               </TouchableOpacity>
             </View>
           )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+          {/* Info Card */}
+          <View style={styles.infoCard}>
+            <View style={styles.infoIconContainer}>
+              <Ionicons name="information-circle-outline" size={20} color="#0ea5e9" />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoTitle}>Why we need your electricity bill?</Text>
+              <Text style={styles.infoText}>
+                Your electricity bill verifies your address and meter connection for secure P2P energy trading on the platform.
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f0fdf4',
-  },
-  gradientHeader: {
-    paddingTop: 16,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   backButton: {
-    padding: 4,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   headerContent: {
     flex: 1,
+    marginLeft: 16,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 4,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#d1fae5',
+    fontSize: 13,
+    color: '#64748b',
     fontWeight: '500',
+  },
+  headerRight: {
+    marginLeft: 12,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#0ea5e9',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0ea5e9',
   },
   scrollView: {
     flex: 1,
   },
-  content: {
+  scrollContent: {
     padding: 20,
+    paddingBottom: 40,
   },
   expoGoWarning: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fef3c7',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#e0f2fe',
+    padding: 14,
+    borderRadius: 14,
     marginBottom: 16,
-    gap: 8,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
   },
   expoGoWarningText: {
     flex: 1,
     fontSize: 13,
-    color: '#92400e',
+    color: '#0369a1',
     lineHeight: 18,
+    fontWeight: '500',
   },
-  uploadSection: {
+  uploadCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 28,
     alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   uploadIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#ecfdf5',
+    marginBottom: 20,
+  },
+  uploadIconGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
   },
   uploadTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
     marginBottom: 8,
   },
   uploadSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#64748b',
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
     lineHeight: 20,
   },
   processingContainer: {
-    alignItems: 'center',
-    marginVertical: 24,
+    width: '100%',
+    marginBottom: 20,
+  },
+  processingCard: {
+    backgroundColor: '#f0f9ff',
+    borderRadius: 16,
     padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#bae6fd',
   },
   processingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6b7280',
+    color: '#0369a1',
+    fontWeight: '500',
   },
   imagePreviewContainer: {
     width: '100%',
-    maxHeight: 300,
+    maxHeight: 240,
     borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 24,
-    backgroundColor: '#f3f4f6',
+    marginBottom: 20,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   imagePreview: {
     width: '100%',
-    height: 300,
+    height: 240,
   },
   uploadButton: {
     borderRadius: 16,
     overflow: 'hidden',
     width: '100%',
-    shadowColor: '#10b981',
+    shadowColor: '#0ea5e9',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 6,
   },
@@ -1110,106 +1240,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
   uploadButtonText: {
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  formSection: {
-    marginTop: 32,
-  },
-  formHelperText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 20,
-    fontWeight: '500',
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#111827',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  inputHint: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
-  textArea: {
-    minHeight: 80,
-    paddingTop: 16,
-  },
-  checkboxContainer: {
-    marginBottom: 24,
-  },
-  checkbox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  checkboxBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#d1d5db',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-  },
-  checkboxBoxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
-  },
-  checkboxLabel: {
-    fontSize: 14,
-    color: '#374151',
-    flex: 1,
-  },
-  submitButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 12,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  submitButtonDisabled: {
-    shadowOpacity: 0.1,
-    elevation: 2,
-  },
-  submitButtonGradient: {
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  retakeButton: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  retakeButtonText: {
-    color: '#10b981',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1219,8 +1253,206 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   manualEntryButtonText: {
-    color: '#10b981',
+    color: '#0ea5e9',
     fontSize: 14,
     fontWeight: '600',
+  },
+  formCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  formHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  formIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  formTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  formHelperText: {
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 20,
+    fontWeight: '500',
+  },
+  inputContainer: {
+    marginBottom: 18,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  requiredBadge: {
+    fontSize: 11,
+    color: '#0369a1',
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+  },
+  textAreaWrapper: {
+    alignItems: 'flex-start',
+  },
+  inputIcon: {
+    marginLeft: 16,
+  },
+  input: {
+    flex: 1,
+    padding: 16,
+    paddingLeft: 12,
+    fontSize: 16,
+    color: '#1e293b',
+  },
+  inputHint: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 6,
+    marginLeft: 4,
+  },
+  textArea: {
+    minHeight: 80,
+    paddingTop: 16,
+  },
+  twoColumnRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 18,
+  },
+  halfInputContainer: {
+    flex: 1,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 4,
+    gap: 12,
+  },
+  checkboxBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#cbd5e1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  checkboxBoxChecked: {
+    backgroundColor: '#0ea5e9',
+    borderColor: '#0ea5e9',
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: '#374151',
+    flex: 1,
+    fontWeight: '500',
+  },
+  submitButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  submitButtonDisabled: {
+    shadowOpacity: 0.1,
+    elevation: 2,
+  },
+  submitButtonGradient: {
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  retakeButton: {
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retakeButtonText: {
+    color: '#0ea5e9',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  infoCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 14,
+  },
+  infoIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: 13,
+    color: '#64748b',
+    lineHeight: 19,
   },
 });
