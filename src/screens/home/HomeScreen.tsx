@@ -90,6 +90,20 @@ interface Props {
   navigation: HomeScreenNavigationProp;
 }
 
+// Helper function to get greeting based on time of day
+const getGreeting = (): string => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return 'Good Morning';
+  } else if (hour >= 12 && hour < 17) {
+    return 'Good Afternoon';
+  } else if (hour >= 17 && hour < 21) {
+    return 'Good Evening';
+  } else {
+    return 'Good Night';
+  }
+};
+
 export default function HomeScreen({ navigation }: Props) {
   const { isDark } = useTheme();
   const colors = getThemedColors(isDark);
@@ -101,6 +115,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [dailyYield, setDailyYield] = useState(0);
   const [isSelling, setIsSelling] = useState(false);
   const [currentPrice, setCurrentPrice] = useState(6.50);
+  const [greeting, setGreeting] = useState(getGreeting());
 
   // Memoized navigation handlers to prevent unnecessary re-renders
   const navigateToMeterRegistration = useCallback(() => navigation.navigate('MeterRegistration'), [navigation]);
@@ -160,6 +175,16 @@ export default function HomeScreen({ navigation }: Props) {
     batteryLevel: 75, // TODO: Get from real data
     isCharging: currentGeneration > 0,
   }), [currentGeneration, isSelling]);
+
+  // Update greeting based on time of day
+  useEffect(() => {
+    setGreeting(getGreeting());
+    // Update greeting every minute to handle time boundary changes
+    const interval = setInterval(() => {
+      setGreeting(getGreeting());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // Calculate current generation and daily yield from energy data
@@ -263,8 +288,8 @@ export default function HomeScreen({ navigation }: Props) {
         {/* Header with Greeting and Notification */}
         <View style={styles.headerContainer}>
           <View style={styles.greetingSection}>
-            <Text style={styles.greetingText}>Good Morning,</Text>
-            <Text style={styles.userName}>Alex Solar</Text>
+            <Text style={styles.greetingText}>{greeting},</Text>
+            <Text style={styles.userName}>{user?.name || 'User'}</Text>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
             <Ionicons name="notifications-outline" size={24} color="#1e293b" />

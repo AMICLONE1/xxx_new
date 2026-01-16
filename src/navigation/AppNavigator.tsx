@@ -9,6 +9,8 @@ import { useAuthStore } from '@/store';
 // Auth Screens
 import LoginScreen from '@/screens/auth/LoginScreen';
 import SignUpScreen from '@/screens/auth/SignUpScreen';
+import UserTypeSelectionScreen from '@/screens/auth/UserTypeSelectionScreen';
+import PPAAgreementScreen from '@/screens/auth/PPAAgreementScreen';
 import OTPScreen from '@/screens/auth/OTPScreen';
 import OnboardingScreen from '@/screens/auth/OnboardingScreen';
 import TermsConditionsScreen from '@/screens/auth/TermsConditionsScreen';
@@ -163,6 +165,8 @@ export const AppNavigator = () => {
         {!isAuthenticated ? (
           <>
             <RootStack.Screen name="Login" component={LoginScreen} />
+            <RootStack.Screen name="UserTypeSelection" component={UserTypeSelectionScreen} />
+            <RootStack.Screen name="PPAAgreement" component={PPAAgreementScreen} />
             <RootStack.Screen name="SignUp" component={SignUpScreen} />
             <RootStack.Screen name="TermsConditions" component={TermsConditionsScreen} />
             <RootStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />

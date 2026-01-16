@@ -205,7 +205,9 @@ export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
   Login: undefined;
-  SignUp: undefined;
+  UserTypeSelection: undefined;
+  PPAAgreement: { userType: UserType };
+  SignUp: { userType: UserType };
   TermsConditions: undefined;
   OTP: { email: string };
   ForgotPassword: undefined;
