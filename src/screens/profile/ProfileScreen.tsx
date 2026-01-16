@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
-import { useAuthStore, useMeterStore, useKYCStore, useThemeStore } from '@/store';
+import { useAuthStore, useKYCStore, useThemeStore } from '@/store';
 import type { ThemeMode } from '@/store';
 import { supabaseStorageService } from '@/services/supabase/storageService';
 import { supabaseAuthService } from '@/services/supabase/authService';
@@ -38,19 +38,19 @@ const THEME_OPTIONS: { value: ThemeMode; label: string; icon: string }[] = [
   { value: 'dark', label: 'Dark Mode', icon: 'moon-outline' },
 ];
 
-// KYC Status configurations
+// KYC Status configurations - Blue theme colors
 const KYC_STATUS_CONFIG = {
   pending: {
     badge: 'Pending',
-    badgeColor: '#f59e0b',
-    badgeBg: '#fef3c7',
+    badgeColor: '#3b82f6',
+    badgeBg: '#dbeafe',
     description: 'Your KYC verification is pending review.',
     icon: 'time-outline',
   },
   verified: {
     badge: 'Verified',
-    badgeColor: '#10b981',
-    badgeBg: '#d1fae5',
+    badgeColor: '#3b82f6',
+    badgeBg: '#dbeafe',
     description: 'Your identity has been successfully verified.',
     icon: 'checkmark-circle',
   },
@@ -63,8 +63,8 @@ const KYC_STATUS_CONFIG = {
   },
   'not-started': {
     badge: 'Not Started',
-    badgeColor: '#6b7280',
-    badgeBg: '#f3f4f6',
+    badgeColor: '#64748b',
+    badgeBg: '#f1f5f9',
     description: 'Complete KYC to unlock all features.',
     icon: 'alert-circle-outline',
   },
@@ -74,7 +74,6 @@ export default function ProfileScreen({ navigation }: Props) {
   const { isDark } = useTheme();
   const colors = getThemedColors(isDark);
   const { logout, user, setUser } = useAuthStore();
-  const { currentMeter, removeMeter } = useMeterStore();
   const { overallStatus: kycStatus } = useKYCStore();
   const { themeMode, setThemeMode, restoreTheme } = useThemeStore();
 
@@ -116,35 +115,7 @@ export default function ProfileScreen({ navigation }: Props) {
     );
   };
 
-  const handleDeleteMeter = () => {
-    if (!currentMeter || !user?.id) {
-      Alert.alert('Error', 'No meter to delete');
-      return;
-    }
 
-    Alert.alert(
-      'Delete Meter',
-      `Are you sure you want to delete meter "${currentMeter.meterSerialId}"?\n\nThis will stop all data generation and cannot be undone.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeMeter(currentMeter.id, user.id);
-              Alert.alert('Success', 'Meter deleted successfully');
-            } catch (error: unknown) {
-              Alert.alert('Error', getErrorMessage(error) || 'Failed to delete meter. Please try again.');
-            }
-          },
-        },
-      ]
-    );
-  };
 
   const handlePickImage = async () => {
     if (!user?.id) {
@@ -389,29 +360,7 @@ export default function ProfileScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {/* Linked Meter Card */}
-          {currentMeter && (
-            <View style={styles.meterCard}>
-              <View style={styles.meterHeader}>
-                <View style={styles.meterIconContainer}>
-                  <MaterialCommunityIcons name="meter-electric" size={24} color="#3b82f6" />
-                </View>
-                <View style={styles.meterInfo}>
-                  <Text style={styles.meterLabel}>Linked Meter</Text>
-                  <Text style={styles.meterSerial}>{currentMeter.meterSerialId}</Text>
-                  <Text style={styles.meterDiscom}>{currentMeter.discomName}</Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                style={styles.deleteMeterButton}
-                onPress={handleDeleteMeter}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="delete-outline" size={18} color="#ef4444" />
-                <Text style={styles.deleteMeterText}>Remove</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+
 
           {/* Menu Section */}
           <View style={styles.menuSection}>
