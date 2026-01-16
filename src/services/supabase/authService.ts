@@ -1,5 +1,5 @@
 import { supabase } from './client';
-import { User, ApiResponse, SupabaseUserProfile } from '@/types';
+import { User, ApiResponse, SupabaseUserProfile, UserType } from '@/types';
 import { AuthError, Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { getErrorMessage, logError, createErrorResponse } from '@/utils/errorUtils';
 
@@ -23,6 +23,7 @@ export interface SignUpRequest {
   password: string;
   name?: string;
   phoneNumber?: string; // Phase 2: Store phone number with user account
+  userType?: UserType; // Whether user is a buyer or seller
 }
 
 export interface SignInRequest {
@@ -164,7 +165,7 @@ class SupabaseAuthService {
   /**
    * Get or create user profile in public.users table
    */
-  private async getOrCreateUserProfile(userId: string, email: string, name?: string, phoneNumber?: string): Promise<User> {
+  private async getOrCreateUserProfile(userId: string, email: string, name?: string, phoneNumber?: string, userType?: UserType): Promise<User> {
     try {
       if (__DEV__) {
         console.log('👤 Fetching user profile for:', userId);
@@ -228,6 +229,7 @@ class SupabaseAuthService {
           email: email,
           name: name || null,
           phone_number: phoneNumber || null, // Store phone number if provided
+          user_type: userType || null, // Store user type (buyer/seller)
           kyc_status: 'pending',
         })
         .select()
@@ -269,6 +271,7 @@ class SupabaseAuthService {
       phoneNumber: supabaseUser.phone_number || undefined,
       name: supabaseUser.name || undefined,
       profilePictureUrl: supabaseUser.profile_picture_url || undefined,
+      userType: supabaseUser.user_type || undefined,
       kycStatus: supabaseUser.kyc_status || 'pending',
       createdAt: new Date(supabaseUser.created_at),
       updatedAt: new Date(supabaseUser.updated_at),
@@ -449,7 +452,8 @@ class SupabaseAuthService {
           authData.user.id,
           data.email.toLowerCase().trim(),
           data.name || undefined,
-          data.phoneNumber || undefined
+          data.phoneNumber || undefined,
+          data.userType || undefined
         );
 
         const profileTimeoutPromise = new Promise((_, reject) =>
@@ -467,6 +471,7 @@ class SupabaseAuthService {
           email: authData.user.email || data.email.toLowerCase().trim(),
           name: data.name || undefined,
           profilePictureUrl: undefined,
+          userType: data.userType || undefined,
           kycStatus: 'pending' as const,
           createdAt: new Date(authData.user.created_at),
           updatedAt: new Date(authData.user.updated_at || authData.user.created_at),

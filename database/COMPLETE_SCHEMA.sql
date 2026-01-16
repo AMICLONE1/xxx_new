@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   phone_number TEXT UNIQUE,
   name TEXT,
   profile_picture_url TEXT,
+  user_type TEXT CHECK (user_type IN ('buyer', 'seller')),
   kyc_status TEXT DEFAULT 'pending' CHECK (kyc_status IN ('pending', 'verified', 'rejected')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -212,12 +213,22 @@ BEGIN
 
   -- Add profile_picture_url to users if it doesn't exist
   IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_schema = 'public' 
-    AND table_name = 'users' 
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+    AND table_name = 'users'
     AND column_name = 'profile_picture_url'
   ) THEN
     ALTER TABLE public.users ADD COLUMN profile_picture_url TEXT;
+  END IF;
+
+  -- Add user_type to users if it doesn't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+    AND table_name = 'users'
+    AND column_name = 'user_type'
+  ) THEN
+    ALTER TABLE public.users ADD COLUMN user_type TEXT CHECK (user_type IN ('buyer', 'seller'));
   END IF;
 END $$;
 
@@ -272,7 +283,7 @@ ORDER BY table_name, ordinal_position;
 -- SUMMARY OF ALL TABLES
 -- ============================================
 -- Core Tables:
---   1. users - User accounts and profiles
+--   1. users - User accounts and profiles (includes user_type: buyer/seller)
 --   2. meters - Energy meter registrations
 --   3. energy_data - Energy generation/consumption data
 --   4. orders - Energy trading orders

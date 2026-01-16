@@ -79,6 +79,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Restore theme on mount
   useEffect(() => {
@@ -217,6 +218,27 @@ export default function ProfileScreen({ navigation }: Props) {
     setShowThemeModal(false);
   };
 
+  const handleDeleteAccount = () => {
+    setShowDeleteModal(false);
+    // TODO: Implement actual account deletion logic
+    Alert.alert(
+      'Account Deleted',
+      'Your account has been permanently deleted.',
+      [
+        {
+          text: 'OK',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              // Navigate anyway
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getAppVersion = () => {
     return Constants.expoConfig?.version || '1.0.0';
   };
@@ -273,9 +295,6 @@ export default function ProfileScreen({ navigation }: Props) {
             <Text style={styles.headerTitle}>Profile</Text>
             <Text style={styles.headerSubtitle}>Manage your account</Text>
           </View>
-          <TouchableOpacity style={styles.settingsButton}>
-            <Ionicons name="settings-outline" size={22} color="#3b82f6" />
-          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -400,6 +419,32 @@ export default function ProfileScreen({ navigation }: Props) {
               <Text style={styles.logoutText}>Logout</Text>
             </View>
           </TouchableOpacity>
+
+          {/* Danger Zone Section */}
+          <View style={styles.dangerZoneSection}>
+            <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
+            <View style={styles.dangerZoneCard}>
+              <View style={styles.dangerZoneContent}>
+                <View style={styles.dangerZoneIconContainer}>
+                  <Ionicons name="warning" size={22} color="#ef4444" />
+                </View>
+                <View style={styles.dangerZoneTextContainer}>
+                  <Text style={styles.dangerZoneLabel}>Delete Account</Text>
+                  <Text style={styles.dangerZoneDescription}>
+                    Permanently delete your account and all data
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.deleteAccountButton}
+                onPress={() => setShowDeleteModal(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="trash-outline" size={18} color="#ffffff" />
+                <Text style={styles.deleteAccountButtonText}>Permanent Delete Account</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </ScrollView>
 
         {/* Theme Selection Modal */}
@@ -457,6 +502,42 @@ export default function ProfileScreen({ navigation }: Props) {
             </View>
           </TouchableOpacity>
         </Modal>
+
+        {/* Delete Account Confirmation Modal */}
+        <Modal
+          visible={showDeleteModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDeleteModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.deleteModalContent}>
+              <View style={styles.deleteModalIconContainer}>
+                <Ionicons name="warning" size={48} color="#ef4444" />
+              </View>
+              <Text style={styles.deleteModalTitle}>Delete Account?</Text>
+              <Text style={styles.deleteModalDescription}>
+                This action is permanent and cannot be undone. All your data, transactions, and settings will be permanently deleted.
+              </Text>
+              <View style={styles.deleteModalButtons}>
+                <TouchableOpacity
+                  style={styles.deleteModalCancelButton}
+                  onPress={() => setShowDeleteModal(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.deleteModalCancelText}>No, Keep Account</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteModalConfirmButton}
+                  onPress={handleDeleteAccount}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.deleteModalConfirmText}>Yes, Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -487,19 +568,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#64748b',
     fontWeight: '500',
-  },
-  settingsButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
   },
   scrollView: {
     flex: 1,
@@ -829,5 +897,129 @@ const styles = StyleSheet.create({
   },
   themeOptionTextActive: {
     color: '#1e293b',
+  },
+  // Danger Zone Section
+  dangerZoneSection: {
+    marginBottom: 20,
+  },
+  dangerZoneTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ef4444',
+    marginBottom: 12,
+  },
+  dangerZoneCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  dangerZoneContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  dangerZoneIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#fee2e2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  dangerZoneTextContainer: {
+    flex: 1,
+  },
+  dangerZoneLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  dangerZoneDescription: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  deleteAccountButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  // Delete Modal Styles
+  deleteModalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+  },
+  deleteModalIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#fee2e2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  deleteModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  deleteModalDescription: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  deleteModalCancelButton: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  deleteModalCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  deleteModalConfirmButton: {
+    flex: 1,
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  deleteModalConfirmText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });

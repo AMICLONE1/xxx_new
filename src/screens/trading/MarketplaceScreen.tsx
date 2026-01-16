@@ -143,7 +143,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
 
   // Refresh location every minute - Added ref for proper cleanup
   const locationRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   useEffect(() => {
     // Clear existing interval first
     if (locationRefreshIntervalRef.current) {
@@ -154,7 +154,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
       if (__DEV__) console.log('[MarketplaceScreen] Refreshing location...');
       getLocation(true);
     }, 60000); // 60 seconds
-    
+
     return () => {
       if (locationRefreshIntervalRef.current) {
         clearInterval(locationRefreshIntervalRef.current);
@@ -167,7 +167,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
     try {
       console.log('[MarketplaceScreen] Getting location, forceRefresh:', forceRefresh);
       const cachedLocation = await locationService.getCurrentLocation(forceRefresh);
-      
+
       if (cachedLocation) {
         console.log('[MarketplaceScreen] Got location:', cachedLocation.latitude, cachedLocation.longitude);
         setUserLocation({
@@ -270,11 +270,11 @@ export default function MarketplaceScreen({ navigation }: Props) {
               ...seller,
               distance: userLocation
                 ? calculateDistance(
-                    userLocation.lat,
-                    userLocation.lng,
-                    seller.location.lat,
-                    seller.location.lng
-                  )
+                  userLocation.lat,
+                  userLocation.lng,
+                  seller.location.lat,
+                  seller.location.lng
+                )
                 : undefined,
             }));
           } else if (apiResponse.error) {
@@ -285,11 +285,11 @@ export default function MarketplaceScreen({ navigation }: Props) {
               ...seller,
               distance: userLocation
                 ? calculateDistance(
-                    userLocation.lat,
-                    userLocation.lng,
-                    seller.location.lat,
-                    seller.location.lng
-                  )
+                  userLocation.lat,
+                  userLocation.lng,
+                  seller.location.lat,
+                  seller.location.lng
+                )
                 : undefined,
             }));
           }
@@ -300,11 +300,11 @@ export default function MarketplaceScreen({ navigation }: Props) {
             ...seller,
             distance: userLocation
               ? calculateDistance(
-                  userLocation.lat,
-                  userLocation.lng,
-                  seller.location.lat,
-                  seller.location.lng
-                )
+                userLocation.lat,
+                userLocation.lng,
+                seller.location.lat,
+                seller.location.lng
+              )
               : undefined,
           }));
         }
@@ -318,11 +318,11 @@ export default function MarketplaceScreen({ navigation }: Props) {
           ...seller,
           distance: userLocation
             ? calculateDistance(
-                userLocation.lat,
-                userLocation.lng,
-                seller.location.lat,
-                seller.location.lng
-              )
+              userLocation.lat,
+              userLocation.lng,
+              seller.location.lat,
+              seller.location.lng
+            )
             : undefined,
         }));
       }
@@ -382,17 +382,17 @@ export default function MarketplaceScreen({ navigation }: Props) {
 
     if (autoRefreshEnabled && userLocation) {
       const searchFn = mode === 'buy' ? searchSellers : searchBuyers;
-      
+
       // Initial load
       searchFn();
-      
+
       // Set up interval for auto-refresh
       autoRefreshIntervalRef.current = setInterval(() => {
         if (__DEV__) console.log(`[MarketplaceScreen] Auto-refreshing ${mode === 'buy' ? 'sellers' : 'buyers'}...`);
         searchFn();
       }, 30000); // 30 seconds
     }
-    
+
     return () => {
       if (autoRefreshIntervalRef.current) {
         clearInterval(autoRefreshIntervalRef.current);
@@ -567,7 +567,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
 
   const renderMapView = () => {
     const MAPBOX_TOKEN = Constants.expoConfig?.extra?.mapboxAccessToken || process.env.MAPBOX_ACCESS_TOKEN || '';
-    
+
     if (!MAPBOX_TOKEN) {
       return (
         <View style={styles.mapContainer}>
@@ -657,42 +657,66 @@ export default function MarketplaceScreen({ navigation }: Props) {
             <View style={styles.sellerModalOverlay}>
               <View style={styles.sellerModal}>
                 <View style={styles.sellerModalHeader}>
-                  <Text style={styles.sellerModalTitle}>{selectedSeller.name}</Text>
-                  <TouchableOpacity onPress={() => setSelectedSeller(null)}>
-                    <Ionicons name="close" size={24} color="#111827" />
+                  <View style={styles.sellerModalTitleRow}>
+                    <View style={styles.sellerModalAvatar}>
+                      <Ionicons name="person" size={24} color="#3b82f6" />
+                    </View>
+                    <Text style={styles.sellerModalTitle}>{selectedSeller.name}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.sellerModalCloseBtn}
+                    onPress={() => setSelectedSeller(null)}
+                  >
+                    <Ionicons name="close" size={20} color="#94a3b8" />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.sellerModalContent}>
                   <View style={styles.sellerModalRow}>
-                    <MaterialCommunityIcons name="currency-inr" size={20} color="#6b7280" />
-                    <Text style={styles.sellerModalLabel}>Price:</Text>
-                    <Text style={styles.sellerModalValue}>
-                      {formatCurrency(selectedSeller.pricePerUnit)}/kWh
-                    </Text>
+                    <View style={styles.sellerModalIconContainer}>
+                      <MaterialCommunityIcons name="currency-inr" size={18} color="#3b82f6" />
+                    </View>
+                    <View style={styles.sellerModalTextContainer}>
+                      <Text style={styles.sellerModalLabel}>Price per kWh</Text>
+                      <Text style={styles.sellerModalValue}>
+                        {formatCurrency(selectedSeller.pricePerUnit)}
+                      </Text>
+                    </View>
                   </View>
                   <View style={styles.sellerModalRow}>
-                    <MaterialCommunityIcons name="lightning-bolt" size={20} color="#6b7280" />
-                    <Text style={styles.sellerModalLabel}>Available:</Text>
-                    <Text style={styles.sellerModalValue}>
-                      {formatEnergy(selectedSeller.availableEnergy, 'kWh')}
-                    </Text>
+                    <View style={styles.sellerModalIconContainer}>
+                      <MaterialCommunityIcons name="lightning-bolt" size={18} color="#f59e0b" />
+                    </View>
+                    <View style={styles.sellerModalTextContainer}>
+                      <Text style={styles.sellerModalLabel}>Available Energy</Text>
+                      <Text style={styles.sellerModalValue}>
+                        {formatEnergy(selectedSeller.availableEnergy, 'kWh')}
+                      </Text>
+                    </View>
                   </View>
                   {selectedSeller.distance !== undefined && (
                     <View style={styles.sellerModalRow}>
-                      <Ionicons name="location" size={20} color="#6b7280" />
-                      <Text style={styles.sellerModalLabel}>Distance:</Text>
-                      <Text style={styles.sellerModalValue}>
-                        {selectedSeller.distance.toFixed(1)} km
-                      </Text>
+                      <View style={styles.sellerModalIconContainer}>
+                        <Ionicons name="location" size={18} color="#10b981" />
+                      </View>
+                      <View style={styles.sellerModalTextContainer}>
+                        <Text style={styles.sellerModalLabel}>Distance</Text>
+                        <Text style={styles.sellerModalValue}>
+                          {selectedSeller.distance.toFixed(1)} km away
+                        </Text>
+                      </View>
                     </View>
                   )}
                   {selectedSeller.rating !== undefined && (
                     <View style={styles.sellerModalRow}>
-                      <Ionicons name="star" size={20} color="#fbbf24" />
-                      <Text style={styles.sellerModalLabel}>Rating:</Text>
-                      <Text style={styles.sellerModalValue}>
-                        {selectedSeller.rating.toFixed(1)}
-                      </Text>
+                      <View style={styles.sellerModalIconContainer}>
+                        <Ionicons name="star" size={18} color="#fbbf24" />
+                      </View>
+                      <View style={styles.sellerModalTextContainer}>
+                        <Text style={styles.sellerModalLabel}>Rating</Text>
+                        <Text style={styles.sellerModalValue}>
+                          {selectedSeller.rating.toFixed(1)} ⭐
+                        </Text>
+                      </View>
                     </View>
                   )}
                 </View>
@@ -704,9 +728,12 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   }}
                 >
                   <LinearGradient
-                    colors={['#3b82f6', '#2563eb']}
+                    colors={['#3b82f6', '#1d4ed8']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={styles.sellerModalButtonGradient}
                   >
+                    <Ionicons name="eye" size={20} color="#ffffff" />
                     <Text style={styles.sellerModalButtonText}>View Details</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -907,223 +934,223 @@ export default function MarketplaceScreen({ navigation }: Props) {
           </View>
         </View>
 
-      {renderFilters()}
+        {renderFilters()}
 
-      {viewMode === 'map' ? (
-        renderMapView()
-      ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />
-          }
+        {viewMode === 'map' ? (
+          renderMapView()
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />
+            }
+          >
+            {loading && !refreshing ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#3b82f6" />
+                <Text style={styles.loadingText}>Searching for sellers...</Text>
+              </View>
+            ) : (mode === 'buy' ? sellers.length === 0 : buyers.length === 0) ? (
+              <View style={styles.emptyContainer}>
+                <MaterialCommunityIcons
+                  name={mode === 'buy' ? 'store-off' : 'account-off'}
+                  size={64}
+                  color="#d1d5db"
+                />
+                <Text style={styles.emptyText}>
+                  No {mode === 'buy' ? 'sellers' : 'buyers'} found
+                </Text>
+                <Text style={styles.emptySubtext}>
+                  Try adjusting your filters or search radius
+                </Text>
+                {!userLocation && (
+                  <TouchableOpacity style={styles.locationButton} onPress={() => getLocation(true)}>
+                    <LinearGradient
+                      colors={['#3b82f6', '#2563eb']}
+                      style={styles.locationButtonGradient}
+                    >
+                      <Ionicons name="location" size={20} color="#ffffff" />
+                      <Text style={styles.locationButtonText}>Enable Location</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <>
+                <View style={styles.resultsHeader}>
+                  <Text style={styles.resultsCount}>
+                    {mode === 'buy'
+                      ? `${sellers.length} seller${sellers.length !== 1 ? 's' : ''} found`
+                      : `${buyers.length} buyer${buyers.length !== 1 ? 's' : ''} found`}
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowFilters(true)}>
+                    <Text style={styles.filterLink}>Filter</Text>
+                  </TouchableOpacity>
+                </View>
+                {mode === 'buy'
+                  ? sellers.map(renderSellerCard)
+                  : buyers.map(renderBuyerCard)}
+              </>
+            )}
+          </ScrollView>
+        )}
+
+        {/* Trade Modal - For Sellers (Buy Mode) */}
+        <Modal
+          visible={showTradeModal && mode === 'buy' && !!selectedSeller}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => {
+            setShowTradeModal(false);
+            setSelectedSeller(null);
+          }}
         >
-          {loading && !refreshing ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#3b82f6" />
-              <Text style={styles.loadingText}>Searching for sellers...</Text>
-            </View>
-          ) : (mode === 'buy' ? sellers.length === 0 : buyers.length === 0) ? (
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons 
-                name={mode === 'buy' ? 'store-off' : 'account-off'} 
-                size={64} 
-                color="#d1d5db" 
-              />
-              <Text style={styles.emptyText}>
-                No {mode === 'buy' ? 'sellers' : 'buyers'} found
-              </Text>
-              <Text style={styles.emptySubtext}>
-                Try adjusting your filters or search radius
-              </Text>
-              {!userLocation && (
-                <TouchableOpacity style={styles.locationButton} onPress={() => getLocation(true)}>
-                  <LinearGradient
-                    colors={['#3b82f6', '#2563eb']}
-                    style={styles.locationButtonGradient}
+          <View style={styles.tradeModalOverlay}>
+            <View style={styles.tradeModalContainer}>
+              {selectedSeller && (
+                <>
+                  <View style={styles.tradeModalHeader}>
+                    <Text style={styles.tradeModalTitle}>{selectedSeller.name}</Text>
+                    <TouchableOpacity onPress={() => {
+                      setShowTradeModal(false);
+                      setSelectedSeller(null);
+                    }}>
+                      <Ionicons name="close" size={24} color="#6b7280" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.tradeModalInfo}>
+                    <View style={styles.tradeModalInfoRow}>
+                      <Text style={styles.tradeModalInfoLabel}>Price per kWh</Text>
+                      <Text style={styles.tradeModalInfoValue}>{formatCurrency(selectedSeller.pricePerUnit)}</Text>
+                    </View>
+                    <View style={styles.tradeModalInfoRow}>
+                      <Text style={styles.tradeModalInfoLabel}>Available</Text>
+                      <Text style={styles.tradeModalInfoValue}>{formatEnergy(selectedSeller.availableEnergy)}</Text>
+                    </View>
+                    {selectedSeller.distance !== undefined && (
+                      <View style={styles.tradeModalInfoRow}>
+                        <Text style={styles.tradeModalInfoLabel}>Distance</Text>
+                        <Text style={styles.tradeModalInfoValue}>{selectedSeller.distance.toFixed(1)} km</Text>
+                      </View>
+                    )}
+                    {selectedSeller.rating !== undefined && (
+                      <View style={styles.tradeModalInfoRow}>
+                        <Text style={styles.tradeModalInfoLabel}>Rating</Text>
+                        <Text style={styles.tradeModalInfoValue}>⭐ {selectedSeller.rating.toFixed(1)}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.tradeModalButton}
+                    onPress={() => handleTradeOptionSelect('buy')}
                   >
-                    <Ionicons name="location" size={20} color="#ffffff" />
-                    <Text style={styles.locationButtonText}>Enable Location</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                    <LinearGradient
+                      colors={['#3b82f6', '#2563eb']}
+                      style={styles.tradeModalButtonGradient}
+                    >
+                      <Ionicons name="cart" size={24} color="#ffffff" />
+                      <Text style={styles.tradeModalButtonText}>Buy Electricity</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.tradeModalCancelButton}
+                    onPress={() => {
+                      setShowTradeModal(false);
+                      setSelectedSeller(null);
+                    }}
+                  >
+                    <Text style={styles.tradeModalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </>
               )}
             </View>
-          ) : (
-            <>
-              <View style={styles.resultsHeader}>
-                <Text style={styles.resultsCount}>
-                  {mode === 'buy' 
-                    ? `${sellers.length} seller${sellers.length !== 1 ? 's' : ''} found`
-                    : `${buyers.length} buyer${buyers.length !== 1 ? 's' : ''} found`}
-                </Text>
-                <TouchableOpacity onPress={() => setShowFilters(true)}>
-                  <Text style={styles.filterLink}>Filter</Text>
-                </TouchableOpacity>
-              </View>
-              {mode === 'buy' 
-                ? sellers.map(renderSellerCard)
-                : buyers.map(renderBuyerCard)}
-            </>
-          )}
-        </ScrollView>
-      )}
-
-      {/* Trade Modal - For Sellers (Buy Mode) */}
-      <Modal
-        visible={showTradeModal && mode === 'buy' && !!selectedSeller}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => {
-          setShowTradeModal(false);
-          setSelectedSeller(null);
-        }}
-      >
-        <View style={styles.tradeModalOverlay}>
-          <View style={styles.tradeModalContainer}>
-            {selectedSeller && (
-              <>
-                <View style={styles.tradeModalHeader}>
-                  <Text style={styles.tradeModalTitle}>{selectedSeller.name}</Text>
-                  <TouchableOpacity onPress={() => {
-                    setShowTradeModal(false);
-                    setSelectedSeller(null);
-                  }}>
-                    <Ionicons name="close" size={24} color="#6b7280" />
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.tradeModalInfo}>
-                  <View style={styles.tradeModalInfoRow}>
-                    <Text style={styles.tradeModalInfoLabel}>Price per kWh</Text>
-                    <Text style={styles.tradeModalInfoValue}>{formatCurrency(selectedSeller.pricePerUnit)}</Text>
-                  </View>
-                  <View style={styles.tradeModalInfoRow}>
-                    <Text style={styles.tradeModalInfoLabel}>Available</Text>
-                    <Text style={styles.tradeModalInfoValue}>{formatEnergy(selectedSeller.availableEnergy)}</Text>
-                  </View>
-                  {selectedSeller.distance !== undefined && (
-                    <View style={styles.tradeModalInfoRow}>
-                      <Text style={styles.tradeModalInfoLabel}>Distance</Text>
-                      <Text style={styles.tradeModalInfoValue}>{selectedSeller.distance.toFixed(1)} km</Text>
-                    </View>
-                  )}
-                  {selectedSeller.rating !== undefined && (
-                    <View style={styles.tradeModalInfoRow}>
-                      <Text style={styles.tradeModalInfoLabel}>Rating</Text>
-                      <Text style={styles.tradeModalInfoValue}>⭐ {selectedSeller.rating.toFixed(1)}</Text>
-                    </View>
-                  )}
-                </View>
-
-                <TouchableOpacity
-                  style={styles.tradeModalButton}
-                  onPress={() => handleTradeOptionSelect('buy')}
-                >
-                  <LinearGradient
-                    colors={['#3b82f6', '#2563eb']}
-                    style={styles.tradeModalButtonGradient}
-                  >
-                    <Ionicons name="cart" size={24} color="#ffffff" />
-                    <Text style={styles.tradeModalButtonText}>Buy Electricity</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.tradeModalCancelButton}
-                  onPress={() => {
-                    setShowTradeModal(false);
-                    setSelectedSeller(null);
-                  }}
-                >
-                  <Text style={styles.tradeModalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </>
-            )}
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      {/* Trade Modal - For Buyers (Sell Mode) */}
-      <Modal
-        visible={showTradeModal && mode === 'sell' && !!selectedBuyer}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => {
-          setShowTradeModal(false);
-          setSelectedBuyer(null);
-        }}
-      >
-        <View style={styles.tradeModalOverlay}>
-          <View style={styles.tradeModalContainer}>
-            {selectedBuyer && (
-              <>
-                <View style={styles.tradeModalHeader}>
-                  <Text style={styles.tradeModalTitle}>{selectedBuyer.name}</Text>
-                  <TouchableOpacity onPress={() => {
-                    setShowTradeModal(false);
-                    setSelectedBuyer(null);
-                  }}>
-                    <Ionicons name="close" size={24} color="#6b7280" />
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.tradeModalInfo}>
-                  <View style={styles.tradeModalInfoRow}>
-                    <Text style={styles.tradeModalInfoLabel}>Max Price per kWh</Text>
-                    <Text style={styles.tradeModalInfoValue}>{formatCurrency(selectedBuyer.maxPricePerUnit)}</Text>
+        {/* Trade Modal - For Buyers (Sell Mode) */}
+        <Modal
+          visible={showTradeModal && mode === 'sell' && !!selectedBuyer}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => {
+            setShowTradeModal(false);
+            setSelectedBuyer(null);
+          }}
+        >
+          <View style={styles.tradeModalOverlay}>
+            <View style={styles.tradeModalContainer}>
+              {selectedBuyer && (
+                <>
+                  <View style={styles.tradeModalHeader}>
+                    <Text style={styles.tradeModalTitle}>{selectedBuyer.name}</Text>
+                    <TouchableOpacity onPress={() => {
+                      setShowTradeModal(false);
+                      setSelectedBuyer(null);
+                    }}>
+                      <Ionicons name="close" size={24} color="#6b7280" />
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.tradeModalInfoRow}>
-                    <Text style={styles.tradeModalInfoLabel}>Energy Needed</Text>
-                    <Text style={styles.tradeModalInfoValue}>{formatEnergy(selectedBuyer.energyNeeded)}</Text>
-                  </View>
-                  {selectedBuyer.distance !== undefined && (
-                    <View style={styles.tradeModalInfoRow}>
-                      <Text style={styles.tradeModalInfoLabel}>Distance</Text>
-                      <Text style={styles.tradeModalInfoValue}>{selectedBuyer.distance.toFixed(1)} km</Text>
-                    </View>
-                  )}
-                  {selectedBuyer.preferredDeliveryWindow && (
-                    <View style={styles.tradeModalInfoRow}>
-                      <Text style={styles.tradeModalInfoLabel}>Delivery Window</Text>
-                      <Text style={styles.tradeModalInfoValue}>{selectedBuyer.preferredDeliveryWindow}</Text>
-                    </View>
-                  )}
-                  {selectedBuyer.rating !== undefined && (
-                    <View style={styles.tradeModalInfoRow}>
-                      <Text style={styles.tradeModalInfoLabel}>Rating</Text>
-                      <Text style={styles.tradeModalInfoValue}>⭐ {selectedBuyer.rating.toFixed(1)}</Text>
-                    </View>
-                  )}
-                </View>
 
-                <TouchableOpacity
-                  style={styles.tradeModalButton}
-                  onPress={() => handleTradeOptionSelect('sell')}
-                >
-                  <LinearGradient
-                    colors={['#0ea5e9', '#0284c7']}
-                    style={styles.tradeModalButtonGradient}
+                  <View style={styles.tradeModalInfo}>
+                    <View style={styles.tradeModalInfoRow}>
+                      <Text style={styles.tradeModalInfoLabel}>Max Price per kWh</Text>
+                      <Text style={styles.tradeModalInfoValue}>{formatCurrency(selectedBuyer.maxPricePerUnit)}</Text>
+                    </View>
+                    <View style={styles.tradeModalInfoRow}>
+                      <Text style={styles.tradeModalInfoLabel}>Energy Needed</Text>
+                      <Text style={styles.tradeModalInfoValue}>{formatEnergy(selectedBuyer.energyNeeded)}</Text>
+                    </View>
+                    {selectedBuyer.distance !== undefined && (
+                      <View style={styles.tradeModalInfoRow}>
+                        <Text style={styles.tradeModalInfoLabel}>Distance</Text>
+                        <Text style={styles.tradeModalInfoValue}>{selectedBuyer.distance.toFixed(1)} km</Text>
+                      </View>
+                    )}
+                    {selectedBuyer.preferredDeliveryWindow && (
+                      <View style={styles.tradeModalInfoRow}>
+                        <Text style={styles.tradeModalInfoLabel}>Delivery Window</Text>
+                        <Text style={styles.tradeModalInfoValue}>{selectedBuyer.preferredDeliveryWindow}</Text>
+                      </View>
+                    )}
+                    {selectedBuyer.rating !== undefined && (
+                      <View style={styles.tradeModalInfoRow}>
+                        <Text style={styles.tradeModalInfoLabel}>Rating</Text>
+                        <Text style={styles.tradeModalInfoValue}>⭐ {selectedBuyer.rating.toFixed(1)}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.tradeModalButton}
+                    onPress={() => handleTradeOptionSelect('sell')}
                   >
-                    <Ionicons name="cash" size={24} color="#ffffff" />
-                    <Text style={styles.tradeModalButtonText}>Sell Energy</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                    <LinearGradient
+                      colors={['#0ea5e9', '#0284c7']}
+                      style={styles.tradeModalButtonGradient}
+                    >
+                      <Ionicons name="cash" size={24} color="#ffffff" />
+                      <Text style={styles.tradeModalButtonText}>Sell Energy</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.tradeModalCancelButton}
-                  onPress={() => {
-                    setShowTradeModal(false);
-                    setSelectedBuyer(null);
-                  }}
-                >
-                  <Text style={styles.tradeModalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </>
-            )}
+                  <TouchableOpacity
+                    style={styles.tradeModalCancelButton}
+                    onPress={() => {
+                      setShowTradeModal(false);
+                      setSelectedBuyer(null);
+                    }}
+                  >
+                    <Text style={styles.tradeModalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -1594,58 +1621,107 @@ const styles = StyleSheet.create({
   },
   sellerModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
   sellerModal: {
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '50%',
+    backgroundColor: '#1a1a2e',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    maxHeight: '55%',
+    borderWidth: 1,
+    borderColor: '#2a2a4e',
+    borderBottomWidth: 0,
   },
   sellerModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2a2a4e',
   },
-  sellerModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  sellerModalContent: {
-    gap: 16,
-    marginBottom: 20,
-  },
-  sellerModalRow: {
+  sellerModalTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  sellerModalLabel: {
-    fontSize: 14,
-    color: '#6b7280',
+  sellerModalAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sellerModalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(148, 163, 184, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sellerModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#f8fafc',
+  },
+  sellerModalContent: {
+    gap: 14,
+    marginBottom: 24,
+  },
+  sellerModalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: 'rgba(42, 42, 78, 0.5)',
+    padding: 14,
+    borderRadius: 14,
+  },
+  sellerModalIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sellerModalTextContainer: {
     flex: 1,
+  },
+  sellerModalLabel: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginBottom: 2,
   },
   sellerModalValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#f1f5f9',
   },
   sellerModalButton: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   sellerModalButtonGradient: {
     paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
   },
   sellerModalButtonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   mapResultsOverlay: {
     position: 'absolute',
