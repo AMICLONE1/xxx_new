@@ -104,10 +104,6 @@ export default function WalletScreen({ navigation }: Props) {
             <Text style={styles.headerTitle}>Wallet</Text>
             <Text style={styles.headerSubtitle}>Manage your balance</Text>
           </View>
-          <TouchableOpacity style={styles.profileButton}>
-            <Ionicons name="person" size={18} color="#3b82f6" />
-            <Text style={styles.profileButtonText}>Profile</Text>
-          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -261,25 +257,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#64748b',
     fontWeight: '500',
-  },
-  profileButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  profileButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
   },
   scrollView: {
     flex: 1,

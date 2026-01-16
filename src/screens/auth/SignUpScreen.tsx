@@ -10,9 +10,10 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/types';
+import { RootStackParamList, UserType } from '@/types';
 import { getErrorMessage, logError } from '@/utils/errorUtils';
 import {
   validateEmail,
@@ -21,13 +22,9 @@ import {
   passwordsMatch,
   validateTermsAccepted,
   INDIA_COUNTRY_CODE,
-  formatMobileForDisplay,
-  cleanMobileNumber,
 } from '@/utils/authValidation';
 import { authService } from '@/services/api/authService';
 import { useAuthStore } from '@/store';
-import { useTheme } from '@/contexts';
-import { getThemedColors } from '@/utils/themedStyles';
 
 type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
@@ -36,31 +33,31 @@ interface Props {
 }
 
 export default function SignUpScreen({ navigation }: Props) {
-  const { isDark } = useTheme();
-  const colors = getThemedColors(isDark);
   // Form state
   const [name, setName] = useState('');
+  const [userType, setUserType] = useState<UserType | null>(null);
   const [email, setEmail] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
-  
+
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   // Touched state
+  const [userTypeTouched, setUserTypeTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   const [mobileTouched, setMobileTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false);
   const [termsTouched, setTermsTouched] = useState(false);
-  
+
   // Server error state
   const [serverError, setServerError] = useState('');
-  
+
   const { setUser, setToken } = useAuthStore();
 
   // Memoized validations
@@ -89,9 +86,13 @@ export default function SignUpScreen({ navigation }: Props) {
     [termsAccepted]
   );
 
+  // User type validation
+  const isUserTypeValid = userType !== null;
+
   // Form validity
   const isFormValid = useMemo(() => {
     return (
+      isUserTypeValid &&
       emailValidation.isValid &&
       mobileValidation.isValid &&
       passwordValidation.isValid &&
@@ -99,6 +100,7 @@ export default function SignUpScreen({ navigation }: Props) {
       termsValidation.isValid
     );
   }, [
+    isUserTypeValid,
     emailValidation.isValid,
     mobileValidation.isValid,
     passwordValidation.isValid,
@@ -118,6 +120,7 @@ export default function SignUpScreen({ navigation }: Props) {
 
   const handleSignUp = async () => {
     // Mark all fields as touched
+    setUserTypeTouched(true);
     setEmailTouched(true);
     setMobileTouched(true);
     setPasswordTouched(true);
@@ -135,6 +138,7 @@ export default function SignUpScreen({ navigation }: Props) {
     try {
       if (__DEV__) {
         console.log('🚀 Starting sign up process...');
+        console.log('👤 User type:', userType);
         // SECURITY: Never log password
       }
 
@@ -143,6 +147,7 @@ export default function SignUpScreen({ navigation }: Props) {
         password: password,
         name: name.trim() || undefined,
         phoneNumber: mobileValidation.formattedNumber,
+        userType: userType || undefined,
       });
 
       // SECURITY: Clear passwords from state after submission
@@ -159,7 +164,7 @@ export default function SignUpScreen({ navigation }: Props) {
         }
         await setToken(response.data.token);
         setUser(response.data.user);
-        
+
         if (__DEV__) {
           console.log('✅ Navigation to Onboarding...');
         }
@@ -184,399 +189,480 @@ export default function SignUpScreen({ navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
     >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.primary }]}>Create Account</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Join PowerNetPro</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join PowerNetPro</Text>
 
-          {/* Full Name Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.text }]}>Full Name</Text>
-            <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-              <Ionicons
-                name="person-outline"
-                size={20}
-                color={colors.textSecondary}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={[styles.input, { color: colors.inputText }]}
-                placeholder="Enter your name"
-                placeholderTextColor={colors.inputPlaceholder}
-                autoCapitalize="words"
-                autoCorrect={false}
-                value={name}
-                onChangeText={(text) => {
-                  setName(text);
-                  if (serverError) setServerError('');
-                }}
-              />
-            </View>
-          </View>
+            {/* User Type Selection */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>I want to *</Text>
+              <View style={styles.userTypeContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.userTypeCard,
+                    userType === 'buyer' && styles.userTypeCardSelected,
+                  ]}
+                  onPress={() => {
+                    setUserType('buyer');
+                    setUserTypeTouched(true);
+                    if (serverError) setServerError('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[
+                    styles.userTypeIconContainer,
+                    userType === 'buyer' && styles.userTypeIconContainerSelected,
+                  ]}>
+                    <MaterialCommunityIcons
+                      name="cart-outline"
+                      size={28}
+                      color={userType === 'buyer' ? '#ffffff' : '#0ea5e9'}
+                    />
+                  </View>
+                  <Text style={[
+                    styles.userTypeTitle,
+                    userType === 'buyer' && styles.userTypeTitleSelected,
+                  ]}>Buy Energy</Text>
+                  <Text style={styles.userTypeDescription}>
+                    Purchase energy from local producers
+                  </Text>
+                  {userType === 'buyer' && (
+                    <View style={styles.selectedBadge}>
+                      <Ionicons name="checkmark-circle" size={20} color="#0ea5e9" />
+                    </View>
+                  )}
+                </TouchableOpacity>
 
-          {/* Email Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.text }]}>Email Address *</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
-                emailTouched && !emailValidation.isValid && email.length > 0
-                  ? styles.inputError
-                  : emailTouched && emailValidation.isValid
-                  ? styles.inputSuccess
-                  : null,
-              ]}
-            >
-              <Ionicons
-                name="mail-outline"
-                size={20}
-                color={colors.textSecondary}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={[styles.input, { color: colors.inputText }]}
-                placeholder="Enter your email address"
-                placeholderTextColor={colors.inputPlaceholder}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  if (serverError) setServerError('');
-                }}
-                onBlur={() => setEmailTouched(true)}
-              />
-              {emailTouched && email.length > 0 && (
-                <Ionicons
-                  name={emailValidation.isValid ? 'checkmark-circle' : 'alert-circle'}
-                  size={20}
-                  color={emailValidation.isValid ? colors.success : colors.error}
-                />
+                <TouchableOpacity
+                  style={[
+                    styles.userTypeCard,
+                    userType === 'seller' && styles.userTypeCardSelected,
+                  ]}
+                  onPress={() => {
+                    setUserType('seller');
+                    setUserTypeTouched(true);
+                    if (serverError) setServerError('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[
+                    styles.userTypeIconContainer,
+                    userType === 'seller' && styles.userTypeIconContainerSelected,
+                  ]}>
+                    <MaterialCommunityIcons
+                      name="solar-power"
+                      size={28}
+                      color={userType === 'seller' ? '#ffffff' : '#0ea5e9'}
+                    />
+                  </View>
+                  <Text style={[
+                    styles.userTypeTitle,
+                    userType === 'seller' && styles.userTypeTitleSelected,
+                  ]}>Sell Energy</Text>
+                  <Text style={styles.userTypeDescription}>
+                    Sell your excess solar energy
+                  </Text>
+                  {userType === 'seller' && (
+                    <View style={styles.selectedBadge}>
+                      <Ionicons name="checkmark-circle" size={20} color="#0ea5e9" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+              {userTypeTouched && !isUserTypeValid && (
+                <Text style={styles.errorText}>Please select whether you want to buy or sell energy</Text>
               )}
             </View>
-            {emailTouched && !emailValidation.isValid && email.length > 0 && (
-              <Text style={[styles.errorText, { color: colors.error }]}>{emailValidation.error}</Text>
-            )}
-          </View>
 
-          {/* Mobile Number Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.text }]}>Mobile Number *</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
-                mobileTouched && !mobileValidation.isValid && mobileNumber.length > 0
-                  ? styles.inputError
-                  : mobileTouched && mobileValidation.isValid
-                  ? styles.inputSuccess
-                  : null,
-              ]}
-            >
-              <Text style={[styles.countryCode, { color: colors.text }]}>{INDIA_COUNTRY_CODE}</Text>
-              <TextInput
-                style={[styles.input, styles.inputWithPrefix, { color: colors.inputText }]}
-                placeholder="Enter 10 digit mobile number"
-                placeholderTextColor={colors.inputPlaceholder}
-                keyboardType="phone-pad"
-                maxLength={10}
-                value={mobileNumber}
-                onChangeText={handleMobileChange}
-                onBlur={() => setMobileTouched(true)}
-              />
-              {mobileTouched && mobileNumber.length > 0 && (
+            {/* Full Name Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Full Name</Text>
+              <View style={styles.inputWrapper}>
                 <Ionicons
-                  name={mobileValidation.isValid ? 'checkmark-circle' : 'alert-circle'}
+                  name="person-outline"
                   size={20}
-                  color={mobileValidation.isValid ? colors.success : colors.error}
+                  color="#64748b"
+                  style={styles.inputIcon}
                 />
-              )}
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your name"
+                  placeholderTextColor="#94a3b8"
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  value={name}
+                  onChangeText={(text) => {
+                    setName(text);
+                    if (serverError) setServerError('');
+                  }}
+                />
+              </View>
             </View>
-            {mobileTouched && !mobileValidation.isValid && mobileNumber.length > 0 && (
-              <Text style={[styles.errorText, { color: colors.error }]}>{mobileValidation.error}</Text>
-            )}
-          </View>
 
-          {/* Password Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.text }]}>Password *</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
-                passwordTouched && !passwordValidation.isValid
-                  ? styles.inputError
-                  : passwordTouched && passwordValidation.isValid
-                  ? styles.inputSuccess
-                  : null,
-              ]}
-            >
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color={colors.textSecondary}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={[styles.input, { color: colors.inputText }]}
-                placeholder="Create a strong password"
-                placeholderTextColor={colors.inputPlaceholder}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (!passwordTouched) setPasswordTouched(true);
-                  if (serverError) setServerError('');
-                }}
-                onBlur={() => setPasswordTouched(true)}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            {/* Email Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email Address *</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  emailTouched && !emailValidation.isValid && email.length > 0
+                    ? styles.inputError
+                    : emailTouched && emailValidation.isValid
+                    ? styles.inputSuccess
+                    : null,
+                ]}
               >
                 <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={22}
-                  color={colors.textSecondary}
+                  name="mail-outline"
+                  size={20}
+                  color="#64748b"
+                  style={styles.inputIcon}
                 />
-              </TouchableOpacity>
-            </View>
-            
-            {/* Password Requirements Checklist */}
-            <View style={[styles.passwordRequirements, { backgroundColor: colors.backgroundSecondary }]}>
-              <Text style={[styles.requirementsTitle, { color: colors.textSecondary }]}>Password must contain:</Text>
-              <View style={styles.requirementRow}>
-                <Ionicons
-                  name={passwordValidation.hasMinLength ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={14}
-                  color={passwordValidation.hasMinLength ? colors.success : colors.textMuted}
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email address"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (serverError) setServerError('');
+                  }}
+                  onBlur={() => setEmailTouched(true)}
                 />
-                <Text
-                  style={[
-                    styles.requirementText,
-                    { color: colors.textMuted },
-                    passwordValidation.hasMinLength && { color: colors.success },
-                  ]}
-                >
-                  At least 8 characters
-                </Text>
-              </View>
-              <View style={styles.requirementRow}>
-                <Ionicons
-                  name={passwordValidation.hasUppercase ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={14}
-                  color={passwordValidation.hasUppercase ? colors.success : colors.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.requirementText,
-                    { color: colors.textMuted },
-                    passwordValidation.hasUppercase && { color: colors.success },
-                  ]}
-                >
-                  One uppercase letter (A–Z)
-                </Text>
-              </View>
-              <View style={styles.requirementRow}>
-                <Ionicons
-                  name={passwordValidation.hasLowercase ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={14}
-                  color={passwordValidation.hasLowercase ? colors.success : colors.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.requirementText,
-                    { color: colors.textMuted },
-                    passwordValidation.hasLowercase && { color: colors.success },
-                  ]}
-                >
-                  One lowercase letter (a–z)
-                </Text>
-              </View>
-              <View style={styles.requirementRow}>
-                <Ionicons
-                  name={passwordValidation.hasNumber ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={14}
-                  color={passwordValidation.hasNumber ? colors.success : colors.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.requirementText,
-                    { color: colors.textMuted },
-                    passwordValidation.hasNumber && { color: colors.success },
-                  ]}
-                >
-                  One number (0–9)
-                </Text>
-              </View>
-              <View style={styles.requirementRow}>
-                <Ionicons
-                  name={passwordValidation.hasSpecialChar ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={14}
-                  color={passwordValidation.hasSpecialChar ? colors.success : colors.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.requirementText,
-                    { color: colors.textMuted },
-                    passwordValidation.hasSpecialChar && { color: colors.success },
-                  ]}
-                >
-                  One special character (!@#$%^&*)
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Confirm Password Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.text }]}>Confirm Password *</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
-                confirmPasswordTouched && !doPasswordsMatch && confirmPassword.length > 0
-                  ? styles.inputError
-                  : confirmPasswordTouched && doPasswordsMatch && confirmPassword.length > 0
-                  ? styles.inputSuccess
-                  : null,
-              ]}
-            >
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color={colors.textSecondary}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={[styles.input, { color: colors.inputText }]}
-                placeholder="Confirm your password"
-                placeholderTextColor={colors.inputPlaceholder}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={confirmPassword}
-                onChangeText={(text) => {
-                  setConfirmPassword(text);
-                  if (!confirmPasswordTouched) setConfirmPasswordTouched(true);
-                  if (serverError) setServerError('');
-                }}
-                onBlur={() => setConfirmPasswordTouched(true)}
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={22}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-            </View>
-            {/* Confirm Password Error/Success */}
-            {confirmPasswordTouched && confirmPassword.length > 0 && !doPasswordsMatch && (
-              <Text style={[styles.errorText, { color: colors.error }]}>Passwords do not match</Text>
-            )}
-            {confirmPasswordTouched && confirmPassword.length > 0 && doPasswordsMatch && (
-              <View style={styles.matchRow}>
-                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                <Text style={[styles.matchText, { color: colors.success }]}>Passwords match</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Server Error */}
-          {serverError ? (
-            <View style={[styles.serverErrorContainer, { backgroundColor: colors.errorBackground }]}>
-              <Ionicons name="alert-circle" size={16} color={colors.error} />
-              <Text style={[styles.serverErrorText, { color: colors.error }]}>{serverError}</Text>
-            </View>
-          ) : null}
-
-          {/* Terms & Conditions Checkbox */}
-          <View style={styles.termsContainer}>
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() => {
-                setTermsAccepted(!termsAccepted);
-                setTermsTouched(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.checkbox, { borderColor: colors.inputBorder }, termsAccepted && styles.checkboxChecked]}>
-                {termsAccepted && (
-                  <Ionicons name="checkmark" size={14} color="#ffffff" />
+                {emailTouched && email.length > 0 && (
+                  <Ionicons
+                    name={emailValidation.isValid ? 'checkmark-circle' : 'alert-circle'}
+                    size={20}
+                    color={emailValidation.isValid ? '#0ea5e9' : '#ef4444'}
+                  />
                 )}
               </View>
-              <Text style={[styles.termsText, { color: colors.textSecondary }]}>
-                I agree to the{' '}
-                <Text
-                  style={[styles.termsLink, { color: colors.primary }]}
-                  onPress={() => navigation.navigate('TermsConditions')}
+              {emailTouched && !emailValidation.isValid && email.length > 0 && (
+                <Text style={styles.errorText}>{emailValidation.error}</Text>
+              )}
+            </View>
+
+            {/* Mobile Number Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Mobile Number *</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  mobileTouched && !mobileValidation.isValid && mobileNumber.length > 0
+                    ? styles.inputError
+                    : mobileTouched && mobileValidation.isValid
+                    ? styles.inputSuccess
+                    : null,
+                ]}
+              >
+                <Text style={styles.countryCode}>{INDIA_COUNTRY_CODE}</Text>
+                <TextInput
+                  style={[styles.input, styles.inputWithPrefix]}
+                  placeholder="Enter 10 digit mobile number"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  value={mobileNumber}
+                  onChangeText={handleMobileChange}
+                  onBlur={() => setMobileTouched(true)}
+                />
+                {mobileTouched && mobileNumber.length > 0 && (
+                  <Ionicons
+                    name={mobileValidation.isValid ? 'checkmark-circle' : 'alert-circle'}
+                    size={20}
+                    color={mobileValidation.isValid ? '#0ea5e9' : '#ef4444'}
+                  />
+                )}
+              </View>
+              {mobileTouched && !mobileValidation.isValid && mobileNumber.length > 0 && (
+                <Text style={styles.errorText}>{mobileValidation.error}</Text>
+              )}
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Password *</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  passwordTouched && !passwordValidation.isValid
+                    ? styles.inputError
+                    : passwordTouched && passwordValidation.isValid
+                    ? styles.inputSuccess
+                    : null,
+                ]}
+              >
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color="#64748b"
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Create a strong password"
+                  placeholderTextColor="#94a3b8"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (!passwordTouched) setPasswordTouched(true);
+                    if (serverError) setServerError('');
+                  }}
+                  onBlur={() => setPasswordTouched(true)}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  Terms & Conditions
-                </Text>
-                {' '}and{' '}
-                <Text
-                  style={[styles.termsLink, { color: colors.primary }]}
-                  onPress={() => navigation.navigate('TermsConditions')}
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color="#64748b"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Password Requirements Checklist */}
+              <View style={styles.passwordRequirements}>
+                <Text style={styles.requirementsTitle}>Password must contain:</Text>
+                <View style={styles.requirementRow}>
+                  <Ionicons
+                    name={passwordValidation.hasMinLength ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={14}
+                    color={passwordValidation.hasMinLength ? '#0ea5e9' : '#94a3b8'}
+                  />
+                  <Text
+                    style={[
+                      styles.requirementText,
+                      passwordValidation.hasMinLength && styles.requirementMet,
+                    ]}
+                  >
+                    At least 8 characters
+                  </Text>
+                </View>
+                <View style={styles.requirementRow}>
+                  <Ionicons
+                    name={passwordValidation.hasUppercase ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={14}
+                    color={passwordValidation.hasUppercase ? '#0ea5e9' : '#94a3b8'}
+                  />
+                  <Text
+                    style={[
+                      styles.requirementText,
+                      passwordValidation.hasUppercase && styles.requirementMet,
+                    ]}
+                  >
+                    One uppercase letter (A-Z)
+                  </Text>
+                </View>
+                <View style={styles.requirementRow}>
+                  <Ionicons
+                    name={passwordValidation.hasLowercase ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={14}
+                    color={passwordValidation.hasLowercase ? '#0ea5e9' : '#94a3b8'}
+                  />
+                  <Text
+                    style={[
+                      styles.requirementText,
+                      passwordValidation.hasLowercase && styles.requirementMet,
+                    ]}
+                  >
+                    One lowercase letter (a-z)
+                  </Text>
+                </View>
+                <View style={styles.requirementRow}>
+                  <Ionicons
+                    name={passwordValidation.hasNumber ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={14}
+                    color={passwordValidation.hasNumber ? '#0ea5e9' : '#94a3b8'}
+                  />
+                  <Text
+                    style={[
+                      styles.requirementText,
+                      passwordValidation.hasNumber && styles.requirementMet,
+                    ]}
+                  >
+                    One number (0-9)
+                  </Text>
+                </View>
+                <View style={styles.requirementRow}>
+                  <Ionicons
+                    name={passwordValidation.hasSpecialChar ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={14}
+                    color={passwordValidation.hasSpecialChar ? '#0ea5e9' : '#94a3b8'}
+                  />
+                  <Text
+                    style={[
+                      styles.requirementText,
+                      passwordValidation.hasSpecialChar && styles.requirementMet,
+                    ]}
+                  >
+                    One special character (!@#$%^&*)
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Confirm Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Confirm Password *</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  confirmPasswordTouched && !doPasswordsMatch && confirmPassword.length > 0
+                    ? styles.inputError
+                    : confirmPasswordTouched && doPasswordsMatch && confirmPassword.length > 0
+                    ? styles.inputSuccess
+                    : null,
+                ]}
+              >
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color="#64748b"
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm your password"
+                  placeholderTextColor="#94a3b8"
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    if (!confirmPasswordTouched) setConfirmPasswordTouched(true);
+                    if (serverError) setServerError('');
+                  }}
+                  onBlur={() => setConfirmPasswordTouched(true)}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  Privacy Policy
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color="#64748b"
+                  />
+                </TouchableOpacity>
+              </View>
+              {/* Confirm Password Error/Success */}
+              {confirmPasswordTouched && confirmPassword.length > 0 && !doPasswordsMatch && (
+                <Text style={styles.errorText}>Passwords do not match</Text>
+              )}
+              {confirmPasswordTouched && confirmPassword.length > 0 && doPasswordsMatch && (
+                <View style={styles.matchRow}>
+                  <Ionicons name="checkmark-circle" size={14} color="#0ea5e9" />
+                  <Text style={styles.matchText}>Passwords match</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Server Error */}
+            {serverError ? (
+              <View style={styles.serverErrorContainer}>
+                <Ionicons name="alert-circle" size={16} color="#ef4444" />
+                <Text style={styles.serverErrorText}>{serverError}</Text>
+              </View>
+            ) : null}
+
+            {/* Terms & Conditions Checkbox */}
+            <View style={styles.termsContainer}>
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => {
+                  setTermsAccepted(!termsAccepted);
+                  setTermsTouched(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+                  {termsAccepted && (
+                    <Ionicons name="checkmark" size={14} color="#ffffff" />
+                  )}
+                </View>
+                <Text style={styles.termsText}>
+                  I agree to the{' '}
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => navigation.navigate('TermsConditions')}
+                  >
+                    Terms & Conditions
+                  </Text>
+                  {' '}and{' '}
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => navigation.navigate('TermsConditions')}
+                  >
+                    Privacy Policy
+                  </Text>
                 </Text>
+              </TouchableOpacity>
+              {termsTouched && !termsValidation.isValid && (
+                <Text style={styles.termsError}>{termsValidation.error}</Text>
+              )}
+            </View>
+
+            {/* Sign Up Button */}
+            <TouchableOpacity
+              style={[
+                styles.button,
+                (!isFormValid || isLoading) && styles.buttonDisabled,
+              ]}
+              onPress={handleSignUp}
+              disabled={!isFormValid || isLoading}
+            >
+              <Text style={styles.buttonText}>
+                {isLoading ? 'Creating Account...' : 'Sign Up'}
               </Text>
             </TouchableOpacity>
-            {termsTouched && !termsValidation.isValid && (
-              <Text style={[styles.termsError, { color: colors.error }]}>{termsValidation.error}</Text>
-            )}
+
+            {/* Sign In Link */}
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.linkButton}
+            >
+              <Text style={styles.linkText}>
+                Already have an account? <Text style={styles.linkTextBold}>Sign In</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Sign Up Button */}
-          <TouchableOpacity
-            style={[
-              styles.button,
-              { backgroundColor: colors.primary },
-              (!isFormValid || isLoading) && styles.buttonDisabled,
-            ]}
-            onPress={handleSignUp}
-            disabled={!isFormValid || isLoading}
-          >
-            <Text style={styles.buttonText}>
-              {isLoading ? 'Creating Account...' : 'Sign Up'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Sign In Link */}
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.linkButton}
-          >
-            <Text style={[styles.linkText, { color: colors.textSecondary }]}>
-              Already have an account? <Text style={[styles.linkTextBold, { color: colors.primary }]}>Sign In</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     flexGrow: 1,
@@ -589,13 +675,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#10b981',
+    color: '#0ea5e9',
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: '#64748b',
     textAlign: 'center',
     marginBottom: 32,
   },
@@ -605,29 +691,80 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1e293b',
     marginBottom: 8,
+  },
+  // User Type Selection Styles
+  userTypeContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  userTypeCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#bae6fd',
+    position: 'relative',
+  },
+  userTypeCardSelected: {
+    borderColor: '#0ea5e9',
+    backgroundColor: '#f0f9ff',
+  },
+  userTypeIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#f0f9ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  userTypeIconContainerSelected: {
+    backgroundColor: '#0ea5e9',
+  },
+  userTypeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  userTypeTitleSelected: {
+    color: '#0ea5e9',
+  },
+  userTypeDescription: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  selectedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    borderColor: '#bae6fd',
+    borderRadius: 12,
     paddingHorizontal: 12,
+    backgroundColor: '#ffffff',
   },
   inputError: {
-    borderColor: '#ef4444',
+    borderColor: '#f87171',
   },
   inputSuccess: {
-    borderColor: '#10b981',
+    borderColor: '#0ea5e9',
   },
   inputIcon: {
     marginRight: 8,
   },
   countryCode: {
     fontSize: 16,
-    color: '#374151',
+    color: '#1e293b',
     fontWeight: '500',
     marginRight: 4,
   },
@@ -635,7 +772,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#111827',
+    color: '#1e293b',
   },
   inputWithPrefix: {
     paddingLeft: 4,
@@ -646,7 +783,7 @@ const styles = StyleSheet.create({
   },
   requirementsTitle: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#64748b',
     marginBottom: 6,
     fontWeight: '500',
   },
@@ -657,11 +794,11 @@ const styles = StyleSheet.create({
   },
   requirementText: {
     fontSize: 11,
-    color: '#9ca3af',
+    color: '#94a3b8',
     marginLeft: 6,
   },
   requirementMet: {
-    color: '#10b981',
+    color: '#0ea5e9',
   },
   errorText: {
     fontSize: 12,
@@ -675,7 +812,7 @@ const styles = StyleSheet.create({
   },
   matchText: {
     fontSize: 12,
-    color: '#10b981',
+    color: '#0ea5e9',
     marginLeft: 4,
   },
   serverErrorContainer: {
@@ -683,7 +820,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fef2f2',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
   },
   serverErrorText: {
@@ -702,26 +839,27 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 4,
+    borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#d1d5db',
+    borderColor: '#bae6fd',
     marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
+    backgroundColor: '#ffffff',
   },
   checkboxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: '#0ea5e9',
+    borderColor: '#0ea5e9',
   },
   termsText: {
     flex: 1,
     fontSize: 14,
-    color: '#4b5563',
+    color: '#64748b',
     lineHeight: 22,
   },
   termsLink: {
-    color: '#10b981',
+    color: '#0ea5e9',
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
@@ -732,11 +870,16 @@ const styles = StyleSheet.create({
     marginLeft: 34,
   },
   button: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#0ea5e9',
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginBottom: 16,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -752,10 +895,10 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#64748b',
   },
   linkTextBold: {
-    color: '#10b981',
+    color: '#0ea5e9',
     fontWeight: '600',
   },
 });

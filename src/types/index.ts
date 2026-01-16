@@ -1,10 +1,13 @@
 // User Types - Navigation and KYC types for PowerNetPro
+export type UserType = 'buyer' | 'seller';
+
 export interface User {
   id: string;
   email: string; // Primary identifier for authentication
   phoneNumber?: string; // Optional, can be added later
   name?: string;
   profilePictureUrl?: string; // URL to profile picture in Supabase storage
+  userType?: UserType; // Whether user is a buyer or seller
   kycStatus: KYCStatus;
   // Energy asset configuration
   hasSolar?: boolean; // User has solar panels
@@ -258,6 +261,7 @@ export interface SupabaseUserProfile {
   phone_number?: string;
   name?: string;
   profile_picture_url?: string;
+  user_type?: UserType;
   kyc_status: KYCStatus;
   has_solar?: boolean;
   has_battery?: boolean;
