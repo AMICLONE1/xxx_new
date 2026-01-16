@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,6 +25,8 @@ import { supabaseDatabaseService } from '@/services/supabase/databaseService';
 import * as FileSystem from 'expo-file-system/legacy';
 import { MeterManagement } from '@/components/meter/MeterManagement';
 import { getErrorMessage } from '@/utils/errorUtils';
+import { useTheme } from '@/contexts';
+import { getThemedColors } from '@/utils/themedStyles';
 
 type MeterRegistrationScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -51,25 +54,28 @@ interface ExtractedBillData {
 }
 
 export default function MeterRegistrationScreen({ navigation, route }: Props) {
+  const { isDark } = useTheme();
+  const colors = getThemedColors(isDark);
+
   // Check if this is a hardware request flow
   const isHardwareRequest = route?.params?.isHardwareRequest || false;
   const { setCurrentMeter, setMeters, meters, removeMeter } = useMeterStore();
   const { user } = useAuthStore();
-  
+
   // Form state
   const [discomName, setDiscomName] = useState('');
   const [consumerNumber, setConsumerNumber] = useState('');
   const [meterSerialId, setMeterSerialId] = useState('');
-  
+
   // Bill upload state
   const [billImageUri, setBillImageUri] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedBillData, setExtractedBillData] = useState<ExtractedBillData | null>(null);
-  
+
   // Validation state
   const [consumerNumberError, setConsumerNumberError] = useState('');
   const [meterSerialIdError, setMeterSerialIdError] = useState('');
-  
+
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDiscomPicker, setShowDiscomPicker] = useState(false);
@@ -85,7 +91,7 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
     if (checkExpoGo && __DEV__) {
       console.log('📱 Running in Expo Go - OCR disabled');
     }
-    
+
     // Show management view if user already has meters
     if (meters.length > 0 && !showRegistrationForm) {
       setShowManagement(true);
@@ -95,47 +101,62 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
   // If user has meters and not explicitly adding new one, show management view
   if (showManagement && meters.length > 0 && !showRegistrationForm) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.headerBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#111827" />
-          </TouchableOpacity>
-          <Text style={styles.headerBarTitle}>Meter Management</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <MeterManagement
-          meters={meters}
-          onAddMeter={() => {
-            setShowRegistrationForm(true);
-            setShowManagement(false);
-          }}
-          onToggleMeter={(meterId, enabled) => {
-            console.log(`Toggle meter ${meterId}: ${enabled ? 'ON' : 'OFF'}`);
-            // TODO: Implement meter toggle logic
-            if (!enabled) {
+      <LinearGradient
+        colors={isDark ? ['#1f2937', '#111827', '#0f172a'] : ['#e0f2fe', '#f0f9ff', '#ffffff']}
+        style={styles.gradientBackground}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={[styles.backButton, { backgroundColor: isDark ? colors.cardElevated : '#ffffff' }]}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={20} color="#3b82f6" />
+            </TouchableOpacity>
+            <View style={styles.headerContent}>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>Meter Management</Text>
+              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Manage your smart meters</Text>
+            </View>
+            <View style={[styles.headerIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+              <MaterialCommunityIcons name="meter-electric" size={24} color="#3b82f6" />
+            </View>
+          </View>
+          <MeterManagement
+            meters={meters}
+            onAddMeter={() => {
+              setShowRegistrationForm(true);
+              setShowManagement(false);
+            }}
+            onToggleMeter={(meterId, enabled) => {
+              console.log(`Toggle meter ${meterId}: ${enabled ? 'ON' : 'OFF'}`);
+              if (!enabled) {
+                Alert.alert(
+                  'Meter Turned Off',
+                  'Data collection has been paused for this meter.'
+                );
+              }
+            }}
+            onDisableMeter={async (meterId) => {
+              if (!user?.id) return;
+              await removeMeter(meterId, user.id);
+              Alert.alert('Success', 'Meter has been disabled and removed.');
+            }}
+            onViewDetails={(meter) => {
               Alert.alert(
-                'Meter Turned Off',
-                'Data collection has been paused for this meter.'
+                'Meter Details',
+                `DISCOM: ${meter.discomName}\n` +
+                `Consumer Number: ${meter.consumerNumber}\n` +
+                `Serial ID: ${meter.id}\n` +
+                `Address: ${meter.address || 'Not available'}`,
+                [{ text: 'OK' }]
               );
-            }
-          }}
-          onDisableMeter={async (meterId) => {
-            if (!user?.id) return;
-            await removeMeter(meterId, user.id);
-            Alert.alert('Success', 'Meter has been disabled and removed.');
-          }}
-          onViewDetails={(meter) => {
-            Alert.alert(
-              'Meter Details',
-              `DISCOM: ${meter.discomName}\n` +
-              `Consumer Number: ${meter.consumerNumber}\n` +
-              `Serial ID: ${meter.id}\n` +
-              `Address: ${meter.address || 'Not available'}`,
-              [{ text: 'OK' }]
-            );
-          }}
-        />
-      </SafeAreaView>
+            }}
+          />
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
@@ -146,110 +167,82 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
   // ============================================
   // VALIDATION FUNCTIONS
   // ============================================
-  
-  /**
-   * Validate Consumer Number
-   * - Numeric only
-   * - Min 6, Max 12 digits
-   */
+
   const validateConsumerNumber = (value: string): boolean => {
     if (!value) {
       setConsumerNumberError('');
       return false;
     }
-    
-    // Check if numeric only
+
     if (!/^\d+$/.test(value)) {
       setConsumerNumberError('Consumer number must contain only digits');
       return false;
     }
-    
-    // Check length
+
     if (value.length < 6) {
       setConsumerNumberError('Consumer number must be at least 6 digits');
       return false;
     }
-    
+
     if (value.length > 12) {
       setConsumerNumberError('Consumer number cannot exceed 12 digits');
       return false;
     }
-    
+
     setConsumerNumberError('');
     return true;
   };
 
-  /**
-   * Validate Meter Serial ID
-   * - Alphanumeric only
-   * - Min 5, Max 15 characters
-   */
   const validateMeterSerialId = (value: string): boolean => {
     if (!value) {
       setMeterSerialIdError('');
       return false;
     }
-    
-    // Check if alphanumeric only
+
     if (!/^[A-Za-z0-9]+$/.test(value)) {
       setMeterSerialIdError('Meter ID must contain only letters and numbers');
       return false;
     }
-    
-    // Check length
+
     if (value.length < 5) {
       setMeterSerialIdError('Meter ID must be at least 5 characters');
       return false;
     }
-    
+
     if (value.length > 15) {
       setMeterSerialIdError('Meter ID cannot exceed 15 characters');
       return false;
     }
-    
+
     setMeterSerialIdError('');
     return true;
   };
 
-  /**
-   * Handle Consumer Number input
-   */
   const handleConsumerNumberChange = (text: string) => {
-    // Allow only digits and limit to 12
     const digitsOnly = text.replace(/\D/g, '').slice(0, 12);
     setConsumerNumber(digitsOnly);
     validateConsumerNumber(digitsOnly);
   };
 
-  /**
-   * Handle Meter Serial ID input
-   */
   const handleMeterSerialIdChange = (text: string) => {
-    // Allow only alphanumeric and auto-capitalize, limit to 15
     const alphanumeric = text.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 15);
     setMeterSerialId(alphanumeric);
     validateMeterSerialId(alphanumeric);
   };
 
-  /**
-   * Check if form is valid for submission
-   */
   const isFormValid = (): boolean => {
     const hasDiscom = discomName !== '';
     const hasValidConsumer = consumerNumber.length >= 6 && consumerNumber.length <= 12 && /^\d+$/.test(consumerNumber);
     const hasValidMeter = meterSerialId.length >= 5 && meterSerialId.length <= 15 && /^[A-Za-z0-9]+$/.test(meterSerialId);
     const hasBill = billImageUri !== null || extractedBillData !== null;
-    
+
     return hasDiscom && hasValidConsumer && hasValidMeter && hasBill;
   };
 
   // ============================================
   // BILL OCR EXTRACTION
   // ============================================
-  
-  /**
-   * Extract bill data from OCR text
-   */
+
   const extractBillData = (ocrText: string): ExtractedBillData => {
     const data: ExtractedBillData = {
       discomName: '',
@@ -263,7 +256,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
       serviceAddress: '',
     };
 
-    // A. DISCOM Detection
     const discomPatterns = [
       { pattern: /MSEDCL|MAHARASHTRA STATE ELECTRICITY/i, name: 'MSEDCL' },
       { pattern: /TATA POWER/i, name: 'Tata Power' },
@@ -300,7 +292,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
       }
     }
 
-    // B. Consumer Number Detection
     const consumerPatterns = [
       /(?:CONSUMER\s*(?:NO|NUMBER|ID)|CA\s*(?:NO|NUMBER)|ACCOUNT\s*(?:NO|NUMBER)|K\s*(?:NO|NUMBER))[:\s]*([A-Z0-9]{6,12})/i,
       /(?:CONSUMER|CA|ACCOUNT|K)[\s:]*([0-9]{6,12})/i,
@@ -317,7 +308,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
       }
     }
 
-    // C. Meter Number Detection
     const meterPatterns = [
       /(?:METER\s*(?:NO|NUMBER|SR\.?\s*NO)|METER\s*ID)[:\s]*([A-Z0-9]{5,15})/i,
       /(?:M\.?\s*NO|METER)[:\s]*([A-Z0-9]{5,15})/i,
@@ -334,7 +324,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
       }
     }
 
-    // D. Billing Period Detection
     const billingPatterns = [
       /(?:BILLING\s*PERIOD|BILL\s*PERIOD|PERIOD)[:\s]*([A-Z]{3,9}\s*\d{2,4}\s*[-–TO]*\s*[A-Z]{3,9}\s*\d{2,4})/i,
       /(?:FROM|PERIOD)[:\s]*(\d{2}[\/\-]\d{2}[\/\-]\d{2,4})\s*(?:TO|[-–])\s*(\d{2}[\/\-]\d{2}[\/\-]\d{2,4})/i,
@@ -352,7 +341,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
       }
     }
 
-    // E. Bill Date Detection
     const billDatePatterns = [
       /(?:BILL\s*DATE|BILLING\s*DATE|DATE\s*OF\s*BILL)[:\s]*(\d{2}[\/\-]\d{2}[\/\-]\d{2,4})/i,
       /(?:ISSUE\s*DATE|DATED)[:\s]*(\d{2}[\/\-]\d{2}[\/\-]\d{2,4})/i,
@@ -366,7 +354,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
       }
     }
 
-    // F. Due Date Detection
     const dueDatePatterns = [
       /(?:DUE\s*DATE|PAYMENT\s*DUE|LAST\s*DATE)[:\s]*(\d{2}[\/\-]\d{2}[\/\-]\d{2,4})/i,
       /(?:PAY\s*BY|PAY\s*BEFORE)[:\s]*(\d{2}[\/\-]\d{2}[\/\-]\d{2,4})/i,
@@ -380,7 +367,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
       }
     }
 
-    // G. Units Consumed Detection
     const unitsPatterns = [
       /(?:UNITS?\s*CONSUMED|CONSUMPTION|TOTAL\s*UNITS?|KWH\s*CONSUMED)[:\s]*(\d+(?:\.\d+)?)\s*(?:KWH|UNITS?)?/i,
       /(\d+(?:\.\d+)?)\s*(?:KWH|UNITS)\s*(?:CONSUMED|CONSUMPTION)/i,
@@ -394,7 +380,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
       }
     }
 
-    // H. Bill Amount Detection
     const amountPatterns = [
       /(?:TOTAL\s*AMOUNT|AMOUNT\s*PAYABLE|NET\s*AMOUNT|CURRENT\s*BILL\s*AMOUNT|AMOUNT\s*DUE)[:\s]*(?:RS\.?|₹|INR)?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)/i,
       /(?:RS\.?|₹|INR)\s*(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:TOTAL|PAYABLE|DUE)/i,
@@ -409,7 +394,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
       }
     }
 
-    // I. Service Address Detection
     const addressPatterns = [
       /(?:SERVICE\s*ADDRESS|SUPPLY\s*ADDRESS|PREMISES\s*ADDRESS|ADDRESS)[:\s]*([A-Z0-9][A-Z0-9\s,\.\-\/]{10,150})/i,
     ];
@@ -439,10 +423,7 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
   // ============================================
   // BILL UPLOAD HANDLERS
   // ============================================
-  
-  /**
-   * Delete bill image after processing (security)
-   */
+
   const deleteImageFile = async (uri: string) => {
     try {
       const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
@@ -461,9 +442,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
     }
   };
 
-  /**
-   * Process uploaded bill image with OCR
-   */
   const processImage = async (uri: string) => {
     setIsProcessing(true);
     setBillImageUri(uri);
@@ -473,27 +451,23 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
         console.log('📸 Processing electricity bill image for OCR...');
       }
 
-      // Try to perform OCR
       let ocrResult;
       try {
         ocrResult = await ocrService.recognizeText(uri);
-        
+
         if (__DEV__) {
           console.log('✅ Bill OCR Success! Text extracted (length:', ocrResult.text.length, 'chars)');
         }
       } catch (ocrError: unknown) {
-        // Delete image before showing error
         await deleteImageFile(uri);
 
         if (__DEV__) {
           console.error('❌ Bill OCR Error:', ocrError instanceof Error ? ocrError.name : 'Unknown');
         }
-        
-        // Handle Expo Go detection - silently fall back to manual entry
+
         if (ocrError instanceof ExpoGoDetectedError || (ocrError instanceof Error && ocrError.message === 'EXPO_GO_DETECTED')) {
           console.log('[MeterRegistration] Expo Go detected during OCR - using manual entry');
           setIsProcessing(false);
-          // Keep the bill as "uploaded" for manual entry
           setExtractedBillData({
             discomName: '',
             consumerNumber: '',
@@ -507,8 +481,7 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
           });
           return;
         }
-        
-        // Handle OCR not available error - silently fall back to manual entry
+
         if (ocrError instanceof OCRNotAvailableError) {
           console.log('[MeterRegistration] OCR not available - using manual entry');
           setIsProcessing(false);
@@ -525,8 +498,7 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
           });
           return;
         }
-        
-        // Handle generic OCR errors
+
         Alert.alert(
           'Processing Error',
           'Could not process the image. Please enter details manually.',
@@ -547,30 +519,26 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
         return;
       }
 
-      // Extract data from OCR text
       const ocrText = ocrResult.text;
       const extracted = extractBillData(ocrText);
       setExtractedBillData(extracted);
 
-      // Auto-fill form fields if detected
       if (extracted.discomName && (DISCOM_NAMES as readonly string[]).includes(extracted.discomName)) {
         setDiscomName(extracted.discomName as typeof DISCOM_NAMES[number]);
       }
-      
+
       if (extracted.consumerNumber) {
         setConsumerNumber(extracted.consumerNumber);
         validateConsumerNumber(extracted.consumerNumber);
       }
-      
+
       if (extracted.meterSerialId) {
         setMeterSerialId(extracted.meterSerialId);
         validateMeterSerialId(extracted.meterSerialId);
       }
 
-      // Delete image after processing (security)
       await deleteImageFile(uri);
 
-      // Show success message
       const fieldsFound = [
         extracted.discomName && 'DISCOM',
         extracted.consumerNumber && 'Consumer No',
@@ -599,32 +567,22 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
     }
   };
 
-  /**
-   * Handle bill upload button press
-   */
   const handleBillUpload = async () => {
-    // Check if running in Expo Go - silently proceed with upload
-    // Manual entry will be used since OCR won't work
     if (isExpoGo) {
       console.log('[MeterRegistration] Expo Go detected - OCR will fall back to manual entry');
     }
-    
+
     await proceedWithUpload();
   };
 
-  /**
-   * Proceed with image upload
-   */
   const proceedWithUpload = async () => {
     try {
-      // Request media library permissions
       const mediaLibraryStatus = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (mediaLibraryStatus.status !== 'granted') {
         Alert.alert('Permission Required', 'Please grant media library permissions to upload electricity bill.');
         return;
       }
 
-      // Show image picker options
       Alert.alert(
         'Upload Electricity Bill',
         'Choose an option',
@@ -682,9 +640,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
     }
   };
 
-  /**
-   * Handle uploading another bill (reset)
-   */
   const handleUploadAnother = () => {
     setBillImageUri(null);
     setExtractedBillData(null);
@@ -694,9 +649,8 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
   // ============================================
   // FORM SUBMISSION
   // ============================================
-  
+
   const handleSubmit = async () => {
-    // Validate all fields
     const isConsumerValid = validateConsumerNumber(consumerNumber);
     const isMeterValid = validateMeterSerialId(meterSerialId);
 
@@ -717,41 +671,35 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
 
     setIsSubmitting(true);
     try {
-      // Get current user ID
       if (!user?.id) {
         Alert.alert('Error', 'Please log in to register a meter');
         setIsSubmitting(false);
         return;
       }
 
-      // Create meter in Supabase to get proper UUID
       const createdMeter = await supabaseDatabaseService.createMeter({
         userId: user.id,
         discomName,
         consumerNumber,
         meterSerialId,
-        verificationStatus: 'verified', // Auto-verify in development
+        verificationStatus: 'verified',
         address: extractedBillData?.serviceAddress || undefined,
       });
 
-      // Update meter store
       setCurrentMeter(createdMeter);
       setMeters([createdMeter, ...meters]);
 
-      // Start fake energy meter data generation
       const config = getMeterConfig();
       const generator = getBackgroundDataGenerator(createdMeter.id, config);
-      
-      // Generate some historical data (last 24 hours)
+
       const now = new Date();
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
-      
+
       generator.generateHistoricalData(yesterday, now).catch((error) => {
         console.error('Failed to generate historical data:', error);
       });
 
-      // Start real-time data generation
       generator.start();
 
       Alert.alert(
@@ -761,7 +709,6 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
           {
             text: 'Add Another Meter',
             onPress: () => {
-              // Reset form
               setDiscomName('');
               setConsumerNumber('');
               setMeterSerialId('');
@@ -801,76 +748,97 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
   const hasBillUploaded = billImageUri !== null || extractedBillData !== null;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.content}>
-          {/* Header with Back Button */}
-          <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton} 
-              onPress={() => navigation.goBack()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="arrow-back" size={24} color="#111827" />
-            </TouchableOpacity>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.title}>Register Your Smart Meter</Text>
-              <Text style={styles.subtitle}>
-                Connect your existing smart meter to start trading energy
-              </Text>
-            </View>
+    <LinearGradient
+      colors={isDark ? ['#1f2937', '#111827', '#0f172a'] : ['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={[styles.backButton, { backgroundColor: isDark ? colors.cardElevated : '#ffffff' }]}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color="#3b82f6" />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Register Meter</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Connect your smart meter</Text>
           </View>
+          <View style={[styles.headerIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+            <MaterialCommunityIcons name="meter-electric" size={24} color="#3b82f6" />
+          </View>
+        </View>
 
-          {/* Bill Preview Card (shown after upload) */}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Bill Preview Card */}
           {hasBillUploaded && (
-            <View style={styles.billPreviewCard}>
+            <View style={[styles.sectionCard, styles.successCard, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
               <View style={styles.billPreviewContent}>
-                <View style={styles.billIconContainer}>
-                  <MaterialCommunityIcons name="file-document-check" size={40} color="#10b981" />
+                <View style={[styles.billIconContainer, { backgroundColor: isDark ? '#3b82f6' : '#3b82f6' }]}>
+                  <MaterialCommunityIcons name="file-document-check" size={28} color="#ffffff" />
                 </View>
                 <View style={styles.billPreviewTextContainer}>
-                  <Text style={styles.billPreviewTitle}>Electricity Bill Uploaded</Text>
-                  <Text style={styles.billPreviewSubtitle}>
-                    {extractedBillData?.consumerNumber 
-                      ? `Consumer No: ${extractedBillData.consumerNumber}`
+                  <Text style={[styles.billPreviewTitle, { color: isDark ? '#ffffff' : '#1e40af' }]}>Bill Uploaded</Text>
+                  <Text style={[styles.billPreviewSubtitle, { color: isDark ? '#93c5fd' : '#3b82f6' }]}>
+                    {extractedBillData?.consumerNumber
+                      ? `Consumer: ${extractedBillData.consumerNumber}`
                       : 'Ready for verification'}
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity 
-                style={styles.uploadAnotherButton}
+              <TouchableOpacity
+                style={[styles.uploadAnotherButton, { backgroundColor: isDark ? colors.card : '#ffffff' }]}
                 onPress={handleUploadAnother}
               >
-                <Text style={styles.uploadAnotherText}>Upload Another Bill</Text>
+                <Ionicons name="refresh" size={16} color="#3b82f6" />
+                <Text style={styles.uploadAnotherText}>Change Bill</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* DISCOM Picker */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>DISCOM Name *</Text>
+          {/* DISCOM Selection Card */}
+          <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+                <MaterialCommunityIcons name="office-building" size={20} color="#3b82f6" />
+              </View>
+              <View style={styles.sectionHeaderText}>
+                <Text style={[styles.sectionLabel, { color: colors.text }]}>DISCOM Name</Text>
+                <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>Select your electricity provider</Text>
+              </View>
+            </View>
+
             <TouchableOpacity
-              style={styles.pickerButton}
+              style={[styles.pickerButton, { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: isDark ? colors.border : '#e2e8f0' }]}
               onPress={() => setShowDiscomPicker(!showDiscomPicker)}
             >
-              <Text style={[styles.pickerText, !discomName && styles.placeholder]}>
+              <Text style={[styles.pickerText, { color: discomName ? colors.text : colors.textMuted }]}>
                 {discomName || 'Select DISCOM'}
               </Text>
-              <Text style={styles.pickerArrow}>▼</Text>
+              <Ionicons name={showDiscomPicker ? "chevron-up" : "chevron-down"} size={20} color={colors.textMuted} />
             </TouchableOpacity>
+
             {showDiscomPicker && (
-              <View style={styles.pickerOptions}>
+              <View style={[styles.pickerOptions, { backgroundColor: isDark ? colors.card : '#ffffff', borderColor: isDark ? colors.border : '#e2e8f0' }]}>
                 <ScrollView style={styles.pickerScrollView} nestedScrollEnabled>
                   {DISCOM_NAMES.map((discom) => (
                     <TouchableOpacity
                       key={discom}
-                      style={styles.pickerOption}
+                      style={[styles.pickerOption, { borderBottomColor: isDark ? colors.border : '#f1f5f9' }]}
                       onPress={() => {
                         setDiscomName(discom);
                         setShowDiscomPicker(false);
                       }}
                     >
-                      <Text style={styles.pickerOptionText}>{discom}</Text>
+                      <Text style={[styles.pickerOptionText, { color: colors.text }]}>{discom}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -878,180 +846,261 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
             )}
           </View>
 
-          {/* Consumer Number Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Consumer Number *</Text>
-            <TextInput
-              style={[styles.input, consumerNumberError ? styles.inputError : null]}
-              placeholder="Enter your consumer number"
-              placeholderTextColor="#9ca3af"
-              value={consumerNumber}
-              onChangeText={handleConsumerNumberChange}
-              keyboardType="numeric"
-              maxLength={12}
-            />
+          {/* Consumer Number Card */}
+          <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+                <Ionicons name="person" size={20} color="#3b82f6" />
+              </View>
+              <View style={styles.sectionHeaderText}>
+                <Text style={[styles.sectionLabel, { color: colors.text }]}>Consumer Number</Text>
+                <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>6-12 digit number from your bill</Text>
+              </View>
+            </View>
+
+            <View style={[
+              styles.inputContainer,
+              { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: consumerNumberError ? colors.error : (isDark ? colors.border : '#e2e8f0') }
+            ]}>
+              <Ionicons name="keypad-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Enter consumer number"
+                placeholderTextColor={colors.inputPlaceholder}
+                value={consumerNumber}
+                onChangeText={handleConsumerNumberChange}
+                keyboardType="numeric"
+                maxLength={12}
+              />
+            </View>
             {consumerNumberError ? (
-              <Text style={styles.errorText}>{consumerNumberError}</Text>
-            ) : (
-              <Text style={styles.hintText}>6-12 digits</Text>
-            )}
+              <Text style={[styles.errorText, { color: colors.error }]}>{consumerNumberError}</Text>
+            ) : null}
           </View>
 
-          {/* Meter Serial ID Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Meter Serial ID *</Text>
-            <TextInput
-              style={[styles.input, meterSerialIdError ? styles.inputError : null]}
-              placeholder="Enter meter serial ID"
-              placeholderTextColor="#9ca3af"
-              value={meterSerialId}
-              onChangeText={handleMeterSerialIdChange}
-              autoCapitalize="characters"
-              maxLength={15}
-            />
+          {/* Meter Serial ID Card */}
+          <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+                <MaterialCommunityIcons name="meter-electric-outline" size={20} color="#3b82f6" />
+              </View>
+              <View style={styles.sectionHeaderText}>
+                <Text style={[styles.sectionLabel, { color: colors.text }]}>Meter Serial ID</Text>
+                <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>5-15 alphanumeric characters</Text>
+              </View>
+            </View>
+
+            <View style={[
+              styles.inputContainer,
+              { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: meterSerialIdError ? colors.error : (isDark ? colors.border : '#e2e8f0') }
+            ]}>
+              <MaterialCommunityIcons name="barcode" size={18} color={colors.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Enter meter serial ID"
+                placeholderTextColor={colors.inputPlaceholder}
+                value={meterSerialId}
+                onChangeText={handleMeterSerialIdChange}
+                autoCapitalize="characters"
+                maxLength={15}
+              />
+            </View>
             {meterSerialIdError ? (
-              <Text style={styles.errorText}>{meterSerialIdError}</Text>
-            ) : (
-              <Text style={styles.hintText}>5-15 alphanumeric characters</Text>
-            )}
+              <Text style={[styles.errorText, { color: colors.error }]}>{meterSerialIdError}</Text>
+            ) : null}
           </View>
 
-          {/* Electricity Bill Upload */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Electricity Bill *</Text>
-            {!hasBillUploaded ? (
-              <TouchableOpacity 
-                style={styles.uploadButton} 
+          {/* Bill Upload Card */}
+          {!hasBillUploaded && (
+            <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+              <View style={styles.sectionHeader}>
+                <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+                  <Ionicons name="document-text" size={20} color="#3b82f6" />
+                </View>
+                <View style={styles.sectionHeaderText}>
+                  <Text style={[styles.sectionLabel, { color: colors.text }]}>Electricity Bill</Text>
+                  <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>Upload your latest bill for verification</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.uploadButton, { borderColor: '#3b82f6', backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}
                 onPress={handleBillUpload}
                 disabled={isProcessing}
               >
                 {isProcessing ? (
                   <View style={styles.processingContainer}>
-                    <ActivityIndicator color="#10b981" size="small" />
-                    <Text style={styles.processingText}>Processing...</Text>
+                    <ActivityIndicator color="#3b82f6" size="small" />
+                    <Text style={[styles.processingText, { color: '#3b82f6' }]}>Processing...</Text>
                   </View>
                 ) : (
-                  <Text style={styles.uploadButtonText}>
-                    Upload Latest Electricity Bill
-                  </Text>
+                  <>
+                    <View style={[styles.uploadIconContainer, { backgroundColor: '#3b82f6' }]}>
+                      <Ionicons name="cloud-upload" size={24} color="#ffffff" />
+                    </View>
+                    <Text style={[styles.uploadButtonText, { color: '#3b82f6' }]}>
+                      Upload Electricity Bill
+                    </Text>
+                    <Text style={[styles.uploadButtonHint, { color: colors.textMuted }]}>
+                      Tap to scan or select from gallery
+                    </Text>
+                  </>
                 )}
               </TouchableOpacity>
-            ) : (
-              <View style={styles.billUploadedContainer}>
-                <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-                <Text style={styles.billUploadedText}>Bill uploaded successfully</Text>
-              </View>
-            )}
-            {isExpoGo && !hasBillUploaded && (
-              <Text style={styles.expoGoWarning}>
-                ⚠️ OCR extraction requires a development build
-              </Text>
-            )}
-          </View>
+              {isExpoGo && (
+                <View style={[styles.warningBadge, { backgroundColor: isDark ? '#451a03' : '#fef3c7' }]}>
+                  <Ionicons name="warning" size={14} color="#f59e0b" />
+                  <Text style={[styles.warningText, { color: '#f59e0b' }]}>
+                    OCR requires a development build
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Submit Button */}
           <TouchableOpacity
-            style={[
-              styles.submitButton, 
-              (!isFormValid() || isSubmitting) && styles.submitButtonDisabled
-            ]}
+            style={[styles.submitButton, (!isFormValid() || isSubmitting) && { opacity: 0.5 }]}
             onPress={handleSubmit}
             disabled={!isFormValid() || isSubmitting}
+            activeOpacity={0.8}
           >
-            {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.submitButtonText}>Register Meter</Text>
-            )}
+            <LinearGradient
+              colors={['#3b82f6', '#2563eb']}
+              style={styles.submitButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+                  <Text style={styles.submitButtonText}>Register Meter</Text>
+                </>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
 
           {/* Hardware Request Link */}
           <TouchableOpacity
-            style={styles.hardwareRequestButton}
+            style={[styles.hardwareRequestButton, { backgroundColor: isDark ? colors.card : '#ffffff', borderColor: isDark ? colors.border : '#e2e8f0' }]}
             onPress={() => setShowHardwareRequest(true)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.hardwareRequestText}>
+            <MaterialCommunityIcons name="chip" size={20} color="#3b82f6" />
+            <Text style={[styles.hardwareRequestText, { color: '#3b82f6' }]}>
               Don't have a Smart Meter? Request Installation
             </Text>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  gradientBackground: {
     flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerBarTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
   },
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  headerContent: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 24,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  header: {
+  // Section Card
+  sectionCard: {
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  successCard: {
+    borderWidth: 0,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 24,
+    marginBottom: 16,
   },
-  backButton: {
-    padding: 4,
+  sectionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
-    marginTop: 4,
   },
-  headerTextContainer: {
+  sectionHeaderText: {
     flex: 1,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 8,
+  sectionLabel: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
+  sectionHint: {
+    fontSize: 13,
+    lineHeight: 18,
   },
-  billPreviewCard: {
-    backgroundColor: '#f0fdf4',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#bbf7d0',
-  },
+  // Bill Preview
   billPreviewContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   billIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#dcfce7',
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1060,161 +1109,166 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   billPreviewTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#166534',
     marginBottom: 4,
   },
   billPreviewSubtitle: {
     fontSize: 14,
-    color: '#15803d',
   },
   uploadAnotherButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
   },
   uploadAnotherText: {
     fontSize: 14,
-    color: '#10b981',
-    fontWeight: '500',
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
+    color: '#3b82f6',
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#111827',
-  },
-  inputError: {
-    borderColor: '#ef4444',
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#ef4444',
-    marginTop: 4,
-  },
-  hintText: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
+  // Picker
   pickerButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    height: 52,
   },
   pickerText: {
     fontSize: 16,
-    color: '#111827',
-  },
-  placeholder: {
-    color: '#9ca3af',
-  },
-  pickerArrow: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontWeight: '500',
   },
   pickerOptions: {
     marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderRadius: 14,
     maxHeight: 200,
+    overflow: 'hidden',
   },
   pickerScrollView: {
     maxHeight: 200,
   },
   pickerOption: {
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   pickerOptionText: {
-    fontSize: 16,
-    color: '#111827',
+    fontSize: 15,
+    fontWeight: '500',
   },
+  // Input
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 52,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  errorText: {
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  // Upload Button
   uploadButton: {
     borderWidth: 2,
-    borderColor: '#10b981',
     borderStyle: 'dashed',
-    borderRadius: 8,
-    padding: 24,
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    backgroundColor: '#f0fdf4',
+  },
+  uploadIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   uploadButtonText: {
     fontSize: 16,
-    color: '#10b981',
     fontWeight: '600',
+    marginBottom: 4,
+  },
+  uploadButtonHint: {
+    fontSize: 13,
   },
   processingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   processingText: {
     fontSize: 16,
-    color: '#10b981',
     fontWeight: '600',
-    marginLeft: 8,
   },
-  billUploadedContainer: {
+  warningBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f0fdf4',
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#bbf7d0',
+    gap: 6,
   },
-  billUploadedText: {
-    fontSize: 14,
-    color: '#15803d',
-    marginLeft: 8,
+  warningText: {
+    fontSize: 12,
     fontWeight: '500',
   },
-  expoGoWarning: {
-    fontSize: 12,
-    color: '#f59e0b',
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
+  // Submit Button
   submitButton: {
-    backgroundColor: '#10b981',
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
+  submitButtonGradient: {
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   submitButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
   },
+  // Hardware Request Button
   hardwareRequestButton: {
-    marginTop: 16,
-    paddingVertical: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    marginBottom: 20,
+    gap: 8,
   },
   hardwareRequestText: {
     fontSize: 14,
-    color: '#10b981',
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });
