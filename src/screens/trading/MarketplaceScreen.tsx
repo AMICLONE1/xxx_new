@@ -22,13 +22,13 @@ import Constants from 'expo-constants';
 import { RootStackParamList, Seller } from '@/types';
 import { becknClient } from '@/services/beckn/becknClient';
 import { tradingService } from '@/services/api/tradingService';
+import { sellersService } from '@/services/api/sellersService';
 import { formatCurrency, formatEnergy, calculateDistance } from '@/utils/helpers';
 import { SEARCH_RADIUS_KM, MIN_SELL_PRICE, MAX_SELL_PRICE } from '@/utils/constants';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { generateMockSellers } from '@/services/mock/mockSellers';
 import { MapboxWebView } from '@/components/mapbox/MapboxWebView';
-import { BuySellToggle } from '@/components/marketplace/BuySellToggle';
 import { buyersService } from '@/services/api/buyersService';
+import { useAuthStore } from '@/store';
 import { Buyer } from '@/types';
 import { logError } from '@/utils/errorUtils';
 
@@ -51,7 +51,14 @@ interface Filters {
 export default function MarketplaceScreen({ navigation }: Props) {
   const { isConnected } = useNetworkStatus();
   const isOnline = isConnected;
-  const [mode, setMode] = useState<'buy' | 'sell'>('buy');
+  const { user } = useAuthStore();
+  const userType = user?.userType || 'buyer'; // Default to buyer if not set
+
+  // Buyers see sellers (to buy from), Sellers see buyers (info only)
+  // No need for mode toggle - it's determined by userType
+  const [directoryTab, setDirectoryTab] = useState<'market' | 'directory'>('market');
+  const [allBuyers, setAllBuyers] = useState<Buyer[]>([]); // For directory view
+  const [allSellers, setAllSellers] = useState<Seller[]>([]); // For directory view
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [buyers, setBuyers] = useState<Buyer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,11 +69,9 @@ export default function MarketplaceScreen({ navigation }: Props) {
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
   const [selectedBuyer, setSelectedBuyer] = useState<Buyer | null>(null);
   const [showTradeModal, setShowTradeModal] = useState(false);
-  const [selectedTradeOption, setSelectedTradeOption] = useState<'buy' | 'sell' | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const autoRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  // Removed native map refs - using WebView now
   const [filters, setFilters] = useState<Filters>({
     minPrice: MIN_SELL_PRICE.toString(),
     maxPrice: MAX_SELL_PRICE.toString(),
@@ -77,18 +82,26 @@ export default function MarketplaceScreen({ navigation }: Props) {
 
   // Default location: Pune, India
   const DEFAULT_LOCATION = {
-    lat: 18.5204, // Pune latitude
-    lng: 73.8567, // Pune longitude
+    lat: 18.5204,
+    lng: 73.8567,
   };
+
+  // Debug: Log user type
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('[MarketplaceScreen] User type:', userType, 'User:', user?.email);
+    }
+  }, [userType, user]);
 
   // Get user location using cached locationService
   useEffect(() => {
     getLocation();
   }, []);
 
-  // Search buyers when in sell mode
+  // Search buyers - only for sellers to view buyer info
   const searchBuyers = useCallback(async () => {
-    if (!isOnline || mode !== 'sell') {
+    // Only sellers need to see buyers list
+    if (!isOnline || userType !== 'seller') {
       return;
     }
 
@@ -113,7 +126,6 @@ export default function MarketplaceScreen({ navigation }: Props) {
           }
         } catch (error: unknown) {
           logError('searchBuyers API', error);
-          // Fall back to empty array - buyers are optional
         }
       }
 
@@ -129,7 +141,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
         if (a.distance !== undefined && b.distance !== undefined) {
           return a.distance - b.distance;
         }
-        return b.maxPricePerUnit - a.maxPricePerUnit; // Higher price first
+        return b.maxPricePerUnit - a.maxPricePerUnit;
       });
 
       setBuyers(filteredResults);
@@ -139,7 +151,28 @@ export default function MarketplaceScreen({ navigation }: Props) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [userLocation, filters, isOnline, mode]);
+  }, [userLocation, filters, isOnline, userType]);
+
+  // Fetch all buyers and sellers for directory view
+  const fetchDirectory = useCallback(async () => {
+    if (!isOnline) return;
+
+    try {
+      // Fetch all buyers for directory
+      const buyersResponse = await buyersService.getBuyers();
+      if (buyersResponse.success && buyersResponse.data) {
+        setAllBuyers(buyersResponse.data);
+      }
+
+      // Fetch all sellers for directory
+      const sellersResponse = await sellersService.getSellers();
+      if (sellersResponse.success && sellersResponse.data) {
+        setAllSellers(sellersResponse.data);
+      }
+    } catch (error: unknown) {
+      logError('fetchDirectory', error);
+    }
+  }, [isOnline]);
 
   // Refresh location every minute - Added ref for proper cleanup
   const locationRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -197,62 +230,11 @@ export default function MarketplaceScreen({ navigation }: Props) {
       let results: Seller[] = [];
 
       if (userLocation) {
+        // First try to fetch from Supabase via tradingService
         try {
-          const becknResponse = await becknClient.search({
-            context: {
-              domain: 'energy',
-              action: 'search',
-              location: {
-                city: { name: 'Mumbai' },
-                country: { code: 'IND' },
-              },
-            },
-            message: {
-              intent: {
-                item: {
-                  descriptor: {
-                    name: 'solar_energy',
-                  },
-                },
-                fulfillment: {
-                  type: 'delivery',
-                },
-              },
-            },
-          });
-
-          if (becknResponse?.message?.catalog?.['bpp/providers']) {
-            results = becknResponse.message.catalog['bpp/providers'].flatMap((provider) =>
-              (provider.items || []).map((item) => {
-                const location = provider.locations?.[0];
-                const [lat, lng] = location?.gps?.split(',')?.map(Number) || [0, 0];
-                const distance = userLocation
-                  ? calculateDistance(userLocation.lat, userLocation.lng, lat, lng)
-                  : undefined;
-
-                return {
-                  id: `${provider.id}_${item.id}`,
-                  name: provider.descriptor?.name || 'Energy Seller',
-                  location: { lat, lng },
-                  pricePerUnit: parseFloat(item.descriptor?.price?.value || '0'),
-                  availableEnergy: 100,
-                  rating: 4.5,
-                  greenEnergy: true,
-                  distance,
-                };
-              })
-            );
-          }
-        } catch (becknError) {
-          // Beckn gateway is optional - silently fall back to API
           if (__DEV__) {
-            console.log('Beckn gateway not available, using API fallback');
+            console.log('[MarketplaceScreen] Calling tradingService.searchSellers with location:', userLocation);
           }
-        }
-      }
-
-      if (results.length === 0 && userLocation) {
-        try {
           const apiResponse = await tradingService.searchSellers({
             location: {
               lat: userLocation.lat,
@@ -265,94 +247,93 @@ export default function MarketplaceScreen({ navigation }: Props) {
             minRating: parseFloat(filters.minRating) || undefined,
           });
 
+          if (__DEV__) {
+            console.log('[MarketplaceScreen] API Response:', apiResponse.success, 'Data length:', apiResponse.data?.length || 0);
+          }
+
           if (apiResponse.success && apiResponse.data) {
-            results = apiResponse.data.map((seller: any) => ({
-              ...seller,
-              distance: userLocation
-                ? calculateDistance(
-                  userLocation.lat,
-                  userLocation.lng,
-                  seller.location.lat,
-                  seller.location.lng
-                )
-                : undefined,
-            }));
-          } else if (apiResponse.error) {
-            // API failed, use mock data for development
-            // Silently fall back to mock data - no need to log as it's expected
-            const mockSellers = generateMockSellers(userLocation);
-            results = mockSellers.map((seller) => ({
-              ...seller,
-              distance: userLocation
-                ? calculateDistance(
-                  userLocation.lat,
-                  userLocation.lng,
-                  seller.location.lat,
-                  seller.location.lng
-                )
-                : undefined,
-            }));
+            results = apiResponse.data;
+            if (__DEV__) {
+              console.log(`[MarketplaceScreen] Fetched ${results.length} sellers from database`);
+            }
           }
         } catch (apiError: unknown) {
-          // Silently fall back to mock data - backend unavailable is expected in development
-          const mockSellers = generateMockSellers(userLocation);
-          results = mockSellers.map((seller) => ({
-            ...seller,
-            distance: userLocation
-              ? calculateDistance(
-                userLocation.lat,
-                userLocation.lng,
-                seller.location.lat,
-                seller.location.lng
-              )
-              : undefined,
-          }));
+          if (__DEV__) {
+            console.log('[MarketplaceScreen] Database fetch failed:', apiError);
+          }
+        }
+
+        // If no results from database, try Beckn gateway
+        if (results.length === 0) {
+          try {
+            const becknResponse = await becknClient.search({
+              context: {
+                domain: 'energy',
+                action: 'search',
+                location: {
+                  city: { name: 'Mumbai' },
+                  country: { code: 'IND' },
+                },
+              },
+              message: {
+                intent: {
+                  item: {
+                    descriptor: {
+                      name: 'solar_energy',
+                    },
+                  },
+                  fulfillment: {
+                    type: 'delivery',
+                  },
+                },
+              },
+            });
+
+            if (becknResponse?.message?.catalog?.['bpp/providers']) {
+              results = becknResponse.message.catalog['bpp/providers'].flatMap((provider) =>
+                (provider.items || []).map((item) => {
+                  const location = provider.locations?.[0];
+                  const [lat, lng] = location?.gps?.split(',')?.map(Number) || [0, 0];
+                  const distance = userLocation
+                    ? calculateDistance(userLocation.lat, userLocation.lng, lat, lng)
+                    : undefined;
+
+                  return {
+                    id: `${provider.id}_${item.id}`,
+                    name: provider.descriptor?.name || 'Energy Seller',
+                    location: { lat, lng },
+                    pricePerUnit: parseFloat(item.descriptor?.price?.value || '0'),
+                    availableEnergy: 100,
+                    rating: 4.5,
+                    greenEnergy: true,
+                    distance,
+                  };
+                })
+              );
+            }
+          } catch (becknError) {
+            // Beckn gateway is optional - silently fall back
+            if (__DEV__) {
+              console.log('[MarketplaceScreen] Beckn gateway not available');
+            }
+          }
+        }
+
+        // Log if no sellers found (no more mock data fallback)
+        if (results.length === 0 && __DEV__) {
+          console.log('[MarketplaceScreen] No sellers found in database. Sellers can add listings via the SellEnergy screen.');
         }
       }
 
-      // If still no results and we have user location, use mock data
-      if (results.length === 0 && userLocation) {
-        console.warn('No sellers found from API/Beckn, using mock data for development');
-        const mockSellers = generateMockSellers(userLocation);
-        results = mockSellers.map((seller) => ({
-          ...seller,
-          distance: userLocation
-            ? calculateDistance(
-              userLocation.lat,
-              userLocation.lng,
-              seller.location.lat,
-              seller.location.lng
-            )
-            : undefined,
-        }));
-      }
-
+      // No need to filter by radius again - tradingService already applies radius filter
+      // Just sort and set the results
       let filteredResults = results;
 
-      if (filters.minPrice) {
-        filteredResults = filteredResults.filter(
-          (s) => s.pricePerUnit >= parseFloat(filters.minPrice)
-        );
-      }
-      if (filters.maxPrice) {
-        filteredResults = filteredResults.filter(
-          (s) => s.pricePerUnit <= parseFloat(filters.maxPrice)
-        );
-      }
-      if (filters.greenEnergyOnly) {
-        filteredResults = filteredResults.filter((s) => s.greenEnergy);
-      }
-      if (filters.minRating) {
-        filteredResults = filteredResults.filter(
-          (s) => (s.rating || 0) >= parseFloat(filters.minRating)
-        );
-      }
-      if (filters.radius && userLocation) {
-        filteredResults = filteredResults.filter(
-          (s) => (s.distance || Infinity) <= parseFloat(filters.radius)
-        );
+      if (__DEV__) {
+        console.log('[MarketplaceScreen] Setting sellers from API:', results.length, 'sellers');
       }
 
+      // Sort by distance (closest first), fallback to price
       filteredResults.sort((a, b) => {
         if (a.distance !== undefined && b.distance !== undefined) {
           return a.distance - b.distance;
@@ -380,15 +361,16 @@ export default function MarketplaceScreen({ navigation }: Props) {
       autoRefreshIntervalRef.current = null;
     }
 
-    if (autoRefreshEnabled && userLocation) {
-      const searchFn = mode === 'buy' ? searchSellers : searchBuyers;
+    if (autoRefreshEnabled && userLocation && directoryTab === 'market') {
+      // Sellers see buyers, buyers see sellers
+      const searchFn = userType === 'seller' ? searchBuyers : searchSellers;
 
       // Initial load
       searchFn();
 
       // Set up interval for auto-refresh
       autoRefreshIntervalRef.current = setInterval(() => {
-        if (__DEV__) console.log(`[MarketplaceScreen] Auto-refreshing ${mode === 'buy' ? 'sellers' : 'buyers'}...`);
+        if (__DEV__) console.log(`[MarketplaceScreen] Auto-refreshing ${userType === 'seller' ? 'buyers' : 'sellers'}...`);
         searchFn();
       }, 30000); // 30 seconds
     }
@@ -399,26 +381,47 @@ export default function MarketplaceScreen({ navigation }: Props) {
         autoRefreshIntervalRef.current = null;
       }
     };
-  }, [autoRefreshEnabled, userLocation, filters, mode, searchSellers, searchBuyers]);
+  }, [autoRefreshEnabled, userLocation, filters, userType, directoryTab, searchSellers, searchBuyers]);
 
   useEffect(() => {
+    if (__DEV__) {
+      console.log('[MarketplaceScreen] Search trigger effect - userLocation:', !!userLocation, 'userType:', userType);
+    }
     if (userLocation) {
-      if (mode === 'buy') {
-        searchSellers();
-      } else {
+      // Sellers see buyers, buyers see sellers
+      if (userType === 'seller') {
+        if (__DEV__) console.log('[MarketplaceScreen] Calling searchBuyers for seller');
         searchBuyers();
+      } else {
+        if (__DEV__) console.log('[MarketplaceScreen] Calling searchSellers for buyer');
+        searchSellers();
       }
     }
-  }, [userLocation, mode, searchSellers, searchBuyers]);
+  }, [userLocation, userType, searchSellers, searchBuyers]);
+
+  // Fetch directory data when tab changes to directory or on mount
+  useEffect(() => {
+    if (directoryTab === 'directory') {
+      fetchDirectory();
+    }
+  }, [directoryTab, fetchDirectory]);
+
+  // Also fetch on initial mount for directory data
+  useEffect(() => {
+    fetchDirectory();
+  }, [fetchDirectory]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    if (mode === 'buy') {
-      searchSellers();
-    } else {
+    if (directoryTab === 'directory') {
+      fetchDirectory();
+      setRefreshing(false);
+    } else if (userType === 'seller') {
       searchBuyers();
+    } else {
+      searchSellers();
     }
-  }, [searchSellers, searchBuyers, mode]);
+  }, [searchSellers, searchBuyers, fetchDirectory, userType, directoryTab]);
 
   const handleSellerPress = (seller: Seller) => {
     setSelectedSeller(seller);
@@ -596,11 +599,11 @@ export default function MarketplaceScreen({ navigation }: Props) {
           accessToken={MAPBOX_TOKEN}
           center={centerLocation}
           zoom={12}
-          sellers={mode === 'buy' ? sellers : []}
-          buyers={mode === 'sell' ? buyers : []}
+          sellers={userType === 'buyer' ? sellers : []}
+          buyers={userType === 'seller' ? buyers : []}
           userLocation={userLocation || undefined}
-          showBuyers={mode === 'sell'}
-          showSellers={mode === 'buy'}
+          showBuyers={userType === 'seller'}
+          showSellers={userType === 'buyer'}
           onMarkerClick={(id, type) => {
             if (type === 'seller') {
               const seller = sellers.find(s => s.id === id);
@@ -743,10 +746,10 @@ export default function MarketplaceScreen({ navigation }: Props) {
         )}
 
         {/* Results Count Overlay */}
-        {(mode === 'buy' ? sellers.length > 0 : buyers.length > 0) && (
+        {(userType === 'buyer' ? sellers.length > 0 : buyers.length > 0) && (
           <View style={styles.mapResultsOverlay}>
             <Text style={styles.mapResultsText}>
-              {mode === 'buy'
+              {userType === 'buyer'
                 ? `${sellers.length} seller${sellers.length !== 1 ? 's' : ''} found`
                 : `${buyers.length} buyer${buyers.length !== 1 ? 's' : ''} found`}
             </Text>
@@ -783,7 +786,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
         <View style={styles.filtersContainer}>
           <View style={styles.filtersHeader}>
             <Text style={styles.filtersTitle}>
-              Filter {mode === 'buy' ? 'Sellers' : 'Buyers'}
+              Filter {userType === 'buyer' ? 'Sellers' : 'Buyers'}
             </Text>
             <TouchableOpacity onPress={() => setShowFilters(false)}>
               <Ionicons name="close" size={24} color="#111827" />
@@ -796,7 +799,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
               <View style={styles.filterRow}>
                 <View style={styles.filterInputContainer}>
                   <Text style={styles.filterLabel}>
-                    {mode === 'buy' ? 'Min Price' : 'Min Max Price'} (₹/kWh)
+                    {userType === 'buyer' ? 'Min Price' : 'Min Max Price'} (₹/kWh)
                   </Text>
                   <TextInput
                     style={styles.filterInput}
@@ -808,7 +811,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                 </View>
                 <View style={styles.filterInputContainer}>
                   <Text style={styles.filterLabel}>
-                    {mode === 'buy' ? 'Max Price' : 'Max Price'} (₹/kWh)
+                    {userType === 'buyer' ? 'Max Price' : 'Max Price'} (₹/kWh)
                   </Text>
                   <TextInput
                     style={styles.filterInput}
@@ -819,7 +822,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   />
                 </View>
               </View>
-              {mode === 'sell' && (
+              {userType === 'seller' && (
                 <Text style={styles.filterHint}>
                   Filter buyers by their maximum price range
                 </Text>
@@ -853,7 +856,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     placeholder="0"
                   />
                 </View>
-                {mode === 'buy' && (
+                {userType === 'buyer' && (
                   <View style={styles.switchRow}>
                     <View style={styles.switchLabelContainer}>
                       <Text style={styles.filterLabel}>Green Energy Only</Text>
@@ -874,7 +877,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
               style={styles.applyButton}
               onPress={() => {
                 setShowFilters(false);
-                if (mode === 'buy') {
+                if (userType === 'buyer') {
                   searchSellers();
                 } else {
                   searchBuyers();
@@ -907,7 +910,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
             <View>
               <Text style={styles.headerTitle}>Marketplace</Text>
               <Text style={styles.headerSubtitle}>
-                {mode === 'buy' ? 'Find Energy Sellers' : 'Find Energy Buyers'}
+                {userType === 'seller' ? 'View Energy Buyers' : 'Find Energy Sellers'}
               </Text>
             </View>
             <View style={styles.headerActions}>
@@ -929,9 +932,50 @@ export default function MarketplaceScreen({ navigation }: Props) {
               </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.toggleContainer}>
-            <BuySellToggle mode={mode} onModeChange={setMode} />
+
+          {/* Seller: Prominent List Energy CTA */}
+          {userType === 'seller' && (
+            <TouchableOpacity
+              style={styles.listEnergyCta}
+              onPress={() => navigation.navigate('SellEnergy', {})}
+            >
+              <LinearGradient
+                colors={['#0ea5e9', '#0284c7']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.listEnergyCtaGradient}
+              >
+                <MaterialCommunityIcons name="solar-panel" size={24} color="#ffffff" />
+                <View style={styles.listEnergyCtaText}>
+                  <Text style={styles.listEnergyCtaTitle}>List Your Energy for Sale</Text>
+                  <Text style={styles.listEnergyCtaSubtitle}>Sell to buyers in the marketplace</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color="#ffffff" />
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {/* Tab Navigation: Market / Directory */}
+          <View style={styles.tabNavigation}>
+            <TouchableOpacity
+              style={[styles.tabButton, directoryTab === 'market' && styles.tabButtonActive]}
+              onPress={() => setDirectoryTab('market')}
+            >
+              <Text style={[styles.tabButtonText, directoryTab === 'market' && styles.tabButtonTextActive]}>
+                {userType === 'buyer' ? 'Browse Sellers' : 'Browse Buyers'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, directoryTab === 'directory' && styles.tabButtonActive]}
+              onPress={() => setDirectoryTab('directory')}
+            >
+              <Text style={[styles.tabButtonText, directoryTab === 'directory' && styles.tabButtonTextActive]}>
+                {userType === 'buyer' ? 'Buyers Directory' : 'Sellers Directory'}
+              </Text>
+            </TouchableOpacity>
           </View>
+
+          {/* Toggle removed - role determines view (buyers see sellers, sellers see buyers) */}
         </View>
 
         {renderFilters()}
@@ -939,66 +983,174 @@ export default function MarketplaceScreen({ navigation }: Props) {
         {viewMode === 'map' ? (
           renderMapView()
         ) : (
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />
-            }
-          >
-            {loading && !refreshing ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#3b82f6" />
-                <Text style={styles.loadingText}>Searching for sellers...</Text>
-              </View>
-            ) : (mode === 'buy' ? sellers.length === 0 : buyers.length === 0) ? (
-              <View style={styles.emptyContainer}>
-                <MaterialCommunityIcons
-                  name={mode === 'buy' ? 'store-off' : 'account-off'}
-                  size={64}
-                  color="#d1d5db"
-                />
-                <Text style={styles.emptyText}>
-                  No {mode === 'buy' ? 'sellers' : 'buyers'} found
-                </Text>
-                <Text style={styles.emptySubtext}>
-                  Try adjusting your filters or search radius
-                </Text>
-                {!userLocation && (
-                  <TouchableOpacity style={styles.locationButton} onPress={() => getLocation(true)}>
-                    <LinearGradient
-                      colors={['#3b82f6', '#2563eb']}
-                      style={styles.locationButtonGradient}
-                    >
-                      <Ionicons name="location" size={20} color="#ffffff" />
-                      <Text style={styles.locationButtonText}>Enable Location</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ) : (
-              <>
-                <View style={styles.resultsHeader}>
-                  <Text style={styles.resultsCount}>
-                    {mode === 'buy'
-                      ? `${sellers.length} seller${sellers.length !== 1 ? 's' : ''} found`
-                      : `${buyers.length} buyer${buyers.length !== 1 ? 's' : ''} found`}
-                  </Text>
-                  <TouchableOpacity onPress={() => setShowFilters(true)}>
-                    <Text style={styles.filterLink}>Filter</Text>
-                  </TouchableOpacity>
-                </View>
-                {mode === 'buy'
-                  ? sellers.map(renderSellerCard)
-                  : buyers.map(renderBuyerCard)}
-              </>
-            )}
-          </ScrollView>
+          <>
+            {__DEV__ && console.log('[MarketplaceScreen] Rendering - userType:', userType, 'sellers:', sellers.length, 'buyers:', buyers.length, 'loading:', loading, 'directoryTab:', directoryTab)}
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />
+              }
+            >
+              {/* Directory Tab Content */}
+              {directoryTab === 'directory' ? (
+                <>
+                  <View style={styles.directoryHeader}>
+                    <Text style={styles.directoryTitle}>
+                      {userType === 'buyer' ? 'All Buyers in the Network' : 'All Sellers in the Network'}
+                    </Text>
+                    <Text style={styles.directorySubtitle}>
+                      {userType === 'buyer'
+                        ? `${allBuyers.length} buyers registered`
+                        : `${allSellers.length} sellers registered`}
+                    </Text>
+                  </View>
+                  {userType === 'buyer' ? (
+                    allBuyers.length > 0 ? (
+                      allBuyers.map((buyer) => (
+                        <View key={buyer.id} style={styles.directoryCard}>
+                          <View style={styles.directoryCardHeader}>
+                            <MaterialCommunityIcons name="account" size={24} color="#3b82f6" />
+                            <Text style={styles.directoryCardName}>{buyer.name}</Text>
+                          </View>
+                          <View style={styles.directoryCardInfo}>
+                            <Text style={styles.directoryCardDetail}>
+                              <MaterialCommunityIcons name="lightning-bolt" size={14} color="#64748b" />
+                              {' '}Needs: {formatEnergy(buyer.energyNeeded, 'kWh')}
+                            </Text>
+                            <Text style={styles.directoryCardDetail}>
+                              <MaterialCommunityIcons name="currency-inr" size={14} color="#64748b" />
+                              {' '}Max: {formatCurrency(buyer.maxPricePerUnit)}/kWh
+                            </Text>
+                            {buyer.location?.address && (
+                              <Text style={styles.directoryCardDetail}>
+                                <Ionicons name="location" size={14} color="#64748b" />
+                                {' '}{buyer.location.address}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      ))
+                    ) : (
+                      <View style={styles.emptyDirectory}>
+                        <MaterialCommunityIcons name="account-group" size={48} color="#d1d5db" />
+                        <Text style={styles.emptyDirectoryText}>No buyers registered yet</Text>
+                      </View>
+                    )
+                  ) : (
+                    allSellers.length > 0 ? (
+                      allSellers.map((seller) => (
+                        <View key={seller.id} style={styles.directoryCard}>
+                          <View style={styles.directoryCardHeader}>
+                            <MaterialCommunityIcons name="store" size={24} color="#10b981" />
+                            <Text style={styles.directoryCardName}>{seller.name}</Text>
+                            {seller.greenEnergy && (
+                              <View style={styles.greenBadgeSmall}>
+                                <MaterialCommunityIcons name="leaf" size={12} color="#10b981" />
+                              </View>
+                            )}
+                          </View>
+                          <View style={styles.directoryCardInfo}>
+                            <Text style={styles.directoryCardDetail}>
+                              <MaterialCommunityIcons name="lightning-bolt" size={14} color="#64748b" />
+                              {' '}Available: {formatEnergy(seller.availableEnergy, 'kWh')}
+                            </Text>
+                            <Text style={styles.directoryCardDetail}>
+                              <MaterialCommunityIcons name="currency-inr" size={14} color="#64748b" />
+                              {' '}Price: {formatCurrency(seller.pricePerUnit)}/kWh
+                            </Text>
+                            {seller.rating !== undefined && seller.rating > 0 && (
+                              <Text style={styles.directoryCardDetail}>
+                                <Ionicons name="star" size={14} color="#fbbf24" />
+                                {' '}{seller.rating.toFixed(1)} rating
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      ))
+                    ) : (
+                      <View style={styles.emptyDirectory}>
+                        <MaterialCommunityIcons name="store-off" size={48} color="#d1d5db" />
+                        <Text style={styles.emptyDirectoryText}>No sellers registered yet</Text>
+                      </View>
+                    )
+                  )}
+                </>
+              ) : (
+                /* Market Tab Content - Original functionality */
+                loading && !refreshing ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#3b82f6" />
+                    <Text style={styles.loadingText}>
+                      Searching for {userType === 'seller' ? 'buyers' : 'sellers'}...
+                    </Text>
+                  </View>
+                ) : (userType === 'seller' ? buyers.length === 0 : sellers.length === 0) ? (
+                  <View style={styles.emptyContainer}>
+                    <MaterialCommunityIcons
+                      name={userType === 'seller' ? 'account-off' : 'store-off'}
+                      size={64}
+                      color="#d1d5db"
+                    />
+                    <Text style={styles.emptyText}>
+                      No {userType === 'seller' ? 'buyers' : 'sellers'} found
+                    </Text>
+                    <Text style={styles.emptySubtext}>
+                      {userType === 'seller'
+                        ? 'Try adjusting your filters or search radius'
+                        : 'No sellers are currently listing energy. Be the first to sell!'}
+                    </Text>
+                    {userType === 'buyer' && (
+                      <TouchableOpacity
+                        style={styles.listEnergyButton}
+                        onPress={() => navigation.navigate('SellEnergy', {})}
+                      >
+                        <LinearGradient
+                          colors={['#0ea5e9', '#0284c7']}
+                          style={styles.listEnergyButtonGradient}
+                        >
+                          <MaterialCommunityIcons name="solar-panel" size={20} color="#ffffff" />
+                          <Text style={styles.listEnergyButtonText}>List Your Energy</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    )}
+                    {!userLocation && (
+                      <TouchableOpacity style={styles.locationButton} onPress={() => getLocation(true)}>
+                        <LinearGradient
+                          colors={['#3b82f6', '#2563eb']}
+                          style={styles.locationButtonGradient}
+                        >
+                          <Ionicons name="location" size={20} color="#ffffff" />
+                          <Text style={styles.locationButtonText}>Enable Location</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.resultsHeader}>
+                      <Text style={styles.resultsCount}>
+                        {userType === 'seller'
+                          ? `${buyers.length} buyer${buyers.length !== 1 ? 's' : ''} found`
+                          : `${sellers.length} seller${sellers.length !== 1 ? 's' : ''} found`}
+                      </Text>
+                      <TouchableOpacity onPress={() => setShowFilters(true)}>
+                        <Text style={styles.filterLink}>Filter</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {userType === 'seller'
+                      ? buyers.map(renderBuyerCard)
+                      : sellers.map(renderSellerCard)}
+                  </>
+                )
+              )}
+            </ScrollView>
+          </>
         )}
 
-        {/* Trade Modal - For Sellers (Buy Mode) */}
+        {/* Trade Modal - For Buyers viewing Sellers */}
         <Modal
-          visible={showTradeModal && mode === 'buy' && !!selectedSeller}
+          visible={showTradeModal && userType === 'buyer' && !!selectedSeller}
           transparent={true}
           animationType="slide"
           onRequestClose={() => {
@@ -1071,9 +1223,9 @@ export default function MarketplaceScreen({ navigation }: Props) {
           </View>
         </Modal>
 
-        {/* Trade Modal - For Buyers (Sell Mode) */}
+        {/* Info Modal - For Sellers viewing Buyers (read-only, no sell action) */}
         <Modal
-          visible={showTradeModal && mode === 'sell' && !!selectedBuyer}
+          visible={showTradeModal && userType === 'seller' && !!selectedBuyer}
           transparent={true}
           animationType="slide"
           onRequestClose={() => {
@@ -1124,18 +1276,13 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     )}
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.tradeModalButton}
-                    onPress={() => handleTradeOptionSelect('sell')}
-                  >
-                    <LinearGradient
-                      colors={['#0ea5e9', '#0284c7']}
-                      style={styles.tradeModalButtonGradient}
-                    >
-                      <Ionicons name="cash" size={24} color="#ffffff" />
-                      <Text style={styles.tradeModalButtonText}>Sell Energy</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
+                  {/* Info-only notice - sellers cannot initiate sales */}
+                  <View style={styles.infoNotice}>
+                    <Ionicons name="information-circle" size={20} color="#6b7280" />
+                    <Text style={styles.infoNoticeText}>
+                      Only buyers can place energy orders. List your energy for sale and wait for buyers to order.
+                    </Text>
+                  </View>
 
                   <TouchableOpacity
                     style={styles.tradeModalCancelButton}
@@ -1144,7 +1291,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                       setSelectedBuyer(null);
                     }}
                   >
-                    <Text style={styles.tradeModalCancelText}>Cancel</Text>
+                    <Text style={styles.tradeModalCancelText}>Close</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -1353,6 +1500,23 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   locationButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  listEnergyButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 12,
+  },
+  listEnergyButtonGradient: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  listEnergyButtonText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '600',
@@ -1867,5 +2031,143 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#6b7280',
+  },
+  // Tab Navigation Styles
+  tabNavigation: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    padding: 4,
+    marginTop: 12,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  tabButtonActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  tabButtonTextActive: {
+    color: '#3b82f6',
+    fontWeight: '600',
+  },
+  // List Energy CTA Styles (for sellers)
+  listEnergyCta: {
+    marginTop: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  listEnergyCtaGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  listEnergyCtaText: {
+    flex: 1,
+  },
+  listEnergyCtaTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  listEnergyCtaSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  // Directory Styles
+  directoryHeader: {
+    paddingHorizontal: 4,
+    marginBottom: 16,
+  },
+  directoryTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  directorySubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  directoryCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  directoryCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  directoryCardName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    flex: 1,
+  },
+  directoryCardInfo: {
+    gap: 6,
+  },
+  directoryCardDetail: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  emptyDirectory: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyDirectoryText: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginTop: 12,
+  },
+  greenBadgeSmall: {
+    padding: 4,
+    backgroundColor: '#d1fae5',
+    borderRadius: 8,
+  },
+  // Info Notice styles
+  infoNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f1f5f9',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  infoNoticeText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#64748b',
+    lineHeight: 20,
   },
 });

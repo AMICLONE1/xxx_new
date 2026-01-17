@@ -1,6 +1,8 @@
 import { apiClient } from './client';
 import { Order, ApiResponse, Seller } from '@/types';
-import { getErrorMessage } from '@/utils/errorUtils';
+import { supabaseDatabaseService } from '@/services/supabase/databaseService';
+import { logError } from '@/utils/errorUtils';
+import { calculateDistance } from '@/utils/helpers';
 
 export interface CreateOrderRequest {
   sellerId: string;
@@ -41,6 +43,9 @@ class TradingService {
     return apiClient.get(`/trading/orders/history?limit=${limit}&offset=${offset}`);
   }
 
+  /**
+   * Search for sellers - fetches from Supabase directly
+   */
   async searchSellers(filters: {
     location?: { lat: number; lng: number; radius: number };
     minPrice?: number;
@@ -49,18 +54,97 @@ class TradingService {
     minRating?: number;
   }): Promise<ApiResponse<Seller[]>> {
     try {
-      return await apiClient.post('/trading/search', filters);
-    } catch (error: unknown) {
-      // Only log in development mode, and use debug level instead of error
-      // The app gracefully falls back to mock data, so this isn't a critical error
-      if (__DEV__) {
-        console.log('[API] Backend unavailable, using mock data:', error instanceof Error && 'code' in error ? (error as { code: string }).code : 'NETWORK_ERROR');
+      // Fetch all active sellers from Supabase
+      let sellers = await supabaseDatabaseService.getActiveSellers();
+
+      // Apply filters
+      if (filters.minPrice !== undefined) {
+        sellers = sellers.filter(s => s.pricePerUnit >= filters.minPrice!);
       }
-      
-      // Return error response instead of throwing
+
+      if (filters.maxPrice !== undefined) {
+        sellers = sellers.filter(s => s.pricePerUnit <= filters.maxPrice!);
+      }
+
+      if (filters.greenEnergyOnly) {
+        sellers = sellers.filter(s => s.greenEnergy === true);
+      }
+
+      if (filters.minRating !== undefined) {
+        sellers = sellers.filter(s => (s.rating || 0) >= filters.minRating!);
+      }
+
+      // Calculate distance if location is provided
+      if (filters.location) {
+        sellers = sellers.map(seller => {
+          // Only calculate distance if seller has valid location
+          if (seller.location && seller.location.lat && seller.location.lng) {
+            const distance = calculateDistance(
+              filters.location!.lat,
+              filters.location!.lng,
+              seller.location.lat,
+              seller.location.lng
+            );
+            return { ...seller, distance };
+          }
+          // Seller without location - don't exclude them
+          return { ...seller, distance: undefined };
+        });
+
+        // Filter by radius - only filter sellers that HAVE a distance calculated
+        // Sellers without location are NOT filtered out
+        if (filters.location.radius) {
+          const beforeFilter = sellers.length;
+          sellers = sellers.filter(s => s.distance === undefined || s.distance <= filters.location!.radius);
+          if (__DEV__) {
+            console.log(`[TradingService] Radius filter: ${beforeFilter} -> ${sellers.length} (radius: ${filters.location.radius}km)`);
+          }
+        }
+
+        // Sort by distance (sellers without distance go to the end)
+        sellers.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+      }
+
+      if (__DEV__) {
+        console.log(`[TradingService] Fetched ${sellers.length} sellers from Supabase`);
+      }
+
+      return {
+        success: true,
+        data: sellers,
+      };
+    } catch (error: unknown) {
+      logError('TradingService.searchSellers', error);
+      // Return empty array with error, allowing fallback to mock data
       return {
         success: false,
-        error: getErrorMessage(error) || 'Failed to search sellers. Backend API may be unavailable.',
+        error: 'Failed to search sellers from database.',
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * Get a single seller by user ID
+   */
+  async getSellerByUserId(userId: string): Promise<ApiResponse<Seller>> {
+    try {
+      const seller = await supabaseDatabaseService.getSellerByUserId(userId);
+      if (!seller) {
+        return {
+          success: false,
+          error: 'Seller not found',
+        };
+      }
+      return {
+        success: true,
+        data: seller,
+      };
+    } catch (error: unknown) {
+      logError('TradingService.getSellerByUserId', error);
+      return {
+        success: false,
+        error: 'Failed to fetch seller.',
       };
     }
   }

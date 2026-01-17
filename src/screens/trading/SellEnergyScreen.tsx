@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +20,8 @@ import { useAuthStore } from '@/store';
 import { buyersService } from '@/services/api/buyersService';
 import { tradingService } from '@/services/api/tradingService';
 import { getErrorMessage } from '@/utils/errorUtils';
+import { locationService } from '@/services/locationService';
+import { supabaseDatabaseService } from '@/services/supabase/databaseService';
 
 type SellEnergyScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SellEnergy'>;
 
@@ -40,10 +43,39 @@ export default function SellEnergyScreen({ navigation, route }: Props) {
   const { buyerId, buyerName, maxPricePerUnit, energyNeeded } = route.params || {};
 
   const [selectedMeterId, setSelectedMeterId] = useState<string>('');
+  const [plantName, setPlantName] = useState<string>('');
   const [energyAmount, setEnergyAmount] = useState<string>('');
   const [pricePerUnit, setPricePerUnit] = useState<string>('');
   const [deliveryWindow, setDeliveryWindow] = useState<string>('');
+  const [greenEnergy, setGreenEnergy] = useState<boolean>(true);
+  // Default location: Pune, India (used when user location is unavailable)
+  const DEFAULT_LOCATION = { lat: 18.5204, lng: 73.8567 };
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number }>(DEFAULT_LOCATION);
   const [loading, setLoading] = useState(false);
+
+  // Fetch user location on mount, fallback to Pune if unavailable
+  useEffect(() => {
+    const fetchLocation = async () => {
+      try {
+        const location = await locationService.getCurrentLocation();
+        if (location) {
+          setUserLocation({
+            lat: location.latitude,
+            lng: location.longitude,
+          });
+        } else {
+          // Fallback to default Pune location
+          console.log('[SellEnergy] No location available, using default Pune location');
+          setUserLocation(DEFAULT_LOCATION);
+        }
+      } catch (error) {
+        console.log('[SellEnergy] Failed to get location, using default Pune:', error);
+        // Keep default Pune location on error
+        setUserLocation(DEFAULT_LOCATION);
+      }
+    };
+    fetchLocation();
+  }, []);
 
   useEffect(() => {
     if (meters.length > 0 && !selectedMeterId) {
@@ -60,6 +92,11 @@ export default function SellEnergyScreen({ navigation, route }: Props) {
   const selectedMeter = meters.find(m => m.id === selectedMeterId);
 
   const handleSellEnergy = async () => {
+    if (!plantName.trim()) {
+      Alert.alert('Error', 'Please enter your solar plant name');
+      return;
+    }
+
     if (!selectedMeterId) {
       Alert.alert('Error', 'Please select a meter/site');
       return;
@@ -86,15 +123,43 @@ export default function SellEnergyScreen({ navigation, route }: Props) {
       return;
     }
 
+    if (!user?.id) {
+      Alert.alert('Error', 'Please log in to create a listing');
+      return;
+    }
+
     setLoading(true);
     try {
-      // If selling to a specific buyer, create a direct listing
-      if (buyerId && user?.id) {
-        // Create seller listing that matches buyer requirements
-        // In a real implementation, this would create an order or listing
+      // Check if user already has a seller listing
+      const existingSeller = await supabaseDatabaseService.getSellerByUserId(user.id);
+
+      if (existingSeller) {
+        // Update existing seller listing
+        await supabaseDatabaseService.updateSeller(user.id, {
+          name: plantName.trim(),
+          pricePerUnit: price,
+          availableEnergy: energy,
+          greenEnergy: greenEnergy,
+          location: userLocation,
+          status: 'active',
+        });
+      } else {
+        // Create new seller listing
+        await supabaseDatabaseService.createSeller({
+          userId: user.id,
+          name: plantName.trim(),
+          pricePerUnit: price,
+          availableEnergy: energy,
+          greenEnergy: greenEnergy,
+          location: userLocation,
+        });
+      }
+
+      // If selling to a specific buyer, notify them (placeholder for now)
+      if (buyerId && buyerName) {
         Alert.alert(
           'Success',
-          `Energy listing created for ${buyerName || 'buyer'}. They will be notified.`,
+          `Energy listing created for ${buyerName}. They will be notified.`,
           [
             {
               text: 'OK',
@@ -103,10 +168,9 @@ export default function SellEnergyScreen({ navigation, route }: Props) {
           ]
         );
       } else {
-        // Create general seller listing
         Alert.alert(
           'Success',
-          'Your energy listing has been created and will be visible to buyers.',
+          'Your energy listing has been created and is now visible to buyers in the marketplace!',
           [
             {
               text: 'OK',
@@ -133,348 +197,610 @@ export default function SellEnergyScreen({ navigation, route }: Props) {
   const totalAmount = parseFloat(energyAmount) * parseFloat(pricePerUnit) || 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <LinearGradient
-        colors={['#f59e0b', '#d97706']}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.headerContainer}>
           <TouchableOpacity
-            style={styles.backButton}
             onPress={() => navigation.goBack()}
+            style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#ffffff" />
+            <Ionicons name="arrow-back" size={24} color="#1e293b" />
           </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
+          <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Sell Energy</Text>
             <Text style={styles.headerSubtitle}>
               {buyerName ? `To ${buyerName}` : 'List your energy for sale'}
             </Text>
           </View>
         </View>
-      </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Buyer Info Card (if selling to specific buyer) */}
-        {buyerId && buyerName && (
-          <View style={styles.buyerInfoCard}>
-            <View style={styles.buyerInfoHeader}>
-              <MaterialCommunityIcons name="account-arrow-down" size={24} color="#f59e0b" />
-              <Text style={styles.buyerInfoTitle}>Selling to {buyerName}</Text>
-            </View>
-            {maxPricePerUnit && (
-              <Text style={styles.buyerInfoText}>
-                Max Price: {formatCurrency(maxPricePerUnit)}/kWh
-              </Text>
-            )}
-            {energyNeeded && (
-              <Text style={styles.buyerInfoText}>
-                Energy Needed: {formatEnergy(energyNeeded)}
-              </Text>
-            )}
-          </View>
-        )}
-
-        {/* Site/Meter Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Site/Meter</Text>
-          {meters.length === 0 ? (
-            <View style={styles.emptyMetersCard}>
-              <MaterialCommunityIcons name="home-off" size={48} color="#d1d5db" />
-              <Text style={styles.emptyMetersText}>No meters registered</Text>
-              <Text style={styles.emptyMetersSubtext}>
-                Register a meter first to sell energy
-              </Text>
-              <TouchableOpacity
-                style={styles.registerButton}
-                onPress={() => navigation.navigate('MeterRegistration')}
-              >
-                <Text style={styles.registerButtonText}>Register Meter</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.meterScroll}>
-              {meters.map((meter) => (
-                <TouchableOpacity
-                  key={meter.id}
-                  style={[
-                    styles.meterCard,
-                    selectedMeterId === meter.id && styles.meterCardSelected,
-                  ]}
-                  onPress={() => setSelectedMeterId(meter.id)}
-                >
-                  <MaterialCommunityIcons
-                    name="home-city"
-                    size={24}
-                    color={selectedMeterId === meter.id ? '#f59e0b' : '#6b7280'}
-                  />
-                  <Text
-                    style={[
-                      styles.meterName,
-                      selectedMeterId === meter.id && styles.meterNameSelected,
-                    ]}
-                  >
-                    {meter.discomName}
-                  </Text>
-                  <Text style={styles.meterNumber}>{meter.consumerNumber}</Text>
-                  {selectedMeterId === meter.id && (
-                    <View style={styles.selectedBadge}>
-                      <Ionicons name="checkmark-circle" size={20} color="#f59e0b" />
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={styles.content}>
+            {/* Buyer Info Card (if selling to specific buyer) */}
+            {buyerId && buyerName && (
+              <View style={styles.buyerInfoCard}>
+                <View style={styles.buyerInfoHeader}>
+                  <View style={styles.buyerIconContainer}>
+                    <MaterialCommunityIcons name="account-arrow-down" size={22} color="#0ea5e9" />
+                  </View>
+                  <View style={styles.buyerInfoTextContainer}>
+                    <Text style={styles.buyerInfoTitle}>Selling to {buyerName}</Text>
+                    <View style={styles.buyerInfoDetails}>
+                      {maxPricePerUnit && (
+                        <Text style={styles.buyerInfoText}>
+                          Max: {formatCurrency(maxPricePerUnit)}/kWh
+                        </Text>
+                      )}
+                      {energyNeeded && (
+                        <Text style={styles.buyerInfoText}>
+                          Need: {formatEnergy(energyNeeded)}
+                        </Text>
+                      )}
                     </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        {/* Energy Amount */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Energy Amount</Text>
-          <View style={styles.inputContainer}>
-            <MaterialCommunityIcons name="lightning-bolt" size={24} color="#f59e0b" />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter energy amount (kWh)"
-              value={energyAmount}
-              onChangeText={setEnergyAmount}
-              keyboardType="decimal-pad"
-              editable={!buyerId || !energyNeeded}
-            />
-            <Text style={styles.inputUnit}>kWh</Text>
-          </View>
-          {buyerId && energyNeeded && (
-            <Text style={styles.hintText}>
-              Buyer needs {formatEnergy(energyNeeded)}. You can sell up to this amount.
-            </Text>
-          )}
-        </View>
-
-        {/* Price Per Unit */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Price Per Unit</Text>
-          <View style={styles.inputContainer}>
-            <MaterialCommunityIcons name="currency-inr" size={24} color="#f59e0b" />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter price per kWh"
-              value={pricePerUnit}
-              onChangeText={setPricePerUnit}
-              keyboardType="decimal-pad"
-            />
-            <Text style={styles.inputUnit}>₹/kWh</Text>
-          </View>
-          {buyerId && maxPricePerUnit && (
-            <Text style={styles.hintText}>
-              Buyer's maximum: {formatCurrency(maxPricePerUnit)}/kWh
-            </Text>
-          )}
-        </View>
-
-        {/* Delivery Window (Optional) */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Delivery Window (Optional)</Text>
-          <View style={styles.inputContainer}>
-            <MaterialCommunityIcons name="clock-outline" size={24} color="#6b7280" />
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., 6:00 AM - 8:00 PM"
-              value={deliveryWindow}
-              onChangeText={setDeliveryWindow}
-            />
-          </View>
-        </View>
-
-        {/* Summary Card */}
-        {energyAmount && pricePerUnit && (
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Order Summary</Text>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Energy Amount:</Text>
-              <Text style={styles.summaryValue}>{formatEnergy(parseFloat(energyAmount) || 0)}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Price per Unit:</Text>
-              <Text style={styles.summaryValue}>{formatCurrency(parseFloat(pricePerUnit) || 0)}</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryTotalLabel}>Total Amount:</Text>
-              <Text style={styles.summaryTotalValue}>{formatCurrency(totalAmount)}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={handleSellEnergy}
-          disabled={loading || !selectedMeterId || !energyAmount || !pricePerUnit}
-        >
-          <LinearGradient
-            colors={['#f59e0b', '#d97706']}
-            style={styles.submitButtonGradient}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="cash-check" size={24} color="#ffffff" />
-                <Text style={styles.submitButtonText}>
-                  {buyerId ? 'Sell to Buyer' : 'List Energy for Sale'}
-                </Text>
-              </>
+                  </View>
+                </View>
+              </View>
             )}
-          </LinearGradient>
-        </TouchableOpacity>
 
-        <View style={{ height: 20 }} />
-      </ScrollView>
-    </SafeAreaView>
+            {/* Main Form Card */}
+            <View style={styles.formCard}>
+              <View style={styles.formHeaderRow}>
+                <View style={styles.formIconContainer}>
+                  <LinearGradient
+                    colors={['#0ea5e9', '#0284c7']}
+                    style={styles.formIconGradient}
+                  >
+                    <MaterialCommunityIcons name="solar-power" size={28} color="#ffffff" />
+                  </LinearGradient>
+                </View>
+                <View style={styles.formHeaderText}>
+                  <Text style={styles.formSectionTitle}>Energy Listing Details</Text>
+                  <Text style={styles.formHelperText}>Fill in your solar plant information</Text>
+                </View>
+              </View>
+
+              {/* Solar Plant Name Input */}
+              <View style={styles.inputCard}>
+                <View style={styles.inputLabelRow}>
+                  <MaterialCommunityIcons name="solar-panel" size={18} color="#0ea5e9" />
+                  <Text style={styles.inputLabel}>Solar Plant Name *</Text>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your solar plant/site name"
+                  placeholderTextColor="#94a3b8"
+                  value={plantName}
+                  onChangeText={setPlantName}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              {/* Green Energy Toggle */}
+              <View style={styles.toggleCard}>
+                <View style={styles.toggleInfo}>
+                  <View style={styles.toggleIconContainer}>
+                    <MaterialCommunityIcons name="leaf" size={20} color="#0ea5e9" />
+                  </View>
+                  <View style={styles.toggleTextContainer}>
+                    <Text style={styles.toggleTitle}>Green Energy</Text>
+                    <Text style={styles.toggleSubtitle}>Certified renewable source</Text>
+                  </View>
+                </View>
+                <Switch
+                  value={greenEnergy}
+                  onValueChange={setGreenEnergy}
+                  trackColor={{ false: '#e5e7eb', true: '#7dd3fc' }}
+                  thumbColor={greenEnergy ? '#0ea5e9' : '#9ca3af'}
+                />
+              </View>
+
+              {/* Energy Amount Input */}
+              <View style={styles.inputCard}>
+                <View style={styles.inputLabelRow}>
+                  <MaterialCommunityIcons name="lightning-bolt" size={18} color="#0ea5e9" />
+                  <Text style={styles.inputLabel}>Energy Amount *</Text>
+                </View>
+                <View style={styles.inputWithUnit}>
+                  <TextInput
+                    style={[styles.input, styles.inputFlex]}
+                    placeholder="Enter energy amount"
+                    placeholderTextColor="#94a3b8"
+                    value={energyAmount}
+                    onChangeText={setEnergyAmount}
+                    keyboardType="decimal-pad"
+                    editable={!buyerId || !energyNeeded}
+                  />
+                  <View style={styles.unitBadge}>
+                    <Text style={styles.unitText}>kWh</Text>
+                  </View>
+                </View>
+                {buyerId && energyNeeded && (
+                  <Text style={styles.inputHint}>
+                    Buyer needs {formatEnergy(energyNeeded)}
+                  </Text>
+                )}
+              </View>
+
+              {/* Price Per Unit Input */}
+              <View style={styles.inputCard}>
+                <View style={styles.inputLabelRow}>
+                  <MaterialCommunityIcons name="currency-inr" size={18} color="#0ea5e9" />
+                  <Text style={styles.inputLabel}>Price Per Unit *</Text>
+                </View>
+                <View style={styles.inputWithUnit}>
+                  <TextInput
+                    style={[styles.input, styles.inputFlex]}
+                    placeholder="Enter price per kWh"
+                    placeholderTextColor="#94a3b8"
+                    value={pricePerUnit}
+                    onChangeText={setPricePerUnit}
+                    keyboardType="decimal-pad"
+                  />
+                  <View style={styles.unitBadge}>
+                    <Text style={styles.unitText}>₹/kWh</Text>
+                  </View>
+                </View>
+                {buyerId && maxPricePerUnit && (
+                  <Text style={styles.inputHint}>
+                    Buyer's max: {formatCurrency(maxPricePerUnit)}/kWh
+                  </Text>
+                )}
+              </View>
+
+              {/* Delivery Window Input */}
+              <View style={styles.inputCard}>
+                <View style={styles.inputLabelRow}>
+                  <MaterialCommunityIcons name="clock-outline" size={18} color="#0ea5e9" />
+                  <Text style={styles.inputLabel}>Delivery Window (Optional)</Text>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g., 6:00 AM - 8:00 PM"
+                  placeholderTextColor="#94a3b8"
+                  value={deliveryWindow}
+                  onChangeText={setDeliveryWindow}
+                />
+              </View>
+            </View>
+
+            {/* Meter Selection Card */}
+            <View style={styles.meterCard}>
+              <View style={styles.formHeaderRow}>
+                <View style={styles.formIconContainer}>
+                  <View style={styles.meterIconBg}>
+                    <MaterialCommunityIcons name="home-city" size={22} color="#0ea5e9" />
+                  </View>
+                </View>
+                <View style={styles.formHeaderText}>
+                  <Text style={styles.formSectionTitle}>Select Site/Meter</Text>
+                  <Text style={styles.formHelperText}>Choose registered meter</Text>
+                </View>
+              </View>
+
+              {meters.length === 0 ? (
+                <View style={styles.emptyMetersContainer}>
+                  <MaterialCommunityIcons name="home-off" size={48} color="#cbd5e1" />
+                  <Text style={styles.emptyMetersText}>No meters registered</Text>
+                  <Text style={styles.emptyMetersSubtext}>
+                    Register a meter first to sell energy
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.registerMeterButton}
+                    onPress={() => navigation.navigate('MeterRegistration')}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={['#0ea5e9', '#0284c7']}
+                      style={styles.registerMeterButtonGradient}
+                    >
+                      <Ionicons name="add-circle" size={20} color="#ffffff" />
+                      <Text style={styles.registerMeterButtonText}>Register Meter</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.meterScroll}>
+                  {meters.map((meter) => (
+                    <TouchableOpacity
+                      key={meter.id}
+                      style={[
+                        styles.meterItem,
+                        selectedMeterId === meter.id && styles.meterItemSelected,
+                      ]}
+                      onPress={() => setSelectedMeterId(meter.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[
+                        styles.meterItemIcon,
+                        selectedMeterId === meter.id && styles.meterItemIconSelected,
+                      ]}>
+                        <MaterialCommunityIcons
+                          name="home-city"
+                          size={24}
+                          color={selectedMeterId === meter.id ? '#ffffff' : '#0ea5e9'}
+                        />
+                      </View>
+                      <Text
+                        style={[
+                          styles.meterName,
+                          selectedMeterId === meter.id && styles.meterNameSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {meter.discomName}
+                      </Text>
+                      <Text style={styles.meterNumber}>{meter.consumerNumber}</Text>
+                      {selectedMeterId === meter.id && (
+                        <View style={styles.selectedBadge}>
+                          <Ionicons name="checkmark-circle" size={20} color="#0ea5e9" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+
+            {/* Summary Card */}
+            {energyAmount && pricePerUnit && (
+              <View style={styles.summaryCard}>
+                <View style={styles.summaryHeader}>
+                  <View style={styles.summaryIconContainer}>
+                    <MaterialCommunityIcons name="clipboard-check" size={22} color="#0ea5e9" />
+                  </View>
+                  <Text style={styles.summaryTitle}>Order Summary</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Energy Amount</Text>
+                  <Text style={styles.summaryValue}>{formatEnergy(parseFloat(energyAmount) || 0)}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Price per Unit</Text>
+                  <Text style={styles.summaryValue}>{formatCurrency(parseFloat(pricePerUnit) || 0)}</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryTotalLabel}>Total Amount</Text>
+                  <Text style={styles.summaryTotalValue}>{formatCurrency(totalAmount)}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Submit Button */}
+            <TouchableOpacity
+              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+              onPress={handleSellEnergy}
+              disabled={loading || !selectedMeterId || !energyAmount || !pricePerUnit}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#0ea5e9', '#0284c7']}
+                style={styles.submitButtonGradient}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="cash-check" size={24} color="#ffffff" />
+                    <Text style={styles.submitButtonText}>
+                      {buyerId ? 'Sell to Buyer' : 'List Energy for Sale'}
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={{ height: 32 }} />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
   },
-  header: {
-    padding: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  headerContent: {
+  // Header
+  headerContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   backButton: {
-    marginRight: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  headerTextContainer: {
+  headerContent: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 4,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#fef3c7',
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '500',
   },
-  content: {
+  scrollView: {
     flex: 1,
   },
+  content: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+  },
+  // Buyer Info Card
   buyerInfoCard: {
     backgroundColor: '#ffffff',
-    margin: 16,
+    borderRadius: 20,
     padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    marginBottom: 16,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
   },
   buyerInfoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 8,
+  },
+  buyerIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buyerInfoTextContainer: {
+    flex: 1,
   },
   buyerInfoTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  buyerInfoText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  section: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-  sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  emptyMetersCard: {
-    backgroundColor: '#ffffff',
-    padding: 32,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  emptyMetersText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 12,
+    color: '#1e293b',
     marginBottom: 4,
   },
-  emptyMetersSubtext: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
+  buyerInfoDetails: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  buyerInfoText: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  // Form Card
+  formCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
     marginBottom: 16,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  registerButton: {
-    backgroundColor: '#f59e0b',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+  formHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  registerButtonText: {
-    color: '#ffffff',
+  formIconContainer: {
+    marginRight: 14,
+  },
+  formIconGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  formHeaderText: {
+    flex: 1,
+  },
+  formSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  formHelperText: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  // Input Card
+  inputCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  inputLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  inputLabel: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#334155',
   },
-  meterScroll: {
-    marginHorizontal: -16,
+  input: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: '#1e293b',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
   },
+  inputFlex: {
+    flex: 1,
+  },
+  inputWithUnit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  unitBadge: {
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+  },
+  unitText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0284c7',
+  },
+  inputHint: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  // Toggle Card
+  toggleCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  toggleInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  toggleIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  toggleTextContainer: {
+    flex: 1,
+  },
+  toggleTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  toggleSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  // Meter Card
   meterCard: {
     backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 16,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  meterIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  meterScroll: {
+    marginTop: 4,
+  },
+  meterItem: {
+    backgroundColor: '#f8fafc',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginRight: 12,
-    width: 160,
+    width: 150,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderColor: '#e2e8f0',
   },
-  meterCardSelected: {
-    borderColor: '#f59e0b',
-    backgroundColor: '#fffbeb',
+  meterItemSelected: {
+    borderColor: '#0ea5e9',
+    backgroundColor: '#e0f2fe',
+  },
+  meterItemIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  meterItemIconSelected: {
+    backgroundColor: '#0ea5e9',
   },
   meterName: {
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
-    marginTop: 8,
     textAlign: 'center',
+    marginBottom: 4,
   },
   meterNameSelected: {
-    color: '#f59e0b',
+    color: '#0284c7',
   },
   meterNumber: {
     fontSize: 12,
-    color: '#6b7280',
-    marginTop: 4,
+    color: '#64748b',
     textAlign: 'center',
   },
   selectedBadge: {
@@ -482,106 +808,129 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
   },
-  inputContainer: {
+  emptyMetersContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  emptyMetersText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+  },
+  emptyMetersSubtext: {
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  registerMeterButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  registerMeterButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111827',
-  },
-  inputUnit: {
+  registerMeterButtonText: {
+    color: '#ffffff',
     fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  hintText: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
+  // Summary Card
   summaryCard: {
     backgroundColor: '#ffffff',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 16,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  summaryIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   summaryTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 12,
+    fontWeight: '700',
+    color: '#1e293b',
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#64748b',
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: '#1e293b',
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#e2e8f0',
     marginVertical: 12,
   },
   summaryTotalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#1e293b',
   },
   summaryTotalValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#f59e0b',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0ea5e9',
   },
+  // Submit Button
   submitButton: {
-    margin: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: '#0ea5e9',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   submitButtonDisabled: {
-    opacity: 0.6,
+    shadowOpacity: 0.1,
+    elevation: 2,
   },
   submitButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: 18,
+    gap: 10,
   },
   submitButtonText: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
   },
 });
-

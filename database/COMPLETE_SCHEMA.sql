@@ -128,6 +128,34 @@ CREATE TABLE IF NOT EXISTS public.sellers (
   rating DECIMAL(3, 2) DEFAULT 0 CHECK (rating >= 0 AND rating <= 5),
   total_sales DECIMAL(10, 2) DEFAULT 0,
   green_energy BOOLEAN DEFAULT false,
+  -- Energy metrics
+  avg_generation DECIMAL(10, 2) DEFAULT 0,
+  peak_generation DECIMAL(10, 2) DEFAULT 0,
+  net_export DECIMAL(10, 2) DEFAULT 0,
+  total_energy_sold DECIMAL(10, 2) DEFAULT 0,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ============================================
+-- BUYERS TABLE (For Energy Trading)
+-- ============================================
+CREATE TABLE IF NOT EXISTS public.buyers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  location JSONB, -- { lat: number, lng: number, address?: string }
+  max_price_per_unit DECIMAL(10, 2) NOT NULL,
+  energy_needed DECIMAL(10, 2) NOT NULL,
+  preferred_delivery_window TEXT, -- e.g., "6:00 AM - 8:00 PM"
+  rating DECIMAL(3, 2) DEFAULT 0 CHECK (rating >= 0 AND rating <= 5),
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'fulfilled')),
+  -- Energy metrics
+  avg_consumption DECIMAL(10, 2) DEFAULT 0,
+  peak_consumption DECIMAL(10, 2) DEFAULT 0,
+  total_energy_bought DECIMAL(10, 2) DEFAULT 0,
+  green_energy_preference BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -248,6 +276,10 @@ CREATE INDEX IF NOT EXISTS idx_kyc_data_status ON public.kyc_data(status);
 CREATE INDEX IF NOT EXISTS idx_meters_user_id ON public.meters(user_id);
 CREATE INDEX IF NOT EXISTS idx_sellers_user_id ON public.sellers(user_id);
 CREATE INDEX IF NOT EXISTS idx_sellers_location ON public.sellers USING GIN(location);
+CREATE INDEX IF NOT EXISTS idx_sellers_status ON public.sellers(status);
+CREATE INDEX IF NOT EXISTS idx_buyers_user_id ON public.buyers(user_id);
+CREATE INDEX IF NOT EXISTS idx_buyers_status ON public.buyers(status);
+CREATE INDEX IF NOT EXISTS idx_buyers_location ON public.buyers USING GIN(location);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_user_id ON public.withdrawals(user_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_request_id ON public.withdrawals(request_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON public.withdrawals(status);
@@ -292,7 +324,8 @@ ORDER BY table_name, ordinal_position;
 --   7. kyc_documents - KYC document submissions (frontend)
 --   8. kyc_data - KYC data storage (backend)
 --   9. trading_bot_configs - Trading bot settings
---   10. sellers - Energy sellers for marketplace
---   11. withdrawals - Withdrawal requests
---   12. bank_accounts - User bank account details
+--   10. sellers - Energy sellers for marketplace (with energy metrics)
+--   11. buyers - Energy buyers for marketplace (with energy metrics)
+--   12. withdrawals - Withdrawal requests
+--   13. bank_accounts - User bank account details
 
