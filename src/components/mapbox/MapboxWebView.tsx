@@ -5,6 +5,9 @@ import Constants from 'expo-constants';
 
 const { width, height } = Dimensions.get('window');
 
+// Default location (Pune, India) for fallback
+const DEFAULT_LOCATION = { lat: 18.5204, lng: 73.8567 };
+
 interface MapboxWebViewProps {
   accessToken: string;
   center: { lat: number; lng: number };
@@ -56,8 +59,8 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
       const sellersData = (showSellers ? sellers : []).map((seller) => ({
         id: seller.id,
         name: seller.name,
-        lat: seller.location.lat,
-        lng: seller.location.lng,
+        lat: seller.location?.lat || DEFAULT_LOCATION.lat,
+        lng: seller.location?.lng || DEFAULT_LOCATION.lng,
         price: seller.pricePerUnit,
         availableEnergy: seller.availableEnergy || 0,
         rating: seller.rating || 0,
@@ -69,8 +72,8 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
       const buyersData = (showBuyers ? buyers : []).map((buyer) => ({
         id: buyer.id,
         name: buyer.name,
-        lat: buyer.location.lat,
-        lng: buyer.location.lng,
+        lat: buyer.location?.lat || DEFAULT_LOCATION.lat,
+        lng: buyer.location?.lng || DEFAULT_LOCATION.lng,
         maxPrice: buyer.maxPricePerUnit,
         energyNeeded: buyer.energyNeeded,
         rating: buyer.rating || 0,
@@ -222,70 +225,44 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
         
         // Create detailed popup with dark theme
         const popupContent = \`
-          <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 220px; background: #1a1a2e; padding: 16px; border-radius: 16px; border: 1px solid #2a2a4e;">
-            <h3 style="margin: 0 0 14px 0; color: #f8fafc; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-              <span style="width: 32px; height: 32px; background: rgba(59, 130, 246, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center;">👤</span>
+          <div style="font-family: system-ui, -apple-system, sans-serif; width: 140px; background: #64748b; padding: 8px; border-radius: 8px; border: 1px solid #94a3b8;">
+            <h3 style="margin: 0 0 6px 0; color: #f8fafc; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
               \${seller.name}
             </h3>
-            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
-              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
-                <span style="width: 28px; height: 28px; background: rgba(59, 130, 246, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">💰</span>
-                <div style="flex: 1;">
-                  <div style="color: #94a3b8; font-size: 11px;">Price</div>
-                  <div style="color: #f1f5f9; font-weight: 600;">₹\${seller.price}/kWh</div>
-                </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
+              <div style="display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.15); padding: 5px 6px; border-radius: 6px;">
+                <span style="font-size: 10px;">💰</span>
+                <span style="color: #f1f5f9; font-weight: 600;">₹\${seller.price}/kWh</span>
               </div>
               \${seller.availableEnergy ? \`
-              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
-                <span style="width: 28px; height: 28px; background: rgba(245, 158, 11, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">⚡</span>
-                <div style="flex: 1;">
-                  <div style="color: #94a3b8; font-size: 11px;">Available</div>
-                  <div style="color: #f1f5f9; font-weight: 600;">\${seller.availableEnergy} kWh</div>
-                </div>
+              <div style="display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.15); padding: 5px 6px; border-radius: 6px;">
+                <span style="font-size: 10px;">⚡</span>
+                <span style="color: #f1f5f9; font-weight: 600;">\${seller.availableEnergy} kWh</span>
               </div>
               \` : ''}
               \${seller.rating ? \`
-              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
-                <span style="width: 28px; height: 28px; background: rgba(251, 191, 36, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">⭐</span>
-                <div style="flex: 1;">
-                  <div style="color: #94a3b8; font-size: 11px;">Rating</div>
-                  <div style="color: #f1f5f9; font-weight: 600;">\${seller.rating.toFixed(1)}</div>
-                </div>
-              </div>
-              \` : ''}
-              \${seller.distance ? \`
-              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
-                <span style="width: 28px; height: 28px; background: rgba(16, 185, 129, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">📍</span>
-                <div style="flex: 1;">
-                  <div style="color: #94a3b8; font-size: 11px;">Distance</div>
-                  <div style="color: #f1f5f9; font-weight: 600;">\${seller.distance.toFixed(1)} km</div>
-                </div>
+              <div style="display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.15); padding: 5px 6px; border-radius: 6px;">
+                <span style="font-size: 10px;">⭐</span>
+                <span style="color: #f1f5f9; font-weight: 600;">\${seller.rating.toFixed(1)}</span>
               </div>
               \` : ''}
             </div>
             <button 
               onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type: 'MARKER_CLICK', id: '\${seller.id}', markerType: 'seller'}))"
               style="
-                margin-top: 14px;
+                margin-top: 6px;
                 width: 100%;
-                padding: 12px 16px;
+                padding: 6px 8px;
                 background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
                 color: white;
                 border: none;
-                border-radius: 10px;
-                font-weight: 700;
-                font-size: 14px;
+                border-radius: 6px;
+                font-weight: 600;
+                font-size: 10px;
                 cursor: pointer;
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
               "
-              onmouseover="this.style.transform='scale(1.02)'"
-              onmouseout="this.style.transform='scale(1)'"
             >
-              👁️ View Details
+              View
             </button>
           </div>
         \`;
@@ -340,77 +317,42 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
         
         // Create detailed popup with dark theme
         const popupContent = \`
-          <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 220px; background: #1a1a2e; padding: 16px; border-radius: 16px; border: 1px solid #2a2a4e;">
-            <h3 style="margin: 0 0 14px 0; color: #f8fafc; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-              <span style="width: 32px; height: 32px; background: rgba(245, 158, 11, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center;">👤</span>
+          <div style="font-family: system-ui, -apple-system, sans-serif; width: 140px; background: #64748b; padding: 8px; border-radius: 8px; border: 1px solid #94a3b8;">
+            <h3 style="margin: 0 0 6px 0; color: #f8fafc; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
               \${buyer.name}
             </h3>
-            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
-              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
-                <span style="width: 28px; height: 28px; background: rgba(59, 130, 246, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">💰</span>
-                <div style="flex: 1;">
-                  <div style="color: #94a3b8; font-size: 11px;">Max Price</div>
-                  <div style="color: #f1f5f9; font-weight: 600;">₹\${buyer.maxPrice}/kWh</div>
-                </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
+              <div style="display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.15); padding: 5px 6px; border-radius: 6px;">
+                <span style="font-size: 10px;">💰</span>
+                <span style="color: #f1f5f9; font-weight: 600;">₹\${buyer.maxPrice}/kWh</span>
               </div>
-              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
-                <span style="width: 28px; height: 28px; background: rgba(245, 158, 11, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">⚡</span>
-                <div style="flex: 1;">
-                  <div style="color: #94a3b8; font-size: 11px;">Energy Needed</div>
-                  <div style="color: #f1f5f9; font-weight: 600;">\${buyer.energyNeeded} kWh</div>
-                </div>
+              <div style="display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.15); padding: 5px 6px; border-radius: 6px;">
+                <span style="font-size: 10px;">⚡</span>
+                <span style="color: #f1f5f9; font-weight: 600;">\${buyer.energyNeeded} kWh</span>
               </div>
               \${buyer.rating ? \`
-              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
-                <span style="width: 28px; height: 28px; background: rgba(251, 191, 36, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">⭐</span>
-                <div style="flex: 1;">
-                  <div style="color: #94a3b8; font-size: 11px;">Rating</div>
-                  <div style="color: #f1f5f9; font-weight: 600;">\${buyer.rating.toFixed(1)}</div>
-                </div>
-              </div>
-              \` : ''}
-              \${buyer.distance ? \`
-              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
-                <span style="width: 28px; height: 28px; background: rgba(16, 185, 129, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">📍</span>
-                <div style="flex: 1;">
-                  <div style="color: #94a3b8; font-size: 11px;">Distance</div>
-                  <div style="color: #f1f5f9; font-weight: 600;">\${buyer.distance.toFixed(1)} km</div>
-                </div>
-              </div>
-              \` : ''}
-              \${buyer.preferredDeliveryWindow ? \`
-              <div style="display: flex; align-items: center; gap: 10px; background: rgba(42, 42, 78, 0.5); padding: 10px 12px; border-radius: 10px;">
-                <span style="width: 28px; height: 28px; background: rgba(139, 92, 246, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">🕐</span>
-                <div style="flex: 1;">
-                  <div style="color: #94a3b8; font-size: 11px;">Delivery Window</div>
-                  <div style="color: #f1f5f9; font-weight: 600;">\${buyer.preferredDeliveryWindow}</div>
-                </div>
+              <div style="display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.15); padding: 5px 6px; border-radius: 6px;">
+                <span style="font-size: 10px;">⭐</span>
+                <span style="color: #f1f5f9; font-weight: 600;">\${buyer.rating.toFixed(1)}</span>
               </div>
               \` : ''}
             </div>
             <button 
               onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type: 'MARKER_CLICK', id: '\${buyer.id}', markerType: 'buyer'}))"
               style="
-                margin-top: 14px;
+                margin-top: 6px;
                 width: 100%;
-                padding: 12px 16px;
+                padding: 6px 8px;
                 background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
                 color: white;
                 border: none;
-                border-radius: 10px;
-                font-weight: 700;
-                font-size: 14px;
+                border-radius: 6px;
+                font-weight: 600;
+                font-size: 10px;
                 cursor: pointer;
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
               "
-              onmouseover="this.style.transform='scale(1.02)'"
-              onmouseout="this.style.transform='scale(1)'"
             >
-              👁️ View Details
+              View
             </button>
           </div>
         \`;
@@ -476,8 +418,8 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
     const initialSellers = ${JSON.stringify((sellers || []).map(s => ({
     id: s.id,
     name: s.name,
-    lat: s.location.lat,
-    lng: s.location.lng,
+    lat: s.location?.lat || DEFAULT_LOCATION.lat,
+    lng: s.location?.lng || DEFAULT_LOCATION.lng,
     price: s.pricePerUnit,
     availableEnergy: s.availableEnergy || 0,
     rating: s.rating || 0,
@@ -488,8 +430,8 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
     const initialBuyers = ${JSON.stringify((buyers || []).map(b => ({
     id: b.id,
     name: b.name,
-    lat: b.location.lat,
-    lng: b.location.lng,
+    lat: b.location?.lat || DEFAULT_LOCATION.lat,
+    lng: b.location?.lng || DEFAULT_LOCATION.lng,
     maxPrice: b.maxPricePerUnit,
     energyNeeded: b.energyNeeded,
     rating: b.rating || 0,

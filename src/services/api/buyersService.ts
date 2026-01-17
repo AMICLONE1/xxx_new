@@ -1,6 +1,7 @@
-import { apiClient } from './client';
 import { Buyer, ApiResponse } from '@/types';
-import { getErrorMessage } from '@/utils/errorUtils';
+import { supabaseDatabaseService } from '@/services/supabase/databaseService';
+import { logError } from '@/utils/errorUtils';
+import { calculateDistance } from '@/utils/helpers';
 
 export interface CreateBuyerListingRequest {
   maxPricePerUnit: number;
@@ -17,53 +18,162 @@ export interface SearchBuyersFilters {
 }
 
 class BuyersService {
+  /**
+   * Get buyers from Supabase with optional filters
+   */
   async getBuyers(filters?: SearchBuyersFilters): Promise<ApiResponse<Buyer[]>> {
     try {
-      const params = new URLSearchParams();
-      
-      if (filters?.location) {
-        params.append('location', JSON.stringify(filters.location));
-      }
+      // Fetch all active buyers from Supabase
+      let buyers = await supabaseDatabaseService.getActiveBuyers();
+
+      // Apply filters
       if (filters?.maxPrice) {
-        params.append('maxPrice', filters.maxPrice.toString());
-      }
-      if (filters?.minEnergy) {
-        params.append('minEnergy', filters.minEnergy.toString());
-      }
-      if (filters?.status) {
-        params.append('status', filters.status);
+        buyers = buyers.filter(b => b.maxPricePerUnit <= filters.maxPrice!);
       }
 
-      const queryString = params.toString();
-      const url = `/marketplace/buyers${queryString ? `?${queryString}` : ''}`;
-      
-      return apiClient.get(url);
-    } catch (error: unknown) {
-      if (__DEV__) {
-        console.log('[API] Backend unavailable for buyers:', error instanceof Error && 'code' in error ? (error as { code: string }).code : 'NETWORK_ERROR');
+      if (filters?.minEnergy) {
+        buyers = buyers.filter(b => b.energyNeeded >= filters.minEnergy!);
       }
+
+      // Calculate distance if location is provided
+      if (filters?.location) {
+        buyers = buyers.map(buyer => {
+          // Only calculate distance if buyer has valid location
+          if (buyer.location && buyer.location.lat && buyer.location.lng) {
+            const distance = calculateDistance(
+              filters.location!.lat,
+              filters.location!.lng,
+              buyer.location.lat,
+              buyer.location.lng
+            );
+            return { ...buyer, distance };
+          }
+          // Buyer without location - don't exclude them
+          return { ...buyer, distance: undefined };
+        });
+
+        // Filter by radius if specified - don't filter out buyers without location
+        if (filters.location.radius) {
+          const beforeFilter = buyers.length;
+          buyers = buyers.filter(b => b.distance === undefined || b.distance <= filters.location!.radius!);
+          if (__DEV__) {
+            console.log(`[BuyersService] Radius filter: ${beforeFilter} -> ${buyers.length} (radius: ${filters.location.radius}km)`);
+          }
+        }
+
+        // Sort by distance (buyers without distance go to the end)
+        buyers.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+      }
+
+      if (__DEV__) {
+        console.log(`[BuyersService] Fetched ${buyers.length} buyers from Supabase`);
+      }
+
+      return {
+        success: true,
+        data: buyers,
+      };
+    } catch (error: unknown) {
+      logError('BuyersService.getBuyers', error);
       return {
         success: false,
-        error: getErrorMessage(error) || 'Failed to fetch buyers. Backend API may be unavailable.',
+        error: 'Failed to fetch buyers from database.',
+        data: [],
       };
     }
   }
 
+  /**
+   * Get a single buyer by ID
+   */
   async getBuyer(buyerId: string): Promise<ApiResponse<Buyer>> {
-    return apiClient.get(`/marketplace/buyers/${buyerId}`);
+    try {
+      const buyer = await supabaseDatabaseService.getBuyerByUserId(buyerId);
+      if (!buyer) {
+        return {
+          success: false,
+          error: 'Buyer not found',
+        };
+      }
+      return {
+        success: true,
+        data: buyer,
+      };
+    } catch (error: unknown) {
+      logError('BuyersService.getBuyer', error);
+      return {
+        success: false,
+        error: 'Failed to fetch buyer.',
+      };
+    }
   }
 
-  async createBuyerListing(data: CreateBuyerListingRequest): Promise<ApiResponse<Buyer>> {
-    return apiClient.post('/marketplace/buyers', data);
+  /**
+   * Create a new buyer listing
+   */
+  async createBuyerListing(userId: string, data: CreateBuyerListingRequest & { name: string }): Promise<ApiResponse<Buyer>> {
+    try {
+      const buyer = await supabaseDatabaseService.createBuyer({
+        userId,
+        name: data.name,
+        location: data.location,
+        maxPricePerUnit: data.maxPricePerUnit,
+        energyNeeded: data.energyNeeded,
+        preferredDeliveryWindow: data.preferredDeliveryWindow,
+      });
+      return {
+        success: true,
+        data: buyer,
+      };
+    } catch (error: unknown) {
+      logError('BuyersService.createBuyerListing', error);
+      return {
+        success: false,
+        error: 'Failed to create buyer listing.',
+      };
+    }
   }
 
-  async updateBuyerListing(buyerId: string, data: Partial<CreateBuyerListingRequest>): Promise<ApiResponse<Buyer>> {
-    // Note: Update endpoint would need to be added to backend
-    return apiClient.put(`/marketplace/buyers/${buyerId}`, data);
+  /**
+   * Update an existing buyer listing
+   */
+  async updateBuyerListing(userId: string, data: Partial<CreateBuyerListingRequest>): Promise<ApiResponse<Buyer>> {
+    try {
+      const buyer = await supabaseDatabaseService.updateBuyer(userId, {
+        location: data.location,
+        maxPricePerUnit: data.maxPricePerUnit,
+        energyNeeded: data.energyNeeded,
+        preferredDeliveryWindow: data.preferredDeliveryWindow,
+      });
+      return {
+        success: true,
+        data: buyer,
+      };
+    } catch (error: unknown) {
+      logError('BuyersService.updateBuyerListing', error);
+      return {
+        success: false,
+        error: 'Failed to update buyer listing.',
+      };
+    }
   }
 
-  async deleteBuyerListing(buyerId: string): Promise<ApiResponse<void>> {
-    return apiClient.delete(`/marketplace/buyers/${buyerId}`);
+  /**
+   * Delete a buyer listing (set status to inactive)
+   */
+  async deleteBuyerListing(userId: string): Promise<ApiResponse<void>> {
+    try {
+      await supabaseDatabaseService.updateBuyer(userId, { status: 'inactive' });
+      return {
+        success: true,
+      };
+    } catch (error: unknown) {
+      logError('BuyersService.deleteBuyerListing', error);
+      return {
+        success: false,
+        error: 'Failed to delete buyer listing.',
+      };
+    }
   }
 }
 

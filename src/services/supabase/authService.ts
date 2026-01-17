@@ -2,6 +2,7 @@ import { supabase } from './client';
 import { User, ApiResponse, SupabaseUserProfile, UserType } from '@/types';
 import { AuthError, Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { getErrorMessage, logError, createErrorResponse } from '@/utils/errorUtils';
+import { supabaseDatabaseService } from './databaseService';
 
 // Type for Supabase OTP verification response
 interface OtpVerificationData {
@@ -254,10 +255,62 @@ class SupabaseAuthService {
         console.log('✅ User profile created successfully');
       }
 
+      // Create buyer or seller record based on userType
+      if (userType) {
+        try {
+          await this.createBuyerOrSellerRecord(userId, name || email, userType);
+          if (__DEV__) {
+            console.log(`✅ ${userType} record created successfully`);
+          }
+        } catch (buyerSellerError) {
+          // Log but don't fail signup if buyer/seller creation fails
+          if (__DEV__) {
+            console.warn(`⚠️ Failed to create ${userType} record:`, buyerSellerError);
+          }
+        }
+      }
+
       return this.mapSupabaseUserToUser(newUser);
     } catch (error: unknown) {
       logError('getOrCreateUserProfile', error);
       throw error;
+    }
+  }
+
+  /**
+   * Create buyer or seller record based on user type
+   */
+  private async createBuyerOrSellerRecord(userId: string, name: string, userType: UserType): Promise<void> {
+    if (userType === 'buyer') {
+      // Check if buyer record already exists
+      const existingBuyer = await supabaseDatabaseService.getBuyerByUserId(userId);
+      if (!existingBuyer) {
+        await supabaseDatabaseService.createBuyer({
+          userId,
+          name: name || 'Energy Buyer',
+          maxPricePerUnit: 8.0, // Default max price ₹8/kWh
+          energyNeeded: 100, // Default 100 kWh needed
+          preferredDeliveryWindow: '6:00 AM - 10:00 PM',
+          avgConsumption: 0,
+          peakConsumption: 0,
+          greenEnergyPreference: false,
+        });
+      }
+    } else if (userType === 'seller') {
+      // Check if seller record already exists
+      const existingSeller = await supabaseDatabaseService.getSellerByUserId(userId);
+      if (!existingSeller) {
+        await supabaseDatabaseService.createSeller({
+          userId,
+          name: name || 'Energy Seller',
+          pricePerUnit: 6.0, // Default price ₹6/kWh
+          availableEnergy: 0, // Will be updated based on actual generation
+          greenEnergy: true, // Assume solar by default
+          avgGeneration: 0,
+          peakGeneration: 0,
+          netExport: 0,
+        });
+      }
     }
   }
 

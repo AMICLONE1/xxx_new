@@ -71,6 +71,7 @@ export type OrderStatus =
 
 export interface Seller {
   id: string;
+  userId?: string;
   name: string;
   location: {
     lat: number;
@@ -83,6 +84,14 @@ export interface Seller {
   totalSales?: number; // kWh
   greenEnergy: boolean;
   distance?: number; // km from user
+  // Energy metrics
+  avgGeneration?: number; // Average daily generation in kWh
+  peakGeneration?: number; // Peak generation capacity in kW
+  netExport?: number; // Net energy exported in kWh
+  totalEnergySold?: number; // Total energy sold in kWh
+  status?: 'active' | 'inactive' | 'suspended';
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Buyer {
@@ -100,6 +109,11 @@ export interface Buyer {
   rating?: number; // 0-5
   status: 'active' | 'inactive' | 'fulfilled';
   distance?: number; // km from user
+  // Energy metrics
+  avgConsumption?: number; // Average daily consumption in kWh
+  peakConsumption?: number; // Peak consumption in kW
+  totalEnergyBought?: number; // Total energy purchased in kWh
+  greenEnergyPreference?: boolean; // Prefers green energy sources
   createdAt?: Date;
   updatedAt?: Date;
 }

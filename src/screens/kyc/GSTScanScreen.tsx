@@ -63,11 +63,11 @@ export default function GSTScanScreen({ navigation }: Props) {
     if (checkExpoGo && __DEV__) {
       console.log('📱 Running in Expo Go - OCR disabled');
     }
-    
+
     // Check if OCR can be used for this document
     const ocrAllowed = canUseOCR('gst');
     const docStatus = getDocumentStatus('gst');
-    
+
     if (!ocrAllowed) {
       console.log('[GSTScan] OCR not allowed, status:', docStatus);
       if (docStatus === 'verified') {
@@ -92,7 +92,7 @@ export default function GSTScanScreen({ navigation }: Props) {
   const formatDate = (text: string): string => {
     const digitsOnly = text.replace(/\D/g, '');
     const limited = digitsOnly.slice(0, 8);
-    
+
     if (limited.length <= 2) {
       return limited;
     } else if (limited.length <= 4) {
@@ -181,13 +181,13 @@ export default function GSTScanScreen({ navigation }: Props) {
     const gstinMatches = ocrText.match(GSTIN_REGEX);
     if (gstinMatches && gstinMatches.length > 0) {
       data.gstin = gstinMatches[0].toUpperCase();
-      
+
       // Extract state from GSTIN
       const stateCode = data.gstin.substring(0, 2);
       if (STATE_CODES[stateCode]) {
         data.stateJurisdiction = STATE_CODES[stateCode];
       }
-      
+
       if (__DEV__) {
         console.log('✅ GSTIN detected:', data.gstin);
       }
@@ -290,8 +290,8 @@ export default function GSTScanScreen({ navigation }: Props) {
         const month = match[2];
         const year = match[3];
         if (parseInt(day) >= 1 && parseInt(day) <= 31 &&
-            parseInt(month) >= 1 && parseInt(month) <= 12 &&
-            parseInt(year) >= 2000 && parseInt(year) <= 2099) {
+          parseInt(month) >= 1 && parseInt(month) <= 12 &&
+          parseInt(year) >= 2000 && parseInt(year) <= 2099) {
           data.dateOfRegistration = `${day}/${month}/${year}`;
           if (__DEV__) {
             console.log('✅ Date of Registration detected:', data.dateOfRegistration);
@@ -310,8 +310,8 @@ export default function GSTScanScreen({ navigation }: Props) {
           const month = dateMatch[2];
           const year = dateMatch[3];
           if (parseInt(day) >= 1 && parseInt(day) <= 31 &&
-              parseInt(month) >= 1 && parseInt(month) <= 12 &&
-              parseInt(year) >= 2000 && parseInt(year) <= 2099) {
+            parseInt(month) >= 1 && parseInt(month) <= 12 &&
+            parseInt(year) >= 2000 && parseInt(year) <= 2099) {
             data.dateOfRegistration = `${day}/${month}/${year}`;
             break;
           }
@@ -384,7 +384,7 @@ export default function GSTScanScreen({ navigation }: Props) {
       setIsManualEntry(true);
       return;
     }
-    
+
     await proceedWithUpload();
   };
 
@@ -469,14 +469,14 @@ export default function GSTScanScreen({ navigation }: Props) {
       businessAddress: '',
       stateJurisdiction: '',
     };
-    
+
     // Reset state
     setExtractedData(emptyData);
     setShowForm(false);
     setIsConfirmed(false);
     setIsManualEntry(false);
     setImageUri(null);
-    
+
     setIsProcessing(true);
     setImageUri(uri);
 
@@ -507,7 +507,7 @@ export default function GSTScanScreen({ navigation }: Props) {
       let ocrResult;
       try {
         ocrResult = await ocrService.recognizeText(uri);
-        
+
         if (__DEV__) {
           console.log('✅ GST OCR Success! Text extracted (length:', ocrResult.text.length, 'chars)');
         }
@@ -517,7 +517,7 @@ export default function GSTScanScreen({ navigation }: Props) {
         if (__DEV__) {
           console.error('❌ GST OCR Error:', ocrError instanceof Error ? ocrError.name : 'Unknown');
         }
-        
+
         // Handle Expo Go detection - silently fall back to manual entry
         if (ocrError instanceof ExpoGoDetectedError || getErrorMessage(ocrError) === 'EXPO_GO_DETECTED') {
           console.log('[GSTScan] Expo Go detected during OCR - using manual entry');
@@ -527,7 +527,7 @@ export default function GSTScanScreen({ navigation }: Props) {
           setIsProcessing(false);
           return;
         }
-        
+
         // Handle OCR not available error - silently fall back to manual entry
         if (ocrError instanceof OCRNotAvailableError) {
           console.log('[GSTScan] OCR not available - using manual entry');
@@ -537,7 +537,7 @@ export default function GSTScanScreen({ navigation }: Props) {
           setIsProcessing(false);
           return;
         }
-        
+
         // Handle generic OCR errors - silently fall back to manual entry
         console.log('[GSTScan] OCR processing error - using manual entry');
         setExtractedData(emptyData);
@@ -549,7 +549,7 @@ export default function GSTScanScreen({ navigation }: Props) {
 
       const ocrText = ocrResult.text;
       const extracted = extractGSTData(ocrText);
-      
+
       // Validate GSTIN format
       const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
       if (extracted.gstin && !gstinRegex.test(extracted.gstin)) {
@@ -558,7 +558,7 @@ export default function GSTScanScreen({ navigation }: Props) {
           console.warn('⚠️ Invalid GSTIN format detected, clearing');
         }
       }
-      
+
       if (__DEV__) {
         console.log('📊 GST Extraction Results:', {
           gstin: extracted.gstin ? 'Found' : 'Not detected',
@@ -573,16 +573,16 @@ export default function GSTScanScreen({ navigation }: Props) {
 
       setExtractedData(extracted);
       setShowForm(true);
-      
+
       const hasGSTIN = extracted.gstin && gstinRegex.test(extracted.gstin);
       setIsManualEntry(!hasGSTIN);
-      
+
       await deleteImage();
-      
+
       if (__DEV__) {
         console.log('✅ GST Form displayed with extracted data');
       }
-      
+
       setTimeout(() => {
         const extractedFields = [];
         if (extracted.gstin) extractedFields.push('GSTIN');
@@ -592,25 +592,25 @@ export default function GSTScanScreen({ navigation }: Props) {
         if (extracted.dateOfRegistration) extractedFields.push('Date');
         if (extracted.businessAddress) extractedFields.push('Address');
         if (extracted.stateJurisdiction) extractedFields.push('State');
-        
-        const summary = extractedFields.length > 0 
+
+        const summary = extractedFields.length > 0
           ? `Extracted: ${extractedFields.join(', ')}`
           : 'No data extracted. Please enter details manually.';
-        
+
         Alert.alert(
           'OCR Complete ✅',
           `${summary}\nGSTIN: ${extracted.gstin || 'Not found'}\n\nPlease verify and edit if needed.`,
           [{ text: 'OK' }]
         );
       }, 500);
-      
+
     } catch (error: unknown) {
       await deleteImage();
 
       if (__DEV__) {
         console.error('❌ Unexpected error in GST processImage:', error);
       }
-      
+
       Alert.alert(
         'Processing Error',
         'An error occurred while processing the image. You can manually enter the details below.',
@@ -680,360 +680,432 @@ export default function GSTScanScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <LinearGradient
-        colors={['#f59e0b', '#d97706']}
-        style={styles.gradientHeader}
-      >
-        <View style={styles.header}>
+    <LinearGradient
+      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      style={styles.gradientBackground}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.headerContainer}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#ffffff" />
+            <Ionicons name="arrow-back" size={24} color="#1e293b" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>GST Certificate</Text>
             <Text style={styles.headerSubtitle}>Upload and extract details</Text>
           </View>
         </View>
-      </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          {/* Upload Section */}
-          <View style={styles.uploadSection}>
-            <View style={styles.uploadIconContainer}>
-              <MaterialCommunityIcons name="file-certificate" size={64} color="#f59e0b" />
-            </View>
-            <Text style={styles.uploadTitle}>Upload GST Certificate</Text>
-            <Text style={styles.uploadSubtitle}>
-              Take a clear photo or select from gallery. Ensure all text is visible.
-            </Text>
-
-            {imageUri && isProcessing && (
-              <View style={styles.processingContainer}>
-                <ActivityIndicator size="large" color="#f59e0b" />
-                <Text style={styles.processingText}>Processing image with OCR...</Text>
-              </View>
-            )}
-
-            {imageUri && !isProcessing && (
-              <View style={styles.imagePreviewContainer}>
-                <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="contain" />
-              </View>
-            )}
-
-            <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={handleUploadImage}
-              disabled={isProcessing}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['#f59e0b', '#d97706']}
-                style={styles.uploadButtonGradient}
-              >
-                <Ionicons name="camera" size={24} color="#ffffff" />
-                <Text style={styles.uploadButtonText}>
-                  {imageUri ? 'Upload Another Image' : 'Upload GST Certificate'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {!showForm && (
-              <TouchableOpacity
-                style={styles.manualEntryButton}
-                onPress={() => {
-                  setExtractedData({
-                    gstin: '',
-                    legalName: '',
-                    tradeName: '',
-                    constitutionOfBusiness: '',
-                    dateOfRegistration: '',
-                    businessAddress: '',
-                    stateJurisdiction: '',
-                  });
-                  setShowForm(true);
-                  setIsManualEntry(true);
-                  setImageUri(null);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.manualEntryButtonText}>Enter Details Manually</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Form Section */}
-          {showForm && (
-            <View style={styles.formSection}>
-              <Text style={styles.formHelperText}>Please verify your GST certificate details</Text>
-
-              {/* GSTIN */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>GSTIN *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.gstin}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, gstin: formatGSTIN(text) })}
-                  placeholder="Enter GSTIN (15 characters)"
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="characters"
-                  maxLength={15}
-                />
-                <Text style={styles.inputHint}>Format: 22AAAAA0000A1Z5</Text>
-              </View>
-
-              {/* Legal Name */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Legal Name of Business *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.legalName}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, legalName: text.toUpperCase() })}
-                  placeholder="Enter legal business name"
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="characters"
-                  maxLength={150}
-                />
-              </View>
-
-              {/* Trade Name */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Trade Name (Optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.tradeName}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, tradeName: text.toUpperCase() })}
-                  placeholder="Enter trade name if different"
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="characters"
-                  maxLength={150}
-                />
-              </View>
-
-              {/* Constitution of Business */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Constitution of Business</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.constitutionOfBusiness}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, constitutionOfBusiness: text.toUpperCase() })}
-                  placeholder="e.g., Proprietorship, Pvt Ltd, LLP"
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="characters"
-                  maxLength={50}
-                />
-              </View>
-
-              {/* Date of Registration */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Date of Registration</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.dateOfRegistration}
-                  onChangeText={(text) => {
-                    const formatted = formatDate(text);
-                    setExtractedData({ ...extractedData, dateOfRegistration: formatted });
-                  }}
-                  placeholder="DD/MM/YYYY"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
-              </View>
-
-              {/* Business Address */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Principal Place of Business</Text>
-                <TextInput
-                  style={[styles.input, styles.inputMultiline]}
-                  value={extractedData.businessAddress}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, businessAddress: text })}
-                  placeholder="Enter complete business address"
-                  placeholderTextColor="#9ca3af"
-                  multiline
-                  numberOfLines={3}
-                  maxLength={300}
-                  textAlignVertical="top"
-                />
-              </View>
-
-              {/* State / Jurisdiction */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>State / Jurisdiction</Text>
-                <TextInput
-                  style={styles.input}
-                  value={extractedData.stateJurisdiction}
-                  onChangeText={(text) => setExtractedData({ ...extractedData, stateJurisdiction: text.toUpperCase() })}
-                  placeholder="Enter state"
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="characters"
-                  maxLength={50}
-                />
-              </View>
-
-              {/* Confirmation Checkbox */}
-              <View style={styles.checkboxContainer}>
-                <TouchableOpacity
-                  style={styles.checkbox}
-                  onPress={() => setIsConfirmed(!isConfirmed)}
-                  activeOpacity={0.7}
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={styles.content}>
+            {/* Upload Card Section */}
+            <View style={styles.uploadCard}>
+              <View style={styles.uploadIconContainer}>
+                <LinearGradient
+                  colors={['#0ea5e9', '#0284c7']}
+                  style={styles.uploadIconGradient}
                 >
-                  <View style={[styles.checkboxBox, isConfirmed && styles.checkboxBoxChecked]}>
-                    {isConfirmed && <Ionicons name="checkmark" size={16} color="#ffffff" />}
-                  </View>
-                  <Text style={styles.checkboxLabel}>
-                    I confirm the above GST certificate details are correct
-                  </Text>
-                </TouchableOpacity>
+                  <MaterialCommunityIcons name="file-certificate" size={48} color="#ffffff" />
+                </LinearGradient>
               </View>
+              <Text style={styles.uploadTitle}>Upload GST Certificate</Text>
+              <Text style={styles.uploadSubtitle}>
+                Take a clear photo or select from gallery. Ensure all text is visible.
+              </Text>
 
-              {/* Submit Button */}
+              {imageUri && isProcessing && (
+                <View style={styles.processingContainer}>
+                  <ActivityIndicator size="large" color="#0ea5e9" />
+                  <Text style={styles.processingText}>Processing image with OCR...</Text>
+                </View>
+              )}
+
+              {imageUri && !isProcessing && (
+                <View style={styles.imagePreviewContainer}>
+                  <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="contain" />
+                </View>
+              )}
+
               <TouchableOpacity
-                style={[styles.submitButton, !isConfirmed && styles.submitButtonDisabled]}
-                onPress={handleSubmit}
-                disabled={!isConfirmed || isProcessing}
-                activeOpacity={0.7}
+                style={styles.uploadButton}
+                onPress={handleUploadImage}
+                disabled={isProcessing}
+                activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={isConfirmed ? ['#f59e0b', '#d97706'] : ['#9ca3af', '#6b7280']}
-                  style={styles.submitButtonGradient}
+                  colors={['#0ea5e9', '#0284c7']}
+                  style={styles.uploadButtonGradient}
                 >
-                  {isProcessing ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <Text style={styles.submitButtonText}>Submit for Verification</Text>
-                  )}
+                  <Ionicons name="camera" size={22} color="#ffffff" />
+                  <Text style={styles.uploadButtonText}>
+                    {imageUri ? 'Upload Another Image' : 'Upload GST Certificate'}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
 
-              {/* Retake Button */}
-              <TouchableOpacity
-                style={styles.retakeButton}
-                onPress={() => {
-                  setShowForm(false);
-                  setImageUri(null);
-                  setExtractedData({
-                    gstin: '',
-                    legalName: '',
-                    tradeName: '',
-                    constitutionOfBusiness: '',
-                    dateOfRegistration: '',
-                    businessAddress: '',
-                    stateJurisdiction: '',
-                  });
-                  setIsConfirmed(false);
-                  setIsManualEntry(false);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.retakeButtonText}>Scan Another Image</Text>
-              </TouchableOpacity>
+              {!showForm && (
+                <TouchableOpacity
+                  style={styles.manualEntryButton}
+                  onPress={() => {
+                    setExtractedData({
+                      gstin: '',
+                      legalName: '',
+                      tradeName: '',
+                      constitutionOfBusiness: '',
+                      dateOfRegistration: '',
+                      businessAddress: '',
+                      stateJurisdiction: '',
+                    });
+                    setShowForm(true);
+                    setIsManualEntry(true);
+                    setImageUri(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.manualEntryButtonText}>Enter Details Manually</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+            {/* Form Section */}
+            {showForm && (
+              <View style={styles.formCard}>
+                <View style={styles.formHeaderRow}>
+                  <View style={styles.formIconContainer}>
+                    <Ionicons name="document-text" size={20} color="#0ea5e9" />
+                  </View>
+                  <Text style={styles.formSectionTitle}>GST Details</Text>
+                </View>
+                <Text style={styles.formHelperText}>Please verify your GST certificate details</Text>
+
+                {/* GSTIN Input Card */}
+                <View style={styles.inputCard}>
+                  <View style={styles.inputLabelRow}>
+                    <Ionicons name="barcode-outline" size={18} color="#0ea5e9" />
+                    <Text style={styles.inputLabel}>GSTIN *</Text>
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    value={extractedData.gstin}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, gstin: formatGSTIN(text) })}
+                    placeholder="Enter GSTIN (15 characters)"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="characters"
+                    maxLength={15}
+                  />
+                  <Text style={styles.inputHint}>Format: 22AAAAA0000A1Z5</Text>
+                </View>
+
+                {/* Legal Name Input Card */}
+                <View style={styles.inputCard}>
+                  <View style={styles.inputLabelRow}>
+                    <Ionicons name="business-outline" size={18} color="#0ea5e9" />
+                    <Text style={styles.inputLabel}>Legal Name of Business *</Text>
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    value={extractedData.legalName}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, legalName: text.toUpperCase() })}
+                    placeholder="Enter legal business name"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="characters"
+                    maxLength={150}
+                  />
+                </View>
+
+                {/* Trade Name Input Card */}
+                <View style={styles.inputCard}>
+                  <View style={styles.inputLabelRow}>
+                    <Ionicons name="storefront-outline" size={18} color="#0ea5e9" />
+                    <Text style={styles.inputLabel}>Trade Name (Optional)</Text>
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    value={extractedData.tradeName}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, tradeName: text.toUpperCase() })}
+                    placeholder="Enter trade name if different"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="characters"
+                    maxLength={150}
+                  />
+                </View>
+
+                {/* Constitution of Business Input Card */}
+                <View style={styles.inputCard}>
+                  <View style={styles.inputLabelRow}>
+                    <Ionicons name="briefcase-outline" size={18} color="#0ea5e9" />
+                    <Text style={styles.inputLabel}>Constitution of Business</Text>
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    value={extractedData.constitutionOfBusiness}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, constitutionOfBusiness: text.toUpperCase() })}
+                    placeholder="e.g., Proprietorship, Pvt Ltd, LLP"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="characters"
+                    maxLength={50}
+                  />
+                </View>
+
+                {/* Date of Registration Input Card */}
+                <View style={styles.inputCard}>
+                  <View style={styles.inputLabelRow}>
+                    <Ionicons name="calendar-outline" size={18} color="#0ea5e9" />
+                    <Text style={styles.inputLabel}>Date of Registration</Text>
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    value={extractedData.dateOfRegistration}
+                    onChangeText={(text) => {
+                      const formatted = formatDate(text);
+                      setExtractedData({ ...extractedData, dateOfRegistration: formatted });
+                    }}
+                    placeholder="DD/MM/YYYY"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="numeric"
+                    maxLength={10}
+                  />
+                </View>
+
+                {/* Business Address Input Card */}
+                <View style={styles.inputCard}>
+                  <View style={styles.inputLabelRow}>
+                    <Ionicons name="location-outline" size={18} color="#0ea5e9" />
+                    <Text style={styles.inputLabel}>Principal Place of Business</Text>
+                  </View>
+                  <TextInput
+                    style={[styles.input, styles.inputMultiline]}
+                    value={extractedData.businessAddress}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, businessAddress: text })}
+                    placeholder="Enter complete business address"
+                    placeholderTextColor="#94a3b8"
+                    multiline
+                    numberOfLines={3}
+                    maxLength={300}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                {/* State / Jurisdiction Input Card */}
+                <View style={styles.inputCard}>
+                  <View style={styles.inputLabelRow}>
+                    <Ionicons name="map-outline" size={18} color="#0ea5e9" />
+                    <Text style={styles.inputLabel}>State / Jurisdiction</Text>
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    value={extractedData.stateJurisdiction}
+                    onChangeText={(text) => setExtractedData({ ...extractedData, stateJurisdiction: text.toUpperCase() })}
+                    placeholder="Enter state"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="characters"
+                    maxLength={50}
+                  />
+                </View>
+
+                {/* Confirmation Checkbox */}
+                <View style={styles.confirmationCard}>
+                  <TouchableOpacity
+                    style={styles.checkbox}
+                    onPress={() => setIsConfirmed(!isConfirmed)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.checkboxBox, isConfirmed && styles.checkboxBoxChecked]}>
+                      {isConfirmed && <Ionicons name="checkmark" size={16} color="#ffffff" />}
+                    </View>
+                    <Text style={styles.checkboxLabel}>
+                      I confirm the above GST certificate details are correct
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Submit Button */}
+                <TouchableOpacity
+                  style={[styles.submitButton, !isConfirmed && styles.submitButtonDisabled]}
+                  onPress={handleSubmit}
+                  disabled={!isConfirmed || isProcessing}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={isConfirmed ? ['#0ea5e9', '#0284c7'] : ['#94a3b8', '#64748b']}
+                    style={styles.submitButtonGradient}
+                  >
+                    {isProcessing ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <>
+                        <Ionicons name="shield-checkmark" size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                        <Text style={styles.submitButtonText}>Submit for Verification</Text>
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Retake Button */}
+                <TouchableOpacity
+                  style={styles.retakeButton}
+                  onPress={() => {
+                    setShowForm(false);
+                    setImageUri(null);
+                    setExtractedData({
+                      gstin: '',
+                      legalName: '',
+                      tradeName: '',
+                      constitutionOfBusiness: '',
+                      dateOfRegistration: '',
+                      businessAddress: '',
+                      stateJurisdiction: '',
+                    });
+                    setIsConfirmed(false);
+                    setIsManualEntry(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="refresh" size={18} color="#0ea5e9" style={{ marginRight: 6 }} />
+                  <Text style={styles.retakeButtonText}>Scan Another Image</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'transparent',
   },
-  gradientHeader: {
-    paddingTop: 16,
-    paddingBottom: 24,
+  headerContainer: {
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  header: {
+    paddingTop: 12,
+    paddingBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   backButton: {
-    padding: 4,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 4,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#fef3c7',
+    fontSize: 13,
+    color: '#64748b',
     fontWeight: '500',
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
   },
-  uploadSection: {
+  // Upload Card
+  uploadCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 28,
     alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
+    marginBottom: 20,
   },
   uploadIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#fef3c7',
+    marginBottom: 20,
+  },
+  uploadIconGradient: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
   },
   uploadTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1e293b',
     marginBottom: 8,
+    textAlign: 'center',
   },
   uploadSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#64748b',
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
     lineHeight: 20,
+    paddingHorizontal: 10,
   },
   processingContainer: {
     alignItems: 'center',
-    marginVertical: 24,
-    padding: 24,
+    marginVertical: 20,
+    padding: 20,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 16,
+    width: '100%',
   },
   processingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6b7280',
+    color: '#0284c7',
+    fontWeight: '500',
   },
   imagePreviewContainer: {
     width: '100%',
-    maxHeight: 300,
+    maxHeight: 280,
     borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 24,
-    backgroundColor: '#f3f4f6',
+    marginBottom: 20,
+    backgroundColor: '#f0f9ff',
+    borderWidth: 2,
+    borderColor: '#e0f2fe',
   },
   imagePreview: {
     width: '100%',
-    height: 300,
+    height: 280,
   },
   uploadButton: {
     borderRadius: 16,
     overflow: 'hidden',
     width: '100%',
-    shadowColor: '#f59e0b',
+    shadowColor: '#0ea5e9',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 6,
   },
   uploadButtonGradient: {
@@ -1041,106 +1113,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
   uploadButtonText: {
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  formSection: {
-    marginTop: 32,
-  },
-  formHelperText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 20,
-    fontWeight: '500',
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#111827',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  inputMultiline: {
-    minHeight: 80,
-    paddingTop: 12,
-  },
-  inputHint: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
-  checkboxContainer: {
-    marginBottom: 24,
-  },
-  checkbox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  checkboxBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#d1d5db',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-  },
-  checkboxBoxChecked: {
-    backgroundColor: '#f59e0b',
-    borderColor: '#f59e0b',
-  },
-  checkboxLabel: {
-    fontSize: 14,
-    color: '#374151',
-    flex: 1,
-  },
-  submitButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 12,
-    shadowColor: '#f59e0b',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  submitButtonDisabled: {
-    shadowOpacity: 0.1,
-    elevation: 2,
-  },
-  submitButtonGradient: {
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  retakeButton: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  retakeButtonText: {
-    color: '#f59e0b',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1150,8 +1126,159 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   manualEntryButtonText: {
-    color: '#f59e0b',
+    color: '#0ea5e9',
     fontSize: 14,
     fontWeight: '600',
   },
+  // Form Card
+  formCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  formHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  formIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  formSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  formHelperText: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 20,
+  },
+  // Input Card
+  inputCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  inputLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  input: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: '#1e293b',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+  },
+  inputMultiline: {
+    minHeight: 80,
+    paddingTop: 12,
+    textAlignVertical: 'top',
+  },
+  inputHint: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 6,
+    marginLeft: 2,
+  },
+  // Confirmation Card
+  confirmationCard: {
+    backgroundColor: '#f0f9ff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+  },
+  checkbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  checkboxBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#cbd5e1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  checkboxBoxChecked: {
+    backgroundColor: '#0ea5e9',
+    borderColor: '#0ea5e9',
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: '#334155',
+    flex: 1,
+    lineHeight: 20,
+  },
+  // Buttons
+  submitButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  submitButtonDisabled: {
+    shadowOpacity: 0.1,
+    elevation: 2,
+  },
+  submitButtonGradient: {
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  retakeButton: {
+    flexDirection: 'row',
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0f9ff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+  },
+  retakeButtonText: {
+    color: '#0ea5e9',
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });
+
