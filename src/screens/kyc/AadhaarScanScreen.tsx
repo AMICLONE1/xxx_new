@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
   TextInput,
+  useColorScheme,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,7 +20,9 @@ import { RootStackParamList } from '@/types';
 import { ocrService, ExpoGoDetectedError, OCRNotAvailableError } from '@/services/mlkit/ocrService';
 import { useKYCStore, useAuthStore } from '@/store';
 import { getErrorMessage } from '@/utils/errorUtils';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 import * as FileSystem from 'expo-file-system/legacy';
+import { useTheme } from '@/contexts';
 
 type AadhaarScanScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AadhaarScan'>;
 
@@ -37,6 +40,14 @@ interface ExtractedData {
 export default function AadhaarScanScreen({ navigation }: Props) {
   const { submitDocument, isSubmitting, canUseOCR, getDocumentStatus, getDocument } = useKYCStore();
   const { user } = useAuthStore();
+
+  // Theme support
+  const colorScheme = useColorScheme();
+  const { isDark } = useTheme();
+  // const isDark = colorScheme === 'dark';
+  const colors = useMemo(() => getThemedColors(isDark), [isDark]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [backImageUri, setBackImageUri] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,11 +71,11 @@ export default function AadhaarScanScreen({ navigation }: Props) {
     if (checkExpoGo && __DEV__) {
       console.log('📱 Running in Expo Go - OCR disabled');
     }
-    
+
     // Check if OCR can be used for this document
     const ocrAllowed = canUseOCR('aadhaar');
     const docStatus = getDocumentStatus('aadhaar');
-    
+
     if (!ocrAllowed) {
       console.log('[AadhaarScan] OCR not allowed, status:', docStatus);
       if (docStatus === 'verified') {
@@ -103,10 +114,10 @@ export default function AadhaarScanScreen({ navigation }: Props) {
   const formatDOB = (text: string): string => {
     // Remove all non-digits
     const digitsOnly = text.replace(/\D/g, '');
-    
+
     // Limit to 8 digits (DDMMYYYY)
     const limited = digitsOnly.slice(0, 8);
-    
+
     // Add slashes automatically
     if (limited.length <= 2) {
       return limited;
@@ -136,31 +147,31 @@ export default function AadhaarScanScreen({ navigation }: Props) {
     // Detect ONLY if a continuous 12-digit numeric sequence exists
     // Must be on its own line OR with clear context (DOB/Address nearby)
     const lines = ocrText.split('\n');
-    
+
     // STEP 3: AADHAAR NUMBER DETECTION (REAL-WORLD FIX)
     // Aadhaar numbers in OCR can be:
     // - "8364 5789 2230" (on one line)
     // - Split across multiple lines: "8364" on one line, "5789" on next, "2230" on next
     // - "836457892230" (no spaces)
-    
+
     // Strategy: Find ALL 4-digit groups and join consecutive ones
-    
+
     // Priority 1: Try exact match on single line first (most reliable)
     for (const line of lines) {
       const trimmedLine = line.trim();
-      
+
       // Skip lines with labels
       if (/VID|Aadhaar|Number|नंबर/i.test(trimmedLine) && !/^\d/.test(trimmedLine)) {
         continue;
       }
-      
+
       // Match exact formats on single line
       const exactPatterns = [
         /^(\d{4})\s+(\d{4})\s+(\d{4})$/, // "8364 5789 2230"
         /^(\d{4})-(\d{4})-(\d{4})$/, // "8364-5789-2230"
         /^(\d{12})$/, // "836457892230"
       ];
-      
+
       for (const pattern of exactPatterns) {
         const match = trimmedLine.match(pattern);
         if (match) {
@@ -173,20 +184,20 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       }
       if (data.aadhaarNumber) break;
     }
-    
+
     // Priority 2: Handle digits split across multiple lines
     // Look for consecutive lines with exactly 4 digits each
     if (!data.aadhaarNumber) {
       const digitGroups: string[] = [];
-      
+
       for (let i = 0; i < lines.length; i++) {
         const trimmedLine = lines[i].trim();
-        
+
         // Match exactly 4 digits (may have spaces/dashes)
         const fourDigitMatch = trimmedLine.match(/^(\d{4})[\s-]*$/);
         if (fourDigitMatch) {
           digitGroups.push(fourDigitMatch[1]);
-          
+
           // If we have 3 groups of 4 digits, join them
           if (digitGroups.length === 3) {
             const joined = digitGroups.join('');
@@ -203,7 +214,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         }
       }
     }
-    
+
     // Priority 3: Find 12 digits anywhere (with separators)
     if (!data.aadhaarNumber) {
       // Match pattern: 4 digits, separator, 4 digits, separator, 4 digits
@@ -216,7 +227,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         }
       }
     }
-    
+
     // Priority 4: Find any continuous 12-digit sequence (last resort)
     if (!data.aadhaarNumber) {
       // Look for any 12 consecutive digits in the entire text
@@ -230,7 +241,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         }
       }
     }
-    
+
     // CRITICAL: If total digits !== 12, leave empty
     if (data.aadhaarNumber && data.aadhaarNumber.length !== 12) {
       data.aadhaarNumber = '';
@@ -242,7 +253,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
     // Detect ONLY if a clear name string exists with explicit label or context
     // CRITICAL: Exclude "GOVERNMENT OF INDIA", "भारत सरकार", and other non-name text
     // DO NOT infer from random uppercase words
-    
+
     // List of text to EXCLUDE from name extraction
     // CRITICAL: Use word boundaries to avoid false matches (e.g., "M" in "SAMARTH" or "F" in "SHARMA")
     const excludePatterns = [
@@ -259,7 +270,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       /जन्म तिथि/i,
       /^(Male|Female|M|F)$/i, // CRITICAL: Match whole word only, not partial matches
     ];
-    
+
     // Helper function to check if text should be excluded
     // CRITICAL: Check if text matches any exclude pattern
     // For whole-word patterns (like /^(Male|Female|M|F)$/i), they already use ^ and $ so no need to test upperText separately
@@ -271,7 +282,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         return pattern.test(trimmedText) || pattern.test(trimmedText.toUpperCase());
       });
     };
-    
+
     // Helper function to clean name - remove excluded text
     const cleanName = (name: string): string => {
       let cleaned = name.trim();
@@ -283,7 +294,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       }
       return cleaned;
     };
-    
+
     // Pattern 1: Explicit "Name" label (English or Hindi)
     // Supports: Name, नाम, NAME (case insensitive)
     const nameWithLabel = ocrText.match(/(?:Name|नाम|NAME)\s*:?\s*([^\n]{2,40}?)(?:\s+(?:DOB|Date|Year|Male|Female|M|F|जन्म|Gender))/i);
@@ -295,14 +306,14 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         data.fullName = name;
       }
     }
-    
+
     // Pattern 2: Name on line after "Government of India" or "भारत सरकार" and before DOB/Gender
     // CRITICAL: Must be on a SEPARATE line, not on the same line as government text
     if (!data.fullName) {
       // Find all lines and look for name after government text
       for (let i = 0; i < lines.length - 1; i++) {
         const line = lines[i].trim();
-        
+
         // Check if this line contains government text
         if (/(?:Government of India|भारत सरकार)/i.test(line)) {
           if (__DEV__) {
@@ -311,11 +322,11 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           // Look at next few lines for the name
           for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
             const nextLine = lines[j].trim();
-            
+
             if (__DEV__) {
               console.log('🔍 Checking line', j, ':', nextLine);
             }
-            
+
             // Skip empty lines, dates, numbers, gender markers
             if (!nextLine) {
               if (__DEV__) {
@@ -347,7 +358,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
               }
               continue;
             }
-            
+
             // Match name pattern: 1-4 words, each 2+ characters (Latin or Devanagari)
             // CRITICAL: Allow mixed-case (A-Za-z) - OCR commonly returns mixed-case names
             // Allow single word names too (some names might be single word)
@@ -383,7 +394,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         }
       }
     }
-    
+
     // Pattern 3: All-caps name on its own line (fallback - improved detection)
     // Only if not found by previous patterns
     if (!data.fullName) {
@@ -393,11 +404,11 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       // Check lines after government text (usually name is 2-4 lines after header)
       for (let i = 2; i < Math.min(lines.length, 10); i++) {
         const trimmedLine = lines[i].trim();
-        
+
         if (__DEV__) {
           console.log('🔍 Pattern 3 - Line', i, ':', trimmedLine);
         }
-        
+
         // Skip if excluded or clearly not a name
         if (!trimmedLine) {
           if (__DEV__) {
@@ -435,7 +446,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           }
           continue;
         }
-        
+
         // Match name pattern: 1-4 words, each 2+ characters (allow single word names)
         // CRITICAL: Allow mixed-case (A-Za-z) - OCR commonly returns mixed-case names like "Nikhil Kumar"
         const namePattern = /^([A-Za-z\u0900-\u097F]{2,}(?:\s+[A-Za-z\u0900-\u097F]{2,}){0,3})$/;
@@ -467,18 +478,18 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         }
       }
     }
-    
+
     // Final check - if still no name, log for debugging
     if (!data.fullName && __DEV__) {
       console.warn('⚠️ Name not detected after all patterns. OCR lines:', lines.slice(0, 10));
     }
-    
+
     // If not found, leave empty - DO NOT infer from random words
 
     // STEP 4: DOB DETECTION (STRICT - NO REUSE OF OLD VALUES)
     // Detect ONLY if a valid date exists (DD/MM/YYYY or DD-MM-YYYY)
     // If NOT found: Leave DOB EMPTY
-    
+
     // Pattern 1: Date with "DOB" or "Date of Birth" label
     const dobWithLabel = ocrText.match(/(?:DOB|Date of Birth|जन्म तिथि)\s*:?\s*(\d{2})[-\/](\d{2})[-\/](\d{4})\b/i);
     if (dobWithLabel) {
@@ -487,12 +498,12 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       const year = dobWithLabel[3];
       // Strict validation
       if (parseInt(day) >= 1 && parseInt(day) <= 31 &&
-          parseInt(month) >= 1 && parseInt(month) <= 12 &&
-          parseInt(year) >= 1900 && parseInt(year) <= 2099) {
+        parseInt(month) >= 1 && parseInt(month) <= 12 &&
+        parseInt(year) >= 1900 && parseInt(year) <= 2099) {
         data.dateOfBirth = `${day}/${month}/${year}`;
       }
     }
-    
+
     // Pattern 2: Date on its own line (DD-MM-YYYY or DD/MM/YYYY)
     if (!data.dateOfBirth) {
       for (const line of lines.slice(2, 15)) {
@@ -504,21 +515,21 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           const year = dateMatch[3];
           // Strict validation
           if (parseInt(day) >= 1 && parseInt(day) <= 31 &&
-              parseInt(month) >= 1 && parseInt(month) <= 12 &&
-              parseInt(year) >= 1900 && parseInt(year) <= 2099) {
+            parseInt(month) >= 1 && parseInt(month) <= 12 &&
+            parseInt(year) >= 1900 && parseInt(year) <= 2099) {
             data.dateOfBirth = `${day}/${month}/${year}`;
             break;
           }
         }
       }
     }
-    
+
     // CRITICAL: If not found, leave empty - DO NOT reuse old values
 
     // STEP 5: ADDRESS DETECTION (IMPROVED - MORE FLEXIBLE)
     // Aadhaar address is typically on the BACK side but sometimes on front too
     // Look for address indicators and pincode
-    
+
     // Indian address keywords - comprehensive list
     const addressKeywords = [
       // Street/Road indicators
@@ -532,7 +543,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       // Common address prefixes
       's/o', 'c/o', 'd/o', 'w/o', 'h/no', 'h.no', 'house no', 'vill', 'tq', 'tal',
     ];
-    
+
     // All Indian states and union territories
     const indianStates = [
       'andhra pradesh', 'arunachal pradesh', 'assam', 'bihar', 'chhattisgarh', 'goa', 'gujarat', 'haryana', 'himachal pradesh', 'jharkhand', 'karnataka', 'kerala', 'madhya pradesh', 'maharashtra', 'manipur', 'meghalaya', 'mizoram', 'nagaland', 'odisha', 'punjab', 'rajasthan', 'sikkim', 'tamil nadu', 'telangana', 'tripura', 'uttar pradesh', 'uttarakhand', 'west bengal',
@@ -540,12 +551,12 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       // Abbreviations
       'ap', 'ar', 'as', 'br', 'cg', 'ga', 'gj', 'hr', 'hp', 'jh', 'ka', 'kl', 'mp', 'mh', 'mn', 'ml', 'mz', 'nl', 'od', 'pb', 'rj', 'sk', 'tn', 'ts', 'tr', 'up', 'uk', 'wb', 'dl', 'ch', 'py', 'jk', 'an', 'ld', 'dn', 'dd',
     ];
-    
+
     // Major Indian cities (top 100+)
     const indianCities = [
       'mumbai', 'delhi', 'bangalore', 'bengaluru', 'hyderabad', 'ahmedabad', 'chennai', 'kolkata', 'surat', 'pune', 'jaipur', 'lucknow', 'kanpur', 'nagpur', 'indore', 'thane', 'bhopal', 'visakhapatnam', 'vizag', 'patna', 'vadodara', 'ghaziabad', 'ludhiana', 'agra', 'nashik', 'faridabad', 'meerut', 'rajkot', 'varanasi', 'srinagar', 'aurangabad', 'dhanbad', 'amritsar', 'allahabad', 'prayagraj', 'ranchi', 'howrah', 'coimbatore', 'jabalpur', 'gwalior', 'vijayawada', 'jodhpur', 'madurai', 'raipur', 'kota', 'chandigarh', 'guwahati', 'solapur', 'hubli', 'mysore', 'mysuru', 'tiruchirappalli', 'trichy', 'bareilly', 'aligarh', 'tiruppur', 'moradabad', 'jalandhar', 'bhubaneswar', 'salem', 'warangal', 'guntur', 'bhiwandi', 'saharanpur', 'gorakhpur', 'bikaner', 'amravati', 'noida', 'jamshedpur', 'bhilai', 'cuttack', 'firozabad', 'kochi', 'cochin', 'nellore', 'bhavnagar', 'dehradun', 'durgapur', 'asansol', 'rourkela', 'nanded', 'kolhapur', 'ajmer', 'akola', 'gulbarga', 'jamnagar', 'ujjain', 'loni', 'siliguri', 'jhansi', 'ulhasnagar', 'jammu', 'sangli', 'mangalore', 'erode', 'belgaum', 'ambattur', 'tirunelveli', 'malegaon', 'gaya', 'udaipur', 'maheshtala', 'davanagere', 'kozhikode', 'calicut', 'thiruvananthapuram', 'trivandrum',
     ];
-    
+
     // Helper function to check if text contains address indicators
     const hasAddressIndicator = (text: string): boolean => {
       const lowerText = text.toLowerCase();
@@ -557,12 +568,12 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       const hasCity = indianCities.some(city => lowerText.includes(city));
       // Check for pincode
       const hasPincode = /\b\d{6}\b/.test(text);
-      
+
       // Need at least 2 of these indicators
       const indicatorCount = [hasKeyword, hasState, hasCity, hasPincode].filter(Boolean).length;
       return indicatorCount >= 2;
     };
-    
+
     // Helper function to clean address text
     const cleanAddress = (addr: string): string => {
       let cleaned = addr.trim();
@@ -574,26 +585,26 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       cleaned = cleaned.replace(/^[,\s:]+|[,\s:]+$/g, '');
       return cleaned;
     };
-    
+
     // Pattern 1: Explicit "Address" label with multi-line content
     const addressLabelPatterns = [
       /(?:Address|पता|ADDRESS|Address Line)[\s:]+([^\n]+(?:\n[^\n]+){0,5})/i,
       /(?:Address|पता)[\s:]*\n([^\n]+(?:\n[^\n]+){0,5})/i,
     ];
-    
+
     for (const pattern of addressLabelPatterns) {
       if (data.address) break;
       const match = ocrText.match(pattern);
       if (match && match[1]) {
         let address = cleanAddress(match[1]);
-        
+
         // Continue extracting until we hit a non-address line or max 5 lines
         const startIdx = ocrText.indexOf(match[1]);
         if (startIdx !== -1) {
           const remainingText = ocrText.slice(startIdx);
           const addressLines: string[] = [];
           const textLines = remainingText.split('\n');
-          
+
           for (let i = 0; i < Math.min(textLines.length, 6); i++) {
             const line = textLines[i].trim();
             if (!line) continue;
@@ -602,10 +613,10 @@ export default function AadhaarScanScreen({ navigation }: Props) {
             if (/^(Male|Female|M|F|DOB|Date of Birth|जन्म)$/i.test(line)) break;
             addressLines.push(line);
           }
-          
+
           address = cleanAddress(addressLines.join(' '));
         }
-        
+
         // Validate address - at least 15 chars, has some address indicators
         if (address.length >= 15 && hasAddressIndicator(address)) {
           data.address = address;
@@ -615,13 +626,13 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         }
       }
     }
-    
+
     // Pattern 2: S/O, C/O, D/O, W/O pattern (common in Indian addresses)
     if (!data.address) {
       const relationPatterns = [
         /(?:S\/O|C\/O|D\/O|W\/O|s\/o|c\/o|d\/o|w\/o)[\s:,]+([^\n]+(?:\n[^\n]+){0,5})/i,
       ];
-      
+
       for (const pattern of relationPatterns) {
         const match = ocrText.match(pattern);
         if (match && match[1]) {
@@ -631,7 +642,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
             const remainingText = ocrText.slice(startIdx);
             const addressLines: string[] = [];
             const textLines = remainingText.split('\n');
-            
+
             for (let i = 0; i < Math.min(textLines.length, 6); i++) {
               const line = textLines[i].trim();
               if (!line) continue;
@@ -640,9 +651,9 @@ export default function AadhaarScanScreen({ navigation }: Props) {
               if (/^(DOB|Date of Birth|जन्म|Gender)$/i.test(line)) break;
               addressLines.push(line);
             }
-            
+
             let address = cleanAddress(addressLines.join(' '));
-            
+
             // Validate
             if (address.length >= 15 && hasAddressIndicator(address)) {
               data.address = address;
@@ -655,7 +666,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         }
       }
     }
-    
+
     // Pattern 3: Look for pincode and extract surrounding text
     if (!data.address) {
       const pincodeMatch = ocrText.match(/\b(\d{6})\b/);
@@ -665,11 +676,11 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           // Get text before and after pincode (likely address)
           const beforePincode = ocrText.slice(Math.max(0, pincodeIdx - 200), pincodeIdx);
           const afterPincode = ocrText.slice(pincodeIdx, Math.min(ocrText.length, pincodeIdx + 50));
-          
+
           // Find last meaningful break before pincode (name/DOB line)
           const beforeLines = beforePincode.split('\n').reverse();
           const addressLines: string[] = [];
-          
+
           for (const line of beforeLines) {
             const trimmed = line.trim();
             if (!trimmed) continue;
@@ -680,7 +691,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
             addressLines.unshift(trimmed);
             if (addressLines.length >= 5) break;
           }
-          
+
           // Add pincode and any text after it
           const afterLines = afterPincode.split('\n');
           for (const line of afterLines) {
@@ -690,9 +701,9 @@ export default function AadhaarScanScreen({ navigation }: Props) {
             addressLines.push(trimmed);
             if (addressLines.length >= 6) break;
           }
-          
+
           let address = cleanAddress(addressLines.join(' '));
-          
+
           if (address.length >= 15 && hasAddressIndicator(address)) {
             data.address = address;
             if (__DEV__) {
@@ -702,7 +713,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         }
       }
     }
-    
+
     // Pattern 4: Look for house number pattern (H.No, House No, etc)
     if (!data.address) {
       const houseNoMatch = ocrText.match(/(?:H\.?No\.?|House\s*No\.?|Flat\s*No\.?|Plot\s*No\.?)[\s:,]*([^\n]+(?:\n[^\n]+){0,5})/i);
@@ -712,16 +723,16 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           const remainingText = ocrText.slice(startIdx);
           const addressLines: string[] = [];
           const textLines = remainingText.split('\n');
-          
+
           for (let i = 0; i < Math.min(textLines.length, 6); i++) {
             const line = textLines[i].trim();
             if (!line) continue;
             if (/^\d{4}\s*\d{4}\s*\d{4}$/.test(line)) break;
             addressLines.push(line);
           }
-          
+
           let address = cleanAddress(addressLines.join(' '));
-          
+
           if (address.length >= 15) {
             data.address = address;
             if (__DEV__) {
@@ -731,7 +742,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         }
       }
     }
-    
+
     // Log if address not found
     if (!data.address && __DEV__) {
       console.warn('⚠️ Address not detected. May be on back side of Aadhaar. OCR text sample:', ocrText.slice(0, 500));
@@ -757,7 +768,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       setIsManualEntry(true);
       return;
     }
-    
+
     await proceedWithUpload();
   };
 
@@ -846,7 +857,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       dateOfBirth: '',
       address: '',
     };
-    
+
     // Reset ALL state variables
     setExtractedData(emptyData);
     setShowForm(false);
@@ -856,7 +867,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
     setBackImageUri(null);
     setIsProcessingBack(false);
     setImageUri(null); // Clear previous image URI
-    
+
     // Now start processing with fresh state
     setIsProcessing(true);
     setImageUri(uri);
@@ -891,7 +902,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       let ocrResult;
       try {
         ocrResult = await ocrService.recognizeText(uri);
-        
+
         if (__DEV__) {
           console.log('✅ OCR Success! Text extracted (length:', ocrResult.text.length, 'chars)');
           // NEVER log OCR text (contains sensitive PII data)
@@ -903,7 +914,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         if (__DEV__) {
           console.error('❌ OCR Error:', ocrError instanceof Error ? ocrError.name : 'Unknown');
         }
-        
+
         // Handle Expo Go detection - silently fall back to manual entry
         if (ocrError instanceof ExpoGoDetectedError || getErrorMessage(ocrError) === 'EXPO_GO_DETECTED') {
           console.log('[AadhaarScan] Expo Go detected during OCR - using manual entry');
@@ -913,7 +924,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           setIsProcessing(false);
           return;
         }
-        
+
         // Handle OCR not available error - silently fall back to manual entry
         if (ocrError instanceof OCRNotAvailableError) {
           console.log('[AadhaarScan] OCR not available - using manual entry');
@@ -923,7 +934,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           setIsProcessing(false);
           return;
         }
-        
+
         // Handle generic OCR errors - silently fall back to manual entry
         console.log('[AadhaarScan] OCR processing error - using manual entry');
         setExtractedData(emptyData);
@@ -939,11 +950,11 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       // Store OCR text in local variable (NOT state)
       // DO NOT log OCR text (security requirement - contains sensitive data)
       const ocrText = ocrResult.text;
-      
+
       if (__DEV__) {
         console.log('✅ OCR Success! Text extracted (length:', ocrText.length, 'chars)');
       }
-      
+
       // ============================================
       // STEP 3: DATA EXTRACTION (STRICT)
       // ============================================
@@ -951,7 +962,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       // extractAadhaarData always starts with empty data object
       // NEVER reuse old values - extraction function is stateless
       const extracted = extractAadhaarData(ocrText);
-      
+
       // CRITICAL: Do NOT use service extractor as fallback
       // Service extractor might have cached or incorrect values
       // ONLY use local extraction which is strict and fresh
@@ -966,7 +977,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           console.warn('⚠️ No Aadhaar number detected in OCR text');
         }
       }
-      
+
       // CRITICAL: Do NOT use service extractor for name - it might include wrong text
       // Only use local extraction which has strict exclusion rules
       if (__DEV__) {
@@ -976,7 +987,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           console.warn('⚠️ No name detected in OCR text');
         }
       }
-      
+
       // Log only extraction results (not OCR text) for debugging
       if (__DEV__) {
         console.log('📊 STRICT Extraction Results:', {
@@ -989,17 +1000,17 @@ export default function AadhaarScanScreen({ navigation }: Props) {
 
       // Address check (for logging only - we don't prompt for back side anymore)
       const hasAddress = extracted.address && extracted.address.trim().length >= 15;
-      
+
       if (__DEV__) {
         console.log('📍 Address check:', {
           hasAddress,
           addressLength: extracted.address?.length || 0,
         });
       }
-      
+
       // Final validation - ensure we have at least some data
       const hasData = extracted.fullName || extracted.aadhaarNumber || extracted.dateOfBirth;
-      
+
       if (__DEV__) {
         console.log('📊 Final extracted data:', {
           name: extracted.fullName || 'Not found',
@@ -1019,29 +1030,29 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       // CRITICAL: This must happen BEFORE image deletion to prevent race conditions
       setExtractedData(extracted);
       setNeedsBackSide(false);
-      
+
       // CRITICAL: Always show form after OCR (even if some fields are missing)
       // Form inputs are bound to extractedData state - they will show current values
       setShowForm(true);
-      
+
       // Determine if manual entry based on whether Aadhaar number was found
       const hasAadhaarNumber = extracted.aadhaarNumber && extracted.aadhaarNumber.length === 12;
       setIsManualEntry(!hasAadhaarNumber); // Manual entry only if Aadhaar number not found
-      
+
       // Store final Aadhaar number for alert (from current extraction only)
       const finalAadhaarNumber = hasAadhaarNumber ? extracted.aadhaarNumber : '';
-      
+
       // ============================================
       // STEP 6: IMAGE DELETION (SECURITY)
       // ============================================
       // CRITICAL: Always delete image after OCR
       await deleteImage();
-      
+
       if (__DEV__) {
         console.log('✅ Form displayed with extracted data');
         // DO NOT log extracted values (contains PII)
       }
-      
+
       // Show success message with extracted fields
       setTimeout(() => {
         const extractedFields = [];
@@ -1049,20 +1060,20 @@ export default function AadhaarScanScreen({ navigation }: Props) {
         if (finalAadhaarNumber) extractedFields.push('Aadhaar Number');
         if (extracted.dateOfBirth) extractedFields.push('Date of Birth');
         if (extracted.address) extractedFields.push('Address');
-        
-        const summary = extractedFields.length > 0 
+
+        const summary = extractedFields.length > 0
           ? `Extracted: ${extractedFields.join(', ')}`
           : 'No data extracted. Please enter details manually.';
-        
+
         const maskedAadhaar = finalAadhaarNumber ? maskAadhaarNumber(finalAadhaarNumber) : 'Not found';
-        
+
         Alert.alert(
           'OCR Complete ✅',
           `${summary}\nAadhaar: ${maskedAadhaar}\n\nPlease verify and edit if needed.`,
           [{ text: 'OK' }]
         );
       }, 500);
-      
+
     } catch (error: unknown) {
       // CRITICAL: Always delete image on error
       await deleteImage();
@@ -1070,7 +1081,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       if (__DEV__) {
         console.error('❌ Unexpected error in processImage:', error);
       }
-      
+
       Alert.alert(
         'Processing Error',
         'An error occurred while processing the image. You can manually enter the details below.',
@@ -1100,7 +1111,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
       let ocrResult;
       try {
         ocrResult = await ocrService.recognizeText(uri);
-        
+
         // DO NOT log OCR text (security requirement)
         if (__DEV__) {
           console.log('✅ Back side OCR completed. Text extracted (length:', ocrResult.text.length, 'chars)');
@@ -1120,7 +1131,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
 
       // Extract address from back side using STRICT detection
       const backExtracted = extractAadhaarData(ocrResult.text);
-      
+
       // Strict validation: address must be 20+ characters (meaningful address)
       if (backExtracted.address && backExtracted.address.trim().length >= 20) {
         // STEP 6: Update address from back side (only address, keep other fields from front)
@@ -1131,9 +1142,9 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           dateOfBirth: prev.dateOfBirth, // Keep front side DOB
           address: backExtracted.address, // Update with back side address
         }));
-        
+
         setNeedsBackSide(false);
-        
+
         Alert.alert(
           'Address Extracted',
           'Address has been extracted from the back side of your Aadhaar card.',
@@ -1146,7 +1157,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           [{ text: 'OK' }]
         );
       }
-      
+
       // Immediately delete the back side image file after OCR
       try {
         const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
@@ -1300,7 +1311,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -1313,14 +1324,14 @@ export default function AadhaarScanScreen({ navigation }: Props) {
             style={styles.backButton}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={22} color="#1e293b" />
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Aadhaar Card</Text>
             <Text style={styles.headerSubtitle}>Upload and verify details</Text>
           </View>
           <View style={styles.headerIconWrapper}>
-            <MaterialCommunityIcons name="card-account-details" size={24} color="#0ea5e9" />
+            <MaterialCommunityIcons name="card-account-details" size={24} color={colors.primary} />
           </View>
         </View>
 
@@ -1328,7 +1339,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
           {/* Upload Card */}
           <View style={styles.uploadCard}>
             <View style={styles.uploadIconContainer}>
-              <MaterialCommunityIcons name="card-account-details" size={48} color="#0ea5e9" />
+              <MaterialCommunityIcons name="card-account-details" size={48} color={colors.primary} />
             </View>
             <Text style={styles.uploadTitle}>Upload Aadhaar Image</Text>
             <Text style={styles.uploadSubtitle}>
@@ -1337,7 +1348,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
 
             {imageUri && isProcessing && (
               <View style={styles.processingContainer}>
-                <ActivityIndicator size="large" color="#0ea5e9" />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={styles.processingText}>Processing image with OCR...</Text>
               </View>
             )}
@@ -1355,10 +1366,10 @@ export default function AadhaarScanScreen({ navigation }: Props) {
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#0ea5e9', '#0284c7']}
+                colors={[colors.primary, colors.primaryDark]}
                 style={styles.uploadButtonGradient}
               >
-                <Ionicons name="camera" size={22} color="#ffffff" />
+                <Ionicons name="camera" size={22} color={colors.textInverse} />
                 <Text style={styles.uploadButtonText}>
                   {imageUri ? 'Upload Another Image' : 'Upload Aadhaar Image'}
                 </Text>
@@ -1405,7 +1416,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                   value={extractedData.fullName}
                   onChangeText={(text) => setExtractedData({ ...extractedData, fullName: text })}
                   placeholder="Enter full name"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={colors.inputPlaceholder}
                 />
               </View>
 
@@ -1418,12 +1429,12 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                     isManualEntry
                       ? extractedData.aadhaarNumber
                       : extractedData.aadhaarNumber && extractedData.aadhaarNumber.length === 12
-                      ? maskAadhaarNumber(extractedData.aadhaarNumber)
-                      : ''
+                        ? maskAadhaarNumber(extractedData.aadhaarNumber)
+                        : ''
                   }
                   editable={isManualEntry}
                   placeholder={isManualEntry ? "Enter 12-digit Aadhaar number" : "XXXX-XXXX-XXXX"}
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={colors.inputPlaceholder}
                   keyboardType="numeric"
                   maxLength={isManualEntry ? 12 : undefined}
                   onChangeText={(text) => {
@@ -1449,7 +1460,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                     setExtractedData({ ...extractedData, dateOfBirth: formatted });
                   }}
                   placeholder="DD/MM/YYYY"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={colors.inputPlaceholder}
                   keyboardType="numeric"
                   maxLength={10}
                 />
@@ -1463,7 +1474,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                   value={extractedData.address}
                   onChangeText={(text) => setExtractedData({ ...extractedData, address: text })}
                   placeholder="Enter address"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={colors.inputPlaceholder}
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
@@ -1477,7 +1488,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                 activeOpacity={0.7}
               >
                 <View style={[styles.checkboxBox, isConfirmed && styles.checkboxBoxChecked]}>
-                  {isConfirmed && <Ionicons name="checkmark" size={16} color="#ffffff" />}
+                  {isConfirmed && <Ionicons name="checkmark" size={16} color={colors.textInverse} />}
                 </View>
                 <Text style={styles.checkboxLabel}>
                   I confirm the above Aadhaar details are correct
@@ -1492,7 +1503,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
                 activeOpacity={0.9}
               >
                 <LinearGradient
-                  colors={isConfirmed ? ['#0ea5e9', '#0284c7'] : ['#94a3b8', '#64748b']}
+                  colors={isConfirmed ? [colors.primary, colors.primaryDark] : [colors.textMuted, colors.textSecondary]}
                   style={styles.submitButtonGradient}
                 >
                   <Text style={styles.submitButtonText}>Submit for Verification</Text>
@@ -1523,7 +1534,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
 
           {/* Info Banner */}
           <View style={styles.infoBanner}>
-            <Ionicons name="shield-checkmark" size={18} color="#64748b" />
+            <Ionicons name="shield-checkmark" size={18} color={colors.textSecondary} />
             <Text style={styles.infoBannerText}>
               Your Aadhaar details are securely processed and encrypted. We never store your images.
             </Text>
@@ -1536,7 +1547,7 @@ export default function AadhaarScanScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -1555,7 +1566,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -1571,19 +1582,19 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   headerIconWrapper: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -1600,7 +1611,7 @@ const styles = StyleSheet.create({
   },
   // Upload Card
   uploadCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
@@ -1615,7 +1626,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 24,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -1623,12 +1634,12 @@ const styles = StyleSheet.create({
   uploadTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 8,
   },
   uploadSubtitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 20,
@@ -1641,7 +1652,7 @@ const styles = StyleSheet.create({
   processingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
   },
   imagePreviewContainer: {
     width: '100%',
@@ -1649,7 +1660,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 20,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.backgroundSecondary,
   },
   imagePreview: {
     width: '100%',
@@ -1659,7 +1670,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     width: '100%',
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -1673,7 +1684,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   uploadButtonText: {
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1683,13 +1694,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   manualEntryButtonText: {
-    color: '#0ea5e9',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   // Form Card
   formCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
     marginBottom: 16,
@@ -1708,10 +1719,10 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   formBadge: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1719,7 +1730,7 @@ const styles = StyleSheet.create({
   formBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   inputContainer: {
     marginBottom: 18,
@@ -1727,25 +1738,25 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.inputBackground,
     borderRadius: 14,
     padding: 16,
     fontSize: 16,
-    color: '#1e293b',
+    color: colors.inputText,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.inputBorder,
   },
   readOnlyInput: {
-    backgroundColor: '#f1f5f9',
-    color: '#64748b',
+    backgroundColor: colors.backgroundSecondary,
+    color: colors.textSecondary,
   },
   inputHint: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: colors.textMuted,
     marginTop: 6,
   },
   textArea: {
@@ -1764,18 +1775,18 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#cbd5e1',
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
   },
   checkboxBoxChecked: {
-    backgroundColor: '#0ea5e9',
-    borderColor: '#0ea5e9',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#475569',
+    color: colors.textSecondary,
     flex: 1,
     lineHeight: 20,
   },
@@ -1783,7 +1794,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 12,
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -1799,7 +1810,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   submitButtonText: {
-    color: '#ffffff',
+    color: colors.textInverse,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1808,7 +1819,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   retakeButtonText: {
-    color: '#0ea5e9',
+    color: colors.primary,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -1816,7 +1827,7 @@ const styles = StyleSheet.create({
   infoBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     padding: 16,
     borderRadius: 16,
     gap: 10,
@@ -1829,11 +1840,10 @@ const styles = StyleSheet.create({
   infoBannerText: {
     flex: 1,
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   bottomSpacer: {
     height: 32,
   },
 });
-

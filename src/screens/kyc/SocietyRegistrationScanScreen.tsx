@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,8 @@ import { RootStackParamList } from '@/types';
 import { ocrService, ExpoGoDetectedError, OCRNotAvailableError } from '@/services/mlkit/ocrService';
 import { useKYCStore, useAuthStore } from '@/store';
 import { getErrorMessage } from '@/utils/errorUtils';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
+import { useTheme } from '@/contexts';
 import * as FileSystem from 'expo-file-system/legacy';
 
 type SocietyRegistrationScanScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SocietyRegistrationScan'>;
@@ -40,6 +42,12 @@ interface ExtractedSocietyData {
 export default function SocietyRegistrationScanScreen({ navigation }: Props) {
   const { submitDocument, isSubmitting, canUseOCR, getDocumentStatus } = useKYCStore();
   const { user } = useAuthStore();
+
+  // Theme support
+  const { isDark } = useTheme();
+  const colors = useMemo(() => getThemedColors(isDark), [isDark]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedSocietyData>({
@@ -657,7 +665,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -669,7 +677,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Society Registration</Text>
@@ -683,10 +691,10 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
             <View style={styles.uploadCard}>
               <View style={styles.uploadIconContainer}>
                 <LinearGradient
-                  colors={['#0ea5e9', '#0284c7']}
+                  colors={[colors.primary, colors.primaryDark]}
                   style={styles.uploadIconGradient}
                 >
-                  <MaterialCommunityIcons name="office-building" size={48} color="#ffffff" />
+                  <MaterialCommunityIcons name="office-building" size={48} color={colors.textInverse} />
                 </LinearGradient>
               </View>
               <Text style={styles.uploadTitle}>Upload Society Registration</Text>
@@ -696,7 +704,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
 
               {imageUri && isProcessing && (
                 <View style={styles.processingContainer}>
-                  <ActivityIndicator size="large" color="#0ea5e9" />
+                  <ActivityIndicator size="large" color={colors.primary} />
                   <Text style={styles.processingText}>Processing image with OCR...</Text>
                 </View>
               )}
@@ -714,10 +722,10 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['#0ea5e9', '#0284c7']}
+                  colors={[colors.primary, colors.primaryDark]}
                   style={styles.uploadButtonGradient}
                 >
-                  <Ionicons name="camera" size={22} color="#ffffff" />
+                  <Ionicons name="camera" size={22} color={colors.textInverse} />
                   <Text style={styles.uploadButtonText}>
                     {imageUri ? 'Upload Another Image' : 'Upload Society Registration'}
                   </Text>
@@ -753,7 +761,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
               <View style={styles.formCard}>
                 <View style={styles.formHeaderRow}>
                   <View style={styles.formIconContainer}>
-                    <Ionicons name="document-text" size={20} color="#0ea5e9" />
+                    <Ionicons name="document-text" size={20} color={colors.primary} />
                   </View>
                   <Text style={styles.formSectionTitle}>Society Details</Text>
                 </View>
@@ -762,7 +770,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                 {/* Society Name Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="business-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="business-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>Society Name *</Text>
                   </View>
                   <TextInput
@@ -770,7 +778,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                     value={extractedData.societyName}
                     onChangeText={(text) => setExtractedData({ ...extractedData, societyName: text.toUpperCase() })}
                     placeholder="Enter society name"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={200}
                   />
@@ -779,7 +787,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                 {/* Registration Number Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="barcode-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="barcode-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>Registration Number *</Text>
                   </View>
                   <TextInput
@@ -787,7 +795,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                     value={extractedData.registrationNumber}
                     onChangeText={(text) => setExtractedData({ ...extractedData, registrationNumber: formatRegistrationNumber(text) })}
                     placeholder="Enter registration number"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={30}
                   />
@@ -796,7 +804,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                 {/* Date of Registration Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="calendar-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="calendar-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>Date of Registration</Text>
                   </View>
                   <TextInput
@@ -807,7 +815,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                       setExtractedData({ ...extractedData, dateOfRegistration: formatted });
                     }}
                     placeholder="DD/MM/YYYY"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     keyboardType="numeric"
                     maxLength={10}
                   />
@@ -816,7 +824,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                 {/* Type of Society Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="home-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="home-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>Type of Society</Text>
                   </View>
                   <TextInput
@@ -824,7 +832,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                     value={extractedData.typeOfSociety}
                     onChangeText={(text) => setExtractedData({ ...extractedData, typeOfSociety: text.toUpperCase() })}
                     placeholder="e.g., Co-operative Housing Society"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={100}
                   />
@@ -833,7 +841,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                 {/* Registered Address Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="location-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="location-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>Registered Address</Text>
                   </View>
                   <TextInput
@@ -841,7 +849,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                     value={extractedData.registeredAddress}
                     onChangeText={(text) => setExtractedData({ ...extractedData, registeredAddress: text })}
                     placeholder="Enter complete registered address"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     multiline
                     numberOfLines={3}
                     maxLength={300}
@@ -852,7 +860,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                 {/* Registering Authority Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="shield-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="shield-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>Registering Authority</Text>
                   </View>
                   <TextInput
@@ -860,7 +868,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                     value={extractedData.registeringAuthority}
                     onChangeText={(text) => setExtractedData({ ...extractedData, registeringAuthority: text.toUpperCase() })}
                     placeholder="e.g., Registrar of Co-operative Societies"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={100}
                   />
@@ -869,7 +877,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                 {/* State Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="map-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="map-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>State</Text>
                   </View>
                   <TextInput
@@ -877,7 +885,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                     value={extractedData.state}
                     onChangeText={(text) => setExtractedData({ ...extractedData, state: text.toUpperCase() })}
                     placeholder="Enter state"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={50}
                   />
@@ -891,7 +899,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                     activeOpacity={0.7}
                   >
                     <View style={[styles.checkboxBox, isConfirmed && styles.checkboxBoxChecked]}>
-                      {isConfirmed && <Ionicons name="checkmark" size={16} color="#ffffff" />}
+                      {isConfirmed && <Ionicons name="checkmark" size={16} color={colors.textInverse} />}
                     </View>
                     <Text style={styles.checkboxLabel}>
                       I confirm the above society registration details are correct
@@ -907,14 +915,14 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                   activeOpacity={0.8}
                 >
                   <LinearGradient
-                    colors={isConfirmed ? ['#0ea5e9', '#0284c7'] : ['#94a3b8', '#64748b']}
+                    colors={isConfirmed ? [colors.primary, colors.primaryDark] : [colors.textMuted, colors.textSecondary]}
                     style={styles.submitButtonGradient}
                   >
                     {isProcessing ? (
-                      <ActivityIndicator size="small" color="#ffffff" />
+                      <ActivityIndicator size="small" color={colors.textInverse} />
                     ) : (
                       <>
-                        <Ionicons name="shield-checkmark" size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                        <Ionicons name="shield-checkmark" size={20} color={colors.textInverse} style={{ marginRight: 8 }} />
                         <Text style={styles.submitButtonText}>Submit for Verification</Text>
                       </>
                     )}
@@ -941,7 +949,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="refresh" size={18} color="#0ea5e9" style={{ marginRight: 6 }} />
+                  <Ionicons name="refresh" size={18} color={colors.primary} style={{ marginRight: 6 }} />
                   <Text style={styles.retakeButtonText}>Scan Another Image</Text>
                 </TouchableOpacity>
               </View>
@@ -953,7 +961,7 @@ export default function SocietyRegistrationScanScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -973,7 +981,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -988,12 +996,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 2,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   scrollView: {
@@ -1005,7 +1013,7 @@ const styles = StyleSheet.create({
   },
   // Upload Card
   uploadCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 28,
     alignItems: 'center',
@@ -1024,7 +1032,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -1033,13 +1041,13 @@ const styles = StyleSheet.create({
   uploadTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   uploadSubtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 20,
@@ -1049,14 +1057,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 20,
     padding: 20,
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.primaryLight,
     borderRadius: 16,
     width: '100%',
   },
   processingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#0284c7',
+    color: colors.primary,
     fontWeight: '500',
   },
   imagePreviewContainer: {
@@ -1065,9 +1073,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 20,
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: 2,
-    borderColor: '#e0f2fe',
+    borderColor: colors.border,
   },
   imagePreview: {
     width: '100%',
@@ -1077,7 +1085,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     width: '100%',
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -1091,7 +1099,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   uploadButtonText: {
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1101,16 +1109,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   manualEntryButtonText: {
-    color: '#0ea5e9',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   // Form Card
   formCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 16,
@@ -1125,7 +1133,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1133,21 +1141,21 @@ const styles = StyleSheet.create({
   formSectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   formHelperText: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     marginBottom: 20,
   },
   // Input Card
   inputCard: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.inputBackground,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.inputBorder,
   },
   inputLabelRow: {
     flexDirection: 'row',
@@ -1158,16 +1166,16 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.textSecondary,
   },
   input: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.inputBackground,
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
-    color: '#1e293b',
+    color: colors.inputText,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderColor: colors.inputBorder,
   },
   inputMultiline: {
     minHeight: 80,
@@ -1176,18 +1184,18 @@ const styles = StyleSheet.create({
   },
   inputHint: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: colors.textMuted,
     marginTop: 6,
     marginLeft: 2,
   },
   // Confirmation Card
   confirmationCard: {
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.primaryLight,
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: colors.border,
   },
   checkbox: {
     flexDirection: 'row',
@@ -1199,18 +1207,18 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#cbd5e1',
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
   },
   checkboxBoxChecked: {
-    backgroundColor: '#0ea5e9',
-    borderColor: '#0ea5e9',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#334155',
+    color: colors.textSecondary,
     flex: 1,
     lineHeight: 20,
   },
@@ -1219,7 +1227,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -1236,7 +1244,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   submitButtonText: {
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1245,13 +1253,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.primaryLight,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: colors.border,
   },
   retakeButtonText: {
-    color: '#0ea5e9',
+    color: colors.primary,
     fontSize: 15,
     fontWeight: '600',
   },

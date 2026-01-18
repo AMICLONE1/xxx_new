@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import { RootStackParamList } from '@/types';
 import { ocrService, ExpoGoDetectedError, OCRNotAvailableError } from '@/services/mlkit/ocrService';
 import { useKYCStore, useAuthStore } from '@/store';
 import { getErrorMessage } from '@/utils/errorUtils';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
+import { useTheme } from '@/contexts';
 import * as FileSystem from 'expo-file-system/legacy';
 
 const { width } = Dimensions.get('window');
@@ -46,6 +48,12 @@ interface ExtractedBillData {
 export default function ElectricityBillScanScreen({ navigation }: Props) {
   const { submitDocument, isSubmitting, canUseOCR, getDocumentStatus } = useKYCStore();
   const { user } = useAuthStore();
+
+  // Theme support
+  const { isDark } = useTheme();
+  const colors = useMemo(() => getThemedColors(isDark), [isDark]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedBillData>({
@@ -672,7 +680,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -684,7 +692,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Scan Electricity Bill</Text>
@@ -702,7 +710,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
           {/* Expo Go Warning Banner */}
           {isExpoGo && (
             <View style={styles.expoGoWarning}>
-              <Ionicons name="information-circle" size={20} color="#0369a1" />
+              <Ionicons name="information-circle" size={20} color={colors.primary} />
               <Text style={styles.expoGoWarningText}>
                 Auto text extraction unavailable. You can upload an image or enter details manually.
               </Text>
@@ -713,10 +721,10 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
           <View style={styles.uploadCard}>
             <View style={styles.uploadIconContainer}>
               <LinearGradient
-                colors={['#0ea5e9', '#0284c7']}
+                colors={[colors.primary, colors.primaryDark]}
                 style={styles.uploadIconGradient}
               >
-                <MaterialCommunityIcons name="file-document-outline" size={36} color="#ffffff" />
+                <MaterialCommunityIcons name="file-document-outline" size={36} color={colors.textInverse} />
               </LinearGradient>
             </View>
             <Text style={styles.uploadTitle}>Upload Electricity Bill</Text>
@@ -727,7 +735,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
             {imageUri && isProcessing && (
               <View style={styles.processingContainer}>
                 <View style={styles.processingCard}>
-                  <ActivityIndicator size="large" color="#0ea5e9" />
+                  <ActivityIndicator size="large" color={colors.primary} />
                   <Text style={styles.processingText}>Processing image with OCR...</Text>
                 </View>
               </View>
@@ -746,10 +754,10 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#0ea5e9', '#0284c7']}
+                colors={[colors.primary, colors.primaryDark]}
                 style={styles.uploadButtonGradient}
               >
-                <Ionicons name="camera" size={22} color="#ffffff" />
+                <Ionicons name="camera" size={22} color={colors.textInverse} />
                 <Text style={styles.uploadButtonText}>
                   {imageUri ? 'Upload Another Image' : 'Upload Electricity Bill'}
                 </Text>
@@ -789,7 +797,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
             <View style={styles.formCard}>
               <View style={styles.formHeader}>
                 <View style={styles.formIconContainer}>
-                  <Ionicons name="document-text-outline" size={20} color="#0ea5e9" />
+                  <Ionicons name="document-text-outline" size={20} color={colors.primary} />
                 </View>
                 <Text style={styles.formTitle}>Bill Details</Text>
               </View>
@@ -799,13 +807,13 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Consumer Name</Text>
                 <View style={styles.inputWrapper}>
-                  <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <Ionicons name="person-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     value={extractedData.consumerName}
                     onChangeText={(text) => setExtractedData({ ...extractedData, consumerName: text.toUpperCase() })}
                     placeholder="Enter consumer name"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={100}
                   />
@@ -819,13 +827,13 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                   <Text style={styles.requiredBadge}>Required</Text>
                 </View>
                 <View style={styles.inputWrapper}>
-                  <MaterialCommunityIcons name="identifier" size={18} color="#64748b" style={styles.inputIcon} />
+                  <MaterialCommunityIcons name="identifier" size={18} color={colors.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     value={extractedData.consumerNumber}
                     onChangeText={(text) => setExtractedData({ ...extractedData, consumerNumber: text.toUpperCase() })}
                     placeholder="Enter consumer number"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={20}
                   />
@@ -839,13 +847,13 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                   <Text style={styles.requiredBadge}>Required</Text>
                 </View>
                 <View style={styles.inputWrapper}>
-                  <MaterialCommunityIcons name="meter-electric-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <MaterialCommunityIcons name="meter-electric-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     value={extractedData.meterNumber}
                     onChangeText={(text) => setExtractedData({ ...extractedData, meterNumber: text.toUpperCase() })}
                     placeholder="Enter meter number"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={20}
                   />
@@ -857,13 +865,13 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Electricity Provider (DISCOM)</Text>
                 <View style={styles.inputWrapper}>
-                  <MaterialCommunityIcons name="office-building-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <MaterialCommunityIcons name="office-building-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     value={extractedData.discomName}
                     onChangeText={(text) => setExtractedData({ ...extractedData, discomName: text })}
                     placeholder="e.g., MSEDCL, Tata Power, Adani"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     maxLength={50}
                   />
                 </View>
@@ -874,7 +882,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                 <View style={styles.halfInputContainer}>
                   <Text style={styles.inputLabel}>Bill Date</Text>
                   <View style={styles.inputWrapper}>
-                    <Ionicons name="calendar-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       value={extractedData.billDate}
@@ -883,7 +891,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                         setExtractedData({ ...extractedData, billDate: formatted });
                       }}
                       placeholder="DD/MM/YYYY"
-                      placeholderTextColor="#94a3b8"
+                      placeholderTextColor={colors.inputPlaceholder}
                       keyboardType="numeric"
                       maxLength={10}
                     />
@@ -892,7 +900,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                 <View style={styles.halfInputContainer}>
                   <Text style={styles.inputLabel}>Due Date</Text>
                   <View style={styles.inputWrapper}>
-                    <Ionicons name="calendar-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       value={extractedData.dueDate}
@@ -901,7 +909,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                         setExtractedData({ ...extractedData, dueDate: formatted });
                       }}
                       placeholder="DD/MM/YYYY"
-                      placeholderTextColor="#94a3b8"
+                      placeholderTextColor={colors.inputPlaceholder}
                       keyboardType="numeric"
                       maxLength={10}
                     />
@@ -913,13 +921,13 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Billing Period</Text>
                 <View style={styles.inputWrapper}>
-                  <Ionicons name="time-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <Ionicons name="time-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     value={extractedData.billingPeriod}
                     onChangeText={(text) => setExtractedData({ ...extractedData, billingPeriod: text })}
                     placeholder="e.g., Jan 2024 - Feb 2024"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     maxLength={50}
                   />
                 </View>
@@ -930,7 +938,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                 <View style={styles.halfInputContainer}>
                   <Text style={styles.inputLabel}>Units (kWh)</Text>
                   <View style={styles.inputWrapper}>
-                    <MaterialCommunityIcons name="lightning-bolt-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <MaterialCommunityIcons name="lightning-bolt-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       value={extractedData.unitsConsumed}
@@ -939,7 +947,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                         setExtractedData({ ...extractedData, unitsConsumed: formatted });
                       }}
                       placeholder="Units"
-                      placeholderTextColor="#94a3b8"
+                      placeholderTextColor={colors.inputPlaceholder}
                       keyboardType="numeric"
                       maxLength={10}
                     />
@@ -948,7 +956,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                 <View style={styles.halfInputContainer}>
                   <Text style={styles.inputLabel}>Bill Amount (₹)</Text>
                   <View style={styles.inputWrapper}>
-                    <MaterialCommunityIcons name="currency-inr" size={18} color="#64748b" style={styles.inputIcon} />
+                    <MaterialCommunityIcons name="currency-inr" size={18} color={colors.textSecondary} style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       value={extractedData.billAmount}
@@ -957,7 +965,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                         setExtractedData({ ...extractedData, billAmount: formatted });
                       }}
                       placeholder="Amount"
-                      placeholderTextColor="#94a3b8"
+                      placeholderTextColor={colors.inputPlaceholder}
                       keyboardType="numeric"
                       maxLength={15}
                     />
@@ -969,13 +977,13 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Service Address</Text>
                 <View style={[styles.inputWrapper, styles.textAreaWrapper]}>
-                  <Ionicons name="location-outline" size={18} color="#64748b" style={[styles.inputIcon, { alignSelf: 'flex-start', marginTop: 16 }]} />
+                  <Ionicons name="location-outline" size={18} color={colors.textSecondary} style={[styles.inputIcon, { alignSelf: 'flex-start', marginTop: 16 }]} />
                   <TextInput
                     style={[styles.input, styles.textArea]}
                     value={extractedData.serviceAddress}
                     onChangeText={(text) => setExtractedData({ ...extractedData, serviceAddress: text })}
                     placeholder="Enter service address"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     multiline
                     numberOfLines={3}
                     maxLength={200}
@@ -991,7 +999,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                 activeOpacity={0.7}
               >
                 <View style={[styles.checkboxBox, isConfirmed && styles.checkboxBoxChecked]}>
-                  {isConfirmed && <Ionicons name="checkmark" size={16} color="#ffffff" />}
+                  {isConfirmed && <Ionicons name="checkmark" size={16} color={colors.textInverse} />}
                 </View>
                 <Text style={styles.checkboxLabel}>
                   I confirm the above electricity bill details are correct
@@ -1006,14 +1014,14 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                 activeOpacity={0.9}
               >
                 <LinearGradient
-                  colors={isConfirmed ? ['#0ea5e9', '#0284c7'] : ['#94a3b8', '#64748b']}
+                  colors={isConfirmed ? [colors.primary, colors.primaryDark] : [colors.textMuted, colors.textSecondary]}
                   style={styles.submitButtonGradient}
                 >
                   {isProcessing ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
+                    <ActivityIndicator size="small" color={colors.textInverse} />
                   ) : (
                     <>
-                      <Ionicons name="shield-checkmark-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                      <Ionicons name="shield-checkmark-outline" size={20} color={colors.textInverse} style={{ marginRight: 8 }} />
                       <Text style={styles.submitButtonText}>Submit for Verification</Text>
                     </>
                   )}
@@ -1043,7 +1051,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
                 }}
                 activeOpacity={0.7}
               >
-                <Ionicons name="refresh-outline" size={18} color="#0ea5e9" style={{ marginRight: 6 }} />
+                <Ionicons name="refresh-outline" size={18} color={colors.primary} style={{ marginRight: 6 }} />
                 <Text style={styles.retakeButtonText}>Scan Another Image</Text>
               </TouchableOpacity>
             </View>
@@ -1052,7 +1060,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
           {/* Info Card */}
           <View style={styles.infoCard}>
             <View style={styles.infoIconContainer}>
-              <Ionicons name="information-circle-outline" size={20} color="#0ea5e9" />
+              <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
             </View>
             <View style={styles.infoContent}>
               <Text style={styles.infoTitle}>Why we need your electricity bill?</Text>
@@ -1067,7 +1075,7 @@ export default function ElectricityBillScanScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -1086,7 +1094,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -1102,12 +1110,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 2,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   headerRight: {
@@ -1116,7 +1124,7 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -1126,12 +1134,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#0ea5e9',
+    backgroundColor: colors.primary,
   },
   statusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0ea5e9',
+    color: colors.primary,
   },
   scrollView: {
     flex: 1,
@@ -1143,23 +1151,23 @@ const styles = StyleSheet.create({
   expoGoWarning: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primaryLight,
     padding: 14,
     borderRadius: 14,
     marginBottom: 16,
     gap: 10,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: colors.border,
   },
   expoGoWarningText: {
     flex: 1,
     fontSize: 13,
-    color: '#0369a1',
+    color: colors.primaryDark,
     lineHeight: 18,
     fontWeight: '500',
   },
   uploadCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 28,
     alignItems: 'center',
@@ -1183,12 +1191,12 @@ const styles = StyleSheet.create({
   uploadTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 8,
   },
   uploadSubtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 20,
@@ -1198,17 +1206,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   processingCard: {
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: colors.border,
   },
   processingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#0369a1',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   imagePreviewContainer: {
@@ -1217,9 +1225,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 20,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
   },
   imagePreview: {
     width: '100%',
@@ -1229,7 +1237,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     width: '100%',
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -1243,7 +1251,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   uploadButtonText: {
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1253,12 +1261,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   manualEntryButtonText: {
-    color: '#0ea5e9',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   formCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
     marginBottom: 16,
@@ -1277,7 +1285,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1285,11 +1293,11 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   formHelperText: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     marginBottom: 20,
     fontWeight: '500',
   },
@@ -1305,13 +1313,13 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.text,
     marginBottom: 8,
   },
   requiredBadge: {
     fontSize: 11,
-    color: '#0369a1',
-    backgroundColor: '#e0f2fe',
+    color: colors.primaryDark,
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
@@ -1321,10 +1329,10 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.inputBackground,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderColor: colors.inputBorder,
   },
   textAreaWrapper: {
     alignItems: 'flex-start',
@@ -1337,11 +1345,11 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingLeft: 12,
     fontSize: 16,
-    color: '#1e293b',
+    color: colors.inputText,
   },
   inputHint: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: colors.textMuted,
     marginTop: 6,
     marginLeft: 4,
   },
@@ -1369,18 +1377,18 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#cbd5e1',
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
   },
   checkboxBoxChecked: {
-    backgroundColor: '#0ea5e9',
-    borderColor: '#0ea5e9',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.textSecondary,
     flex: 1,
     fontWeight: '500',
   },
@@ -1388,7 +1396,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 12,
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -1405,7 +1413,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   submitButtonText: {
-    color: '#ffffff',
+    color: colors.textInverse,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1416,12 +1424,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   retakeButtonText: {
-    color: '#0ea5e9',
+    color: colors.primary,
     fontSize: 15,
     fontWeight: '600',
   },
   infoCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 18,
     flexDirection: 'row',
@@ -1437,7 +1445,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1447,12 +1455,12 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 4,
   },
   infoText: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     lineHeight: 19,
   },
 });

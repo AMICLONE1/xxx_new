@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { formatCurrency } from '@/utils/helpers';
 import { paymentService } from '@/services/payments/paymentService';
 import { getErrorMessage } from '@/utils/errorUtils';
 import { useTheme } from '@/contexts';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 
 type WithdrawScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -30,6 +31,8 @@ const QUICK_AMOUNTS = [500, 1000, 2000, 5000];
 
 export default function WithdrawScreen({ navigation }: Props) {
   const { isDark } = useTheme();
+  const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const { wallet } = useWalletStore();
   const [amount, setAmount] = useState('');
@@ -119,7 +122,7 @@ export default function WithdrawScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={isDark ? ['#1e293b', '#0f172a', '#0f172a'] : ['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -129,11 +132,11 @@ export default function WithdrawScreen({ navigation }: Props) {
         <View style={styles.headerContainer}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.9)' }]}
+            style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={22} color={isDark ? '#ffffff' : '#1e293b'} />
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: isDark ? '#ffffff' : '#1e293b' }]}>Withdraw Cash</Text>
+          <Text style={styles.headerTitle}>Withdraw Cash</Text>
           <View style={styles.headerPlaceholder} />
         </View>
 
@@ -143,15 +146,15 @@ export default function WithdrawScreen({ navigation }: Props) {
           contentContainerStyle={styles.scrollContent}
         >
           {/* Balance Card */}
-          <View style={[styles.balanceCard, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
+          <View style={styles.balanceCard}>
             <LinearGradient
-              colors={['#dbeafe', '#bfdbfe']}
+              colors={[colors.primaryLight, colors.backgroundSecondary]}
               style={styles.balanceGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
               <View style={styles.balanceIconContainer}>
-                <Ionicons name="wallet" size={20} color="#0ea5e9" />
+                <Ionicons name="wallet" size={20} color={colors.primary} />
               </View>
               <Text style={styles.balanceLabel}>AVAILABLE BALANCE</Text>
               <Text style={styles.balanceValue}>{formatCurrency(availableBalance)}</Text>
@@ -159,18 +162,15 @@ export default function WithdrawScreen({ navigation }: Props) {
           </View>
 
           {/* Amount Input Card */}
-          <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
-            <Text style={[styles.cardTitle, { color: isDark ? '#ffffff' : '#1e293b' }]}>Withdrawal Amount</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Withdrawal Amount</Text>
 
-            <View style={[styles.amountInputContainer, {
-              backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-              borderColor: isDark ? '#334155' : '#e2e8f0'
-            }]}>
-              <Text style={[styles.currencySymbol, { color: isDark ? '#94a3b8' : '#64748b' }]}>₹</Text>
+            <View style={styles.amountInputContainer}>
+              <Text style={styles.currencySymbol}>₹</Text>
               <TextInput
-                style={[styles.amountInput, { color: isDark ? '#ffffff' : '#1e293b' }]}
+                style={styles.amountInput}
                 placeholder="0.00"
-                placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
                 value={amount}
                 onChangeText={(text) => {
@@ -179,8 +179,8 @@ export default function WithdrawScreen({ navigation }: Props) {
                 }}
               />
               <View style={styles.amountActions}>
-                <Ionicons name="chevron-up" size={14} color={isDark ? '#64748b' : '#94a3b8'} />
-                <Ionicons name="chevron-down" size={14} color={isDark ? '#64748b' : '#94a3b8'} />
+                <Ionicons name="chevron-up" size={14} color={colors.textMuted} />
+                <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
               </View>
             </View>
 
@@ -194,10 +194,6 @@ export default function WithdrawScreen({ navigation }: Props) {
                     key={quickAmount}
                     style={[
                       styles.quickAmountButton,
-                      {
-                        backgroundColor: isDark ? '#0f172a' : '#f0f9ff',
-                        borderColor: isSelected ? '#0ea5e9' : (isDark ? '#334155' : '#e0f2fe'),
-                      },
                       isSelected && styles.quickAmountButtonSelected,
                       isDisabled && styles.quickAmountButtonDisabled,
                     ]}
@@ -207,7 +203,6 @@ export default function WithdrawScreen({ navigation }: Props) {
                     <Text
                       style={[
                         styles.quickAmountText,
-                        { color: isDark ? '#e2e8f0' : '#475569' },
                         isSelected && styles.quickAmountTextSelected,
                         isDisabled && styles.quickAmountTextDisabled,
                       ]}
@@ -221,25 +216,21 @@ export default function WithdrawScreen({ navigation }: Props) {
           </View>
 
           {/* Bank Details Card */}
-          <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
+          <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <View style={[styles.cardIconContainer, { backgroundColor: isDark ? '#0f172a' : '#e0f2fe' }]}>
-                <MaterialCommunityIcons name="bank" size={20} color="#0ea5e9" />
+              <View style={styles.cardIconContainer}>
+                <MaterialCommunityIcons name="bank" size={20} color={colors.primary} />
               </View>
-              <Text style={[styles.cardTitle, { color: isDark ? '#ffffff' : '#1e293b', marginBottom: 0 }]}>Bank Details</Text>
+              <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Bank Details</Text>
             </View>
 
             {/* Account Number */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: isDark ? '#94a3b8' : '#64748b' }]}>ACCOUNT NUMBER</Text>
+              <Text style={styles.inputLabel}>ACCOUNT NUMBER</Text>
               <TextInput
-                style={[styles.textInput, {
-                  backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-                  borderColor: isDark ? '#334155' : '#e2e8f0',
-                  color: isDark ? '#ffffff' : '#1e293b'
-                }]}
+                style={styles.textInput}
                 placeholder="Enter account number"
-                placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="numeric"
                 value={accountNumber}
                 onChangeText={setAccountNumber}
@@ -249,15 +240,11 @@ export default function WithdrawScreen({ navigation }: Props) {
 
             {/* IFSC Code */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: isDark ? '#94a3b8' : '#64748b' }]}>IFSC CODE</Text>
+              <Text style={styles.inputLabel}>IFSC CODE</Text>
               <TextInput
-                style={[styles.textInput, {
-                  backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-                  borderColor: isDark ? '#334155' : '#e2e8f0',
-                  color: isDark ? '#ffffff' : '#1e293b'
-                }]}
+                style={styles.textInput}
                 placeholder="E.G. HDFC0001234"
-                placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
+                placeholderTextColor={colors.textMuted}
                 value={ifscCode}
                 onChangeText={(text) => setIfscCode(text.toUpperCase())}
                 autoCapitalize="characters"
@@ -267,15 +254,11 @@ export default function WithdrawScreen({ navigation }: Props) {
 
             {/* Account Holder Name */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: isDark ? '#94a3b8' : '#64748b' }]}>ACCOUNT HOLDER NAME</Text>
+              <Text style={styles.inputLabel}>ACCOUNT HOLDER NAME</Text>
               <TextInput
-                style={[styles.textInput, {
-                  backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-                  borderColor: isDark ? '#334155' : '#e2e8f0',
-                  color: isDark ? '#ffffff' : '#1e293b'
-                }]}
+                style={styles.textInput}
                 placeholder="As per bank records"
-                placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
+                placeholderTextColor={colors.textMuted}
                 value={accountHolderName}
                 onChangeText={setAccountHolderName}
                 autoCapitalize="words"
@@ -284,20 +267,20 @@ export default function WithdrawScreen({ navigation }: Props) {
           </View>
 
           {/* Summary Card */}
-          <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}>
+          <View style={styles.card}>
             <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: isDark ? '#94a3b8' : '#64748b' }]}>Withdrawal Amount</Text>
-              <Text style={[styles.summaryValue, { color: isDark ? '#ffffff' : '#1e293b' }]}>
+              <Text style={styles.summaryLabel}>Withdrawal Amount</Text>
+              <Text style={styles.summaryValue}>
                 {amount ? formatCurrency(parseFloat(amount) || 0) : formatCurrency(0)}
               </Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: isDark ? '#94a3b8' : '#64748b' }]}>Processing Fee</Text>
-              <Text style={[styles.summaryValueFree, { color: '#10b981' }]}>Free</Text>
+              <Text style={styles.summaryLabel}>Processing Fee</Text>
+              <Text style={[styles.summaryValueFree, { color: colors.success }]}>Free</Text>
             </View>
-            <View style={[styles.summaryDivider, { backgroundColor: isDark ? '#334155' : '#e2e8f0' }]} />
+            <View style={styles.summaryDivider} />
             <View style={styles.summaryRow}>
-              <Text style={[styles.summaryTotalLabel, { color: isDark ? '#ffffff' : '#1e293b' }]}>You will receive</Text>
+              <Text style={styles.summaryTotalLabel}>You will receive</Text>
               <Text style={styles.summaryTotalValue}>
                 {amount ? formatCurrency(parseFloat(amount) || 0) : formatCurrency(0)}
               </Text>
@@ -305,9 +288,9 @@ export default function WithdrawScreen({ navigation }: Props) {
           </View>
 
           {/* Info Note */}
-          <View style={[styles.infoNote, { backgroundColor: isDark ? '#1e3a5f' : '#eff6ff' }]}>
-            <Ionicons name="information-circle" size={18} color="#3b82f6" />
-            <Text style={[styles.infoText, { color: isDark ? '#93c5fd' : '#1e40af' }]}>
+          <View style={styles.infoNote}>
+            <Ionicons name="information-circle" size={18} color={colors.primary} />
+            <Text style={styles.infoText}>
               Withdrawals are processed within 2-3 business days. Ensure your bank details are correct.
             </Text>
           </View>
@@ -331,7 +314,7 @@ export default function WithdrawScreen({ navigation }: Props) {
             activeOpacity={0.9}
           >
             <LinearGradient
-              colors={['#0ea5e9', '#0284c7']}
+              colors={[colors.primary, colors.primaryDark]}
               style={styles.submitButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -352,7 +335,7 @@ export default function WithdrawScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -373,6 +356,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.card,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
@@ -382,6 +366,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
+    color: colors.text,
   },
   headerPlaceholder: {
     width: 40,
@@ -404,6 +389,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
+    backgroundColor: colors.card,
   },
   balanceGradient: {
     padding: 24,
@@ -413,7 +399,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(14, 165, 233, 0.2)',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -421,14 +407,14 @@ const styles = StyleSheet.create({
   balanceLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#0369a1',
+    color: colors.primaryDark,
     letterSpacing: 1,
     marginBottom: 8,
   },
   balanceValue: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#0c4a6e',
+    color: colors.text,
   },
   // Card Styles
   card: {
@@ -440,6 +426,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
+    backgroundColor: colors.card,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -453,11 +440,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.primaryLight,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 16,
+    color: colors.text,
   },
   // Amount Input
   amountInputContainer: {
@@ -468,17 +457,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 4,
     marginBottom: 16,
+    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.border,
   },
   currencySymbol: {
     fontSize: 22,
     fontWeight: '600',
     marginRight: 8,
+    color: colors.textSecondary,
   },
   amountInput: {
     flex: 1,
     fontSize: 22,
     fontWeight: '600',
     paddingVertical: 12,
+    color: colors.text,
   },
   amountActions: {
     alignItems: 'center',
@@ -498,10 +491,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.border,
   },
   quickAmountButtonSelected: {
-    backgroundColor: '#e0f2fe',
-    borderColor: '#0ea5e9',
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
   },
   quickAmountButtonDisabled: {
     opacity: 0.4,
@@ -509,12 +504,13 @@ const styles = StyleSheet.create({
   quickAmountText: {
     fontSize: 13,
     fontWeight: '600',
+    color: colors.textSecondary,
   },
   quickAmountTextSelected: {
-    color: '#0369a1',
+    color: colors.primary,
   },
   quickAmountTextDisabled: {
-    color: '#9ca3af',
+    color: colors.textMuted,
   },
   // Input Groups
   inputGroup: {
@@ -525,6 +521,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
     marginBottom: 8,
+    color: colors.textSecondary,
   },
   textInput: {
     borderWidth: 1.5,
@@ -533,6 +530,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 15,
     fontWeight: '500',
+    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.border,
+    color: colors.text,
   },
   // Summary
   summaryRow: {
@@ -544,10 +544,12 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 14,
     fontWeight: '500',
+    color: colors.textSecondary,
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '600',
+    color: colors.text,
   },
   summaryValueFree: {
     fontSize: 14,
@@ -556,15 +558,17 @@ const styles = StyleSheet.create({
   summaryDivider: {
     height: 1,
     marginVertical: 8,
+    backgroundColor: colors.border,
   },
   summaryTotalLabel: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.text,
   },
   summaryTotalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#0ea5e9',
+    color: colors.primary,
   },
   // Info Note
   infoNote: {
@@ -574,18 +578,20 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 20,
     gap: 10,
+    backgroundColor: colors.primaryLight,
   },
   infoText: {
     flex: 1,
     fontSize: 12,
     lineHeight: 18,
     fontWeight: '500',
+    color: colors.primaryDark,
   },
   // Submit Button
   submitButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

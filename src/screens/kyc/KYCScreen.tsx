@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,8 @@ import { KYC_DOCUMENT_TYPES } from '@/utils/constants';
 import { getErrorMessage } from '@/utils/errorUtils';
 import DocumentScanScreen from './DocumentScanScreen';
 import LivenessCheckScreen from './LivenessCheckScreen';
+import { useTheme } from '@/contexts';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 
 const { width } = Dimensions.get('window');
 
@@ -33,126 +35,132 @@ interface Props {
 
 type DocumentType = (typeof KYC_DOCUMENT_TYPES)[number];
 
-// Document configuration with icons, colors, and descriptions - updated to match theme
-const documentConfig: Record<DocumentType, { icon: string; color: string; bgColor: string; description: string; title: string }> = {
-  aadhaar: {
-    icon: 'card-account-details',
-    color: '#0ea5e9',
-    bgColor: '#e0f2fe',
-    description: 'Government issued identity card',
-    title: 'Aadhaar Card',
-  },
-  pan: {
-    icon: 'card-account-details-outline',
-    color: '#3b82f6',
-    bgColor: '#dbeafe',
-    description: 'Permanent Account Number card',
-    title: 'PAN Card',
-  },
-  electricity_bill: {
-    icon: 'file-document',
-    color: '#0ea5e9',
-    bgColor: '#e0f2fe',
-    description: 'Latest electricity bill',
-    title: 'Electricity Bill',
-  },
-  gst: {
-    icon: 'file-certificate',
-    color: '#3b82f6',
-    bgColor: '#dbeafe',
-    description: 'GST registration certificate',
-    title: 'GST Certificate',
-  },
-  society_registration: {
-    icon: 'office-building',
-    color: '#0ea5e9',
-    bgColor: '#e0f2fe',
-    description: 'Society registration document',
-    title: 'Society Registration',
-  },
-};
 
-// Status badge configuration for per-document status - updated colors
-const statusConfig: Record<DocumentStatus, { label: string; color: string; bgColor: string; icon: string }> = {
-  not_started: {
-    label: 'Upload',
-    color: '#64748b',
-    bgColor: '#f1f5f9',
-    icon: 'cloud-upload-outline',
-  },
-  pending: {
-    label: 'Pending',
-    color: '#0ea5e9',
-    bgColor: '#e0f2fe',
-    icon: 'time-outline',
-  },
-  verified: {
-    label: 'Verified',
-    color: '#10b981',
-    bgColor: '#d1fae5',
-    icon: 'checkmark-circle',
-  },
-  rejected: {
-    label: 'Rejected',
-    color: '#ef4444',
-    bgColor: '#fee2e2',
-    icon: 'close-circle',
-  },
-};
-
-// Overall status configuration - updated to match theme
-const overallStatusConfig: Record<string, { label: string; color: string; bgColor: string; icon: string; message: string }> = {
-  not_started: {
-    label: 'Not Started',
-    color: '#64748b',
-    bgColor: '#f1f5f9',
-    icon: 'information-circle-outline',
-    message: 'Start by uploading your identity documents',
-  },
-  pending: {
-    label: 'Pending Review',
-    color: '#0ea5e9',
-    bgColor: '#e0f2fe',
-    icon: 'time-outline',
-    message: 'Your documents are being reviewed',
-  },
-  verified: {
-    label: 'Verified',
-    color: '#10b981',
-    bgColor: '#d1fae5',
-    icon: 'checkmark-circle',
-    message: 'Your identity has been verified',
-  },
-  rejected: {
-    label: 'Rejected',
-    color: '#ef4444',
-    bgColor: '#fee2e2',
-    icon: 'close-circle',
-    message: 'Please resubmit your documents',
-  },
-  partial: {
-    label: 'In Progress',
-    color: '#0ea5e9',
-    bgColor: '#e0f2fe',
-    icon: 'hourglass-outline',
-    message: 'Some documents still need to be submitted',
-  },
-};
 
 export default function KYCScreen({ navigation }: Props) {
+  const { isDark } = useTheme();
+  const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const { user } = useAuthStore();
-  const { 
-    overallStatus, 
-    documentStatuses, 
+
+  // Document configuration with icons, colors, and descriptions - updated to match theme
+  const documentConfig = useMemo(() => ({
+    aadhaar: {
+      icon: 'card-account-details',
+      color: colors.primary,
+      bgColor: colors.primaryLight,
+      description: 'Government issued identity card',
+      title: 'Aadhaar Card',
+    },
+    pan: {
+      icon: 'card-account-details-outline',
+      color: colors.primary,
+      bgColor: colors.backgroundSecondary,
+      description: 'Permanent Account Number card',
+      title: 'PAN Card',
+    },
+    electricity_bill: {
+      icon: 'file-document',
+      color: colors.primary,
+      bgColor: colors.primaryLight,
+      description: 'Latest electricity bill',
+      title: 'Electricity Bill',
+    },
+    gst: {
+      icon: 'file-certificate',
+      color: colors.primary,
+      bgColor: colors.backgroundSecondary,
+      description: 'GST registration certificate',
+      title: 'GST Certificate',
+    },
+    society_registration: {
+      icon: 'office-building',
+      color: colors.primary,
+      bgColor: colors.primaryLight,
+      description: 'Society registration document',
+      title: 'Society Registration',
+    },
+  }), [colors]);
+
+  // Status badge configuration for per-document status - updated colors
+  const statusConfig = useMemo<Record<string, { label: string; color: string; bgColor: string; icon: string }>>(() => ({
+    not_started: {
+      label: 'Upload',
+      color: colors.textMuted,
+      bgColor: colors.backgroundSecondary,
+      icon: 'cloud-upload-outline',
+    },
+    pending: {
+      label: 'Pending',
+      color: colors.primary,
+      bgColor: colors.primaryLight,
+      icon: 'time-outline',
+    },
+    verified: {
+      label: 'Verified',
+      color: colors.success,
+      bgColor: '#dcfce7', // Keeping hardcoded light green for unified success look, or use a successLight if added to theme
+      icon: 'checkmark-circle',
+    },
+    rejected: {
+      label: 'Rejected',
+      color: colors.error,
+      bgColor: colors.errorBackground,
+      icon: 'close-circle',
+    },
+  }), [colors]);
+
+  // Overall status configuration - updated to match theme
+  const overallStatusConfig = useMemo<Record<string, { label: string; color: string; bgColor: string; icon: string; message: string }>>(() => ({
+    not_started: {
+      label: 'Not Started',
+      color: colors.textMuted,
+      bgColor: colors.backgroundSecondary,
+      icon: 'information-circle-outline',
+      message: 'Start by uploading your identity documents',
+    },
+    pending: {
+      label: 'Pending Review',
+      color: colors.primary,
+      bgColor: colors.primaryLight,
+      icon: 'time-outline',
+      message: 'Your documents are being reviewed',
+    },
+    verified: {
+      label: 'Verified',
+      color: colors.success,
+      bgColor: '#dcfce7',
+      icon: 'checkmark-circle',
+      message: 'Your identity has been verified',
+    },
+    rejected: {
+      label: 'Rejected',
+      color: colors.error,
+      bgColor: colors.errorBackground,
+      icon: 'close-circle',
+      message: 'Please resubmit your documents',
+    },
+    partial: {
+      label: 'In Progress',
+      color: colors.primary,
+      bgColor: colors.primaryLight,
+      icon: 'hourglass-outline',
+      message: 'Some documents still need to be submitted',
+    },
+  }), [colors]);
+  const {
+    overallStatus,
+    documentStatuses,
     documents,
-    isLoading, 
-    fetchKYCDocuments, 
+    isLoading,
+    fetchKYCDocuments,
     getDocumentStatus,
     getDocument,
     isVerified,
     submitDocument,
   } = useKYCStore();
-  
+
   const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [showLivenessCheck, setShowLivenessCheck] = useState(false);
@@ -178,13 +186,13 @@ export default function KYCScreen({ navigation }: Props) {
   const handleDocumentPress = (docType: DocumentType) => {
     const status = getDocumentStatus(docType as KYCDocumentType);
     const document = getDocument(docType as KYCDocumentType);
-    
+
     // If document is verified, show details (read-only)
     if (status === 'verified' && document) {
       showDocumentDetails(docType, document);
       return;
     }
-    
+
     // If pending, show status
     if (status === 'pending') {
       Alert.alert(
@@ -194,7 +202,7 @@ export default function KYCScreen({ navigation }: Props) {
       );
       return;
     }
-    
+
     // If rejected, allow re-submission
     if (status === 'rejected') {
       Alert.alert(
@@ -207,16 +215,16 @@ export default function KYCScreen({ navigation }: Props) {
       );
       return;
     }
-    
+
     // Otherwise navigate to scan screen
     navigateToScan(docType);
   };
 
   const showDocumentDetails = (docType: DocumentType, document: any) => {
-    const config = documentConfig[docType];
+    const config = documentConfig[docType as keyof typeof documentConfig];
     const status = getDocumentStatus(docType as KYCDocumentType);
     const statusCfg = statusConfig[status];
-    
+
     Alert.alert(
       config.title,
       `Status: ${statusCfg.label}\n${document.documentNumber ? `Document Number: ${document.documentNumber}\n` : ''}${document.name ? `Name: ${document.name}\n` : ''}${document.submittedAt ? `Submitted: ${new Date(document.submittedAt).toLocaleDateString()}` : ''}`,
@@ -246,12 +254,12 @@ export default function KYCScreen({ navigation }: Props) {
 
   const handleScanComplete = async (result: { text: string; extractedData: any }) => {
     setShowScanner(false);
-    
+
     if (!selectedDocument || !user?.id) {
       Alert.alert('Error', 'No document selected or user not found');
       return;
     }
-    
+
     if (selectedDocument === 'aadhaar' || selectedDocument === 'pan') {
       Alert.alert(
         'Document Scanned',
@@ -270,7 +278,7 @@ export default function KYCScreen({ navigation }: Props) {
           name: result.extractedData?.name,
           address: result.extractedData?.address,
         });
-        
+
         Alert.alert(
           'Document Submitted',
           'Your document has been submitted for verification. You will be notified once it is reviewed.'
@@ -284,12 +292,12 @@ export default function KYCScreen({ navigation }: Props) {
   const handleLivenessComplete = async (imageUri: string) => {
     try {
       setShowLivenessCheck(false);
-      
+
       if (!imageUri || !user?.id || !selectedDocument) {
         Alert.alert('Error', 'Failed to capture image. Please try again.');
         return;
       }
-      
+
       await submitDocument(user.id, selectedDocument as KYCDocumentType, {
         fileUrl: imageUri,
       });
@@ -325,7 +333,7 @@ export default function KYCScreen({ navigation }: Props) {
 
   // Render document card with per-document status badge - symmetrical grid layout
   const renderDocumentCard = (docType: DocumentType) => {
-    const config = documentConfig[docType];
+    const config = documentConfig[docType as keyof typeof documentConfig];
     const status = getDocumentStatus(docType as KYCDocumentType);
     const statusCfg = statusConfig[status];
 
@@ -367,7 +375,7 @@ export default function KYCScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -380,7 +388,7 @@ export default function KYCScreen({ navigation }: Props) {
             style={styles.backButton}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={22} color="#1e293b" />
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>KYC Verification</Text>
@@ -394,7 +402,7 @@ export default function KYCScreen({ navigation }: Props) {
         {/* Loading State */}
         {isLoading && !refreshing && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0ea5e9" />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Loading KYC status...</Text>
           </View>
         )}
@@ -408,8 +416,8 @@ export default function KYCScreen({ navigation }: Props) {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                colors={['#0ea5e9']}
-                tintColor="#0ea5e9"
+                colors={[colors.primary]}
+                tintColor={colors.primary}
               />
             }
           >
@@ -436,7 +444,7 @@ export default function KYCScreen({ navigation }: Props) {
             {isVerified() && (
               <View style={styles.verifiedContainer}>
                 <View style={styles.verifiedIconWrapper}>
-                  <MaterialCommunityIcons name="check-circle" size={64} color="#10b981" />
+                  <MaterialCommunityIcons name="check-circle" size={64} color={colors.success} />
                 </View>
                 <Text style={styles.verifiedTitle}>Identity Verified</Text>
                 <Text style={styles.verifiedSubtitle}>
@@ -495,7 +503,7 @@ export default function KYCScreen({ navigation }: Props) {
 
             {/* Info Banner */}
             <View style={styles.infoBanner}>
-              <Ionicons name="information-circle" size={18} color="#64748b" />
+              <Ionicons name="information-circle" size={18} color={colors.textMuted} />
               <Text style={styles.infoBannerText}>
                 As per government regulations, we need to verify your identity before you can trade energy.
               </Text>
@@ -510,7 +518,7 @@ export default function KYCScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -529,7 +537,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -545,19 +553,19 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   shieldIconWrapper: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -575,7 +583,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
   },
   scrollView: {
     flex: 1,
@@ -585,10 +593,10 @@ const styles = StyleSheet.create({
   },
   // Status Card - matches HomeScreen hero card style
   statusCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 20,
-    marginTop : 10,
+    marginTop: 10,
     marginBottom: 24,
     flexDirection: 'row',
     alignItems: 'center',
@@ -615,7 +623,7 @@ const styles = StyleSheet.create({
   },
   statusSubtext: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   // Section styles
@@ -631,24 +639,24 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   sectionBadge: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
   sectionBadgeOptional: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.backgroundSecondary,
   },
   sectionBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   sectionBadgeTextOptional: {
-    color: '#64748b',
+    color: colors.textSecondary,
   },
   // Cards Grid - symmetrical 2-column layout
   cardsGrid: {
@@ -659,7 +667,7 @@ const styles = StyleSheet.create({
   // Document Card - symmetrical card design
   documentCard: {
     width: (width - 52) / 2,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -682,13 +690,13 @@ const styles = StyleSheet.create({
   documentCardTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 4,
   },
   documentCardSubtitle: {
     fontSize: 11,
-    color: '#64748b',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 15,
     marginBottom: 12,
@@ -709,7 +717,7 @@ const styles = StyleSheet.create({
   infoBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     padding: 16,
     borderRadius: 16,
     marginTop: 8,
@@ -723,12 +731,12 @@ const styles = StyleSheet.create({
   infoBannerText: {
     flex: 1,
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   // Verified State
   verifiedContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
@@ -751,12 +759,12 @@ const styles = StyleSheet.create({
   verifiedTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#166534',
+    color: colors.success,
     marginBottom: 8,
   },
   verifiedSubtitle: {
     fontSize: 14,
-    color: '#10b981',
+    color: colors.success,
     textAlign: 'center',
     lineHeight: 22,
   },

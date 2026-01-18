@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '@/types';
 import { useWalletStore, useAuthStore } from '@/store';
 import { supabaseDatabaseService } from '@/services/supabase/databaseService';
+import { useTheme } from '@/contexts';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 import { formatCurrency, formatEnergy, getTimeAgo } from '@/utils/helpers';
 import { Transaction } from '@/types';
 
@@ -29,6 +31,10 @@ export default function WalletScreen({ navigation }: Props) {
   const { wallet, transactions, setWallet, setTransactions } = useWalletStore();
   const { user } = useAuthStore();
   const [refreshing, setRefreshing] = React.useState(false);
+
+  const { isDark } = useTheme();
+  const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   // Reload wallet data from database when screen is focused
   const loadWalletData = useCallback(async () => {
@@ -79,26 +85,26 @@ export default function WalletScreen({ navigation }: Props) {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'energy_sale':
-        return <MaterialCommunityIcons name="lightning-bolt" size={20} color="#10b981" />;
+        return <MaterialCommunityIcons name="lightning-bolt" size={20} color={colors.primary} />;
       case 'energy_purchase':
-        return <MaterialCommunityIcons name="flash" size={20} color="#3b82f6" />;
+        return <MaterialCommunityIcons name="flash" size={20} color={colors.primary} />;
       case 'topup':
-        return <MaterialCommunityIcons name="plus-circle" size={20} color="#3b82f6" />;
+        return <MaterialCommunityIcons name="plus-circle" size={20} color={colors.primary} />;
       case 'withdrawal':
-        return <MaterialCommunityIcons name="minus-circle" size={20} color="#ef4444" />;
+        return <MaterialCommunityIcons name="minus-circle" size={20} color={colors.error} />;
       default:
-        return <Ionicons name="swap-horizontal" size={20} color="#6b7280" />;
+        return <Ionicons name="swap-horizontal" size={20} color={colors.textMuted} />;
     }
   };
 
   const renderTransaction = ({ item }: { item: Transaction }) => {
     const isPositive = item.type === 'energy_sale' || item.type === 'topup';
     const amountPrefix = isPositive ? '+' : '-';
-    const amountColor = isPositive ? '#3b82f6' : '#ef4444';
+    const amountColor = isPositive ? colors.success : colors.error;
 
     return (
       <View style={styles.transactionItem}>
-        <View style={[styles.transactionIconContainer, { backgroundColor: isPositive ? '#dbeafe' : '#dbeafe' }]}>
+        <View style={[styles.transactionIconContainer, { backgroundColor: colors.primaryLight }]}>
           {getTransactionIcon(item.type || '')}
         </View>
         <View style={styles.transactionInfo}>
@@ -122,7 +128,7 @@ export default function WalletScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -141,7 +147,7 @@ export default function WalletScreen({ navigation }: Props) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
         >
           {/* Main Balance Card */}
@@ -155,7 +161,7 @@ export default function WalletScreen({ navigation }: Props) {
             {savingsThisMonth > 0 && (
               <View style={styles.savingsRow}>
                 <View style={styles.savingsBadge}>
-                  <Ionicons name="trending-up" size={14} color="#3b82f6" />
+                  <Ionicons name="trending-up" size={14} color={colors.primary} />
                   <Text style={styles.savingsAmount}>{formatCurrency(savingsThisMonth)}</Text>
                 </View>
                 <Text style={styles.savingsText}>Nice job! You've saved this month</Text>
@@ -165,7 +171,7 @@ export default function WalletScreen({ navigation }: Props) {
             {/* Energy Balance */}
             <View style={styles.energyBalanceRow}>
               <View style={styles.energyIcon}>
-                <MaterialCommunityIcons name="lightning-bolt" size={16} color="#3b82f6" />
+                <MaterialCommunityIcons name="lightning-bolt" size={16} color={colors.primary} />
               </View>
               <Text style={styles.energyBalanceText}>
                 Energy: {wallet ? formatEnergy(wallet.energyBalance, 'kWh') : '0 kWh'}
@@ -177,8 +183,8 @@ export default function WalletScreen({ navigation }: Props) {
           <View style={styles.actionsContainer}>
             {/* Top Up Button */}
             <TouchableOpacity style={styles.actionButton} onPress={handleTopUp} activeOpacity={0.7}>
-              <View style={[styles.actionIconContainer, { backgroundColor: '#dbeafe' }]}>
-                <Ionicons name="arrow-up" size={22} color="#3b82f6" />
+              <View style={[styles.actionIconContainer, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="arrow-up" size={22} color={colors.primary} />
               </View>
               <Text style={styles.actionButtonText}>Top Up</Text>
             </TouchableOpacity>
@@ -187,7 +193,7 @@ export default function WalletScreen({ navigation }: Props) {
             <TouchableOpacity style={styles.actionButton} onPress={handleTransactionHistory} activeOpacity={0.7}>
               <View style={[styles.actionIconContainerMain]}>
                 <LinearGradient
-                  colors={['#3b82f6', '#2563eb']}
+                  colors={[colors.primary, colors.primaryDark]}
                   style={styles.actionIconGradient}
                 >
                   <MaterialCommunityIcons name="swap-horizontal" size={24} color="#ffffff" />
@@ -198,8 +204,8 @@ export default function WalletScreen({ navigation }: Props) {
 
             {/* Withdraw Button */}
             <TouchableOpacity style={styles.actionButton} onPress={handleWithdraw} activeOpacity={0.7}>
-              <View style={[styles.actionIconContainer, { backgroundColor: '#dbeafe' }]}>
-                <Ionicons name="arrow-down" size={22} color="#3b82f6" />
+              <View style={[styles.actionIconContainer, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="arrow-down" size={22} color={colors.primary} />
               </View>
               <Text style={styles.actionButtonText}>Withdraw</Text>
             </TouchableOpacity>
@@ -228,7 +234,7 @@ export default function WalletScreen({ navigation }: Props) {
           ) : (
             <View style={styles.emptyTransactions}>
               <View style={styles.emptyIconContainer}>
-                <MaterialCommunityIcons name="history" size={40} color="#dbeafe" />
+                <MaterialCommunityIcons name="history" size={40} color={colors.primaryLight} />
               </View>
               <Text style={styles.emptyText}>No transactions yet</Text>
               <Text style={styles.emptySubtext}>
@@ -241,15 +247,15 @@ export default function WalletScreen({ navigation }: Props) {
           {wallet && (
             <View style={styles.statsContainer}>
               <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#dbeafe' }]}>
-                  <MaterialCommunityIcons name="trending-up" size={20} color="#3b82f6" />
+                <View style={[styles.statIcon, { backgroundColor: colors.primaryLight }]}>
+                  <MaterialCommunityIcons name="trending-up" size={20} color={colors.primary} />
                 </View>
                 <Text style={styles.statLabel}>Energy Sold</Text>
                 <Text style={styles.statValue}>{formatEnergy(wallet.energyBalance * 0.3, 'kWh')}</Text>
               </View>
               <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#dbeafe' }]}>
-                  <MaterialCommunityIcons name="cart" size={20} color="#3b82f6" />
+                <View style={[styles.statIcon, { backgroundColor: colors.primaryLight }]}>
+                  <MaterialCommunityIcons name="cart" size={20} color={colors.primary} />
                 </View>
                 <Text style={styles.statLabel}>Energy Bought</Text>
                 <Text style={styles.statValue}>{formatEnergy(wallet.energyBalance * 0.2, 'kWh')}</Text>
@@ -262,7 +268,7 @@ export default function WalletScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -280,12 +286,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 30,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 15,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   scrollView: {
@@ -296,12 +302,12 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   balanceCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     marginTop: 10,
     padding: 24,
     marginBottom: 24,
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -309,14 +315,14 @@ const styles = StyleSheet.create({
   },
   balanceLabel: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
     marginBottom: 8,
   },
   balanceAmount: {
     fontSize: 42,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 16,
   },
   savingsRow: {
@@ -328,7 +334,7 @@ const styles = StyleSheet.create({
   savingsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -337,16 +343,16 @@ const styles = StyleSheet.create({
   savingsAmount: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   savingsText: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
   },
   energyBalanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.backgroundSecondary,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
@@ -356,14 +362,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   energyBalanceText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -392,7 +398,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     overflow: 'hidden',
-    shadowColor: '#3b82f6',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -407,7 +413,7 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -418,15 +424,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   viewAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   transactionsContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -448,7 +454,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -461,12 +467,12 @@ const styles = StyleSheet.create({
   transactionType: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 2,
   },
   transactionTime: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textMuted,
   },
   transactionAmount: {
     fontSize: 16,
@@ -474,13 +480,13 @@ const styles = StyleSheet.create({
   },
   transactionSeparator: {
     height: 1,
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.border,
     marginLeft: 72,
   },
   emptyTransactions: {
     padding: 40,
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     marginBottom: 24,
     shadowColor: '#000',
@@ -493,7 +499,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -501,12 +507,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.text,
     marginBottom: 4,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   statsContainer: {
@@ -515,7 +521,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
     shadowColor: '#000',
@@ -534,13 +540,13 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
     marginBottom: 4,
   },
   statValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
 });

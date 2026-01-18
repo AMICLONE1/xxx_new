@@ -133,17 +133,36 @@ export const tradingDao = {
 
     // Seller methods
     async getSeller(userId: string) {
+        console.log(`[TradingDao] getSeller called for userId: ${userId}`);
+
         const { data, error } = await supabase
             .from('sellers')
             .select('*')
             .eq('user_id', userId)
             .single();
 
-        if (error && error.code !== 'PGRST116') throw error;
+        if (error && error.code !== 'PGRST116') {
+            console.error(`[TradingDao] getSeller error for userId ${userId}:`, error);
+            throw error;
+        }
+
+        if (!data) {
+            console.log(`[TradingDao] getSeller: No seller found for userId ${userId}`);
+        } else {
+            console.log(`[TradingDao] getSeller found:`, {
+                id: data.id,
+                user_id: data.user_id,
+                name: data.name,
+                available_energy: data.available_energy
+            });
+        }
+
         return data;
     },
 
     async updateSeller(userId: string, updates: any) {
+        console.log(`[TradingDao] updateSeller called for userId: ${userId}, updates:`, JSON.stringify(updates));
+
         const { data, error } = await supabase
             .from('sellers')
             .update(updates)
@@ -151,7 +170,17 @@ export const tradingDao = {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error(`[TradingDao] updateSeller error for userId ${userId}:`, error);
+            throw error;
+        }
+
+        if (!data) {
+            console.error(`[TradingDao] updateSeller returned no data for userId ${userId}. Seller may not exist.`);
+            throw new Error(`Seller not found for user_id: ${userId}`);
+        }
+
+        console.log(`[TradingDao] updateSeller success. New available_energy: ${data.available_energy}`);
         return data;
     }
 };

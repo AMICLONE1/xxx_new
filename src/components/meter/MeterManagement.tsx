@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { Meter } from '@/types';
+import { useTheme } from '@/contexts';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 
 interface MeterManagementProps {
   meters: Meter[];
@@ -27,6 +29,10 @@ export const MeterManagement: React.FC<MeterManagementProps> = ({
   onDisableMeter,
   onViewDetails,
 }) => {
+  const { isDark } = useTheme();
+  const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [enabledMeters, setEnabledMeters] = useState<{ [key: string]: boolean }>(
     meters.reduce((acc, meter) => ({ ...acc, [meter.id]: true }), {})
   );
@@ -55,14 +61,14 @@ export const MeterManagement: React.FC<MeterManagementProps> = ({
     // Check if meter has issues (you can add more complex logic here)
     const hasIssue = false; // TODO: Add actual meter health check logic
 
-    if (hasIssue) return { status: 'Defective', color: '#ef4444', icon: 'alert-circle', bgColor: '#fee2e2' };
-    if (!enabled) return { status: 'Off', color: '#64748b', icon: 'power-off', bgColor: '#f1f5f9' };
-    return { status: 'Active', color: '#3b82f6', icon: 'check-circle', bgColor: '#dbeafe' };
+    if (hasIssue) return { status: 'Defective', color: colors.error, icon: 'alert-circle', bgColor: colors.errorBackground };
+    if (!enabled) return { status: 'Off', color: colors.textMuted, icon: 'power-off', bgColor: colors.backgroundSecondary };
+    return { status: 'Active', color: colors.success, icon: 'check-circle', bgColor: colors.successBackground };
   };
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -70,20 +76,14 @@ export const MeterManagement: React.FC<MeterManagementProps> = ({
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerIconContainer}>
-            <LinearGradient
-              colors={['#3b82f6', '#2563eb']}
-              style={styles.headerIconGradient}
-            >
-              <MaterialCommunityIcons name="speedometer" size={32} color="#ffffff" />
-            </LinearGradient>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>My Smart Meters</Text>
+            <Text style={styles.headerSubtitle}>Manage your registered devices</Text>
           </View>
-          <Text style={styles.headerTitle}>My Smart Meters</Text>
-          <Text style={styles.headerSubtitle}>Manage your registered devices</Text>
 
-          {/* Meter Count Badge */}
           <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>{meters.length} Meter{meters.length !== 1 ? 's' : ''}</Text>
+            <MaterialCommunityIcons name="lightning-bolt" size={16} color={colors.primary} />
+            <Text style={styles.countBadgeText}>{meters.length}</Text>
           </View>
         </View>
 
@@ -126,7 +126,7 @@ export const MeterManagement: React.FC<MeterManagementProps> = ({
                   <View style={styles.meterDetails}>
                     <View style={styles.meterDetailItem}>
                       <View style={styles.detailIconContainer}>
-                        <Ionicons name="person-outline" size={14} color="#64748b" />
+                        <Ionicons name="person-outline" size={14} color={colors.textMuted} />
                       </View>
                       <Text style={styles.detailText} numberOfLines={1}>
                         {meter.consumerNumber}
@@ -135,7 +135,7 @@ export const MeterManagement: React.FC<MeterManagementProps> = ({
 
                     <View style={styles.meterDetailItem}>
                       <View style={styles.detailIconContainer}>
-                        <MaterialCommunityIcons name="identifier" size={14} color="#64748b" />
+                        <MaterialCommunityIcons name="identifier" size={14} color={colors.textMuted} />
                       </View>
                       <Text style={styles.detailText} numberOfLines={1}>
                         {meter.id.slice(0, 12)}...
@@ -152,7 +152,7 @@ export const MeterManagement: React.FC<MeterManagementProps> = ({
                       <Ionicons
                         name={enabled ? 'power' : 'power-outline'}
                         size={16}
-                        color={enabled ? '#3b82f6' : '#64748b'}
+                        color={enabled ? colors.primary : colors.textMuted}
                       />
                       <Text style={[styles.toggleLabel, enabled && styles.toggleLabelActive]}>
                         {enabled ? 'Active' : 'Inactive'}
@@ -175,9 +175,9 @@ export const MeterManagement: React.FC<MeterManagementProps> = ({
                       activeOpacity={0.7}
                     >
                       <View style={styles.actionButtonIcon}>
-                        <Ionicons name="information-circle-outline" size={18} color="#3b82f6" />
+                        <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
                       </View>
-                      <Text style={[styles.actionButtonText, { color: '#3b82f6' }]}>Details</Text>
+                      <Text style={[styles.actionButtonText, { color: colors.primary }]}>Details</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -186,9 +186,9 @@ export const MeterManagement: React.FC<MeterManagementProps> = ({
                       activeOpacity={0.7}
                     >
                       <View style={[styles.actionButtonIcon, styles.disableButtonIcon]}>
-                        <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
+                        <Ionicons name="close-circle-outline" size={18} color={colors.error} />
                       </View>
-                      <Text style={[styles.actionButtonText, { color: '#ef4444' }]}>Disable</Text>
+                      <Text style={[styles.actionButtonText, { color: colors.error }]}>Disable</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -204,7 +204,7 @@ export const MeterManagement: React.FC<MeterManagementProps> = ({
           activeOpacity={0.9}
         >
           <LinearGradient
-            colors={['#3b82f6', '#2563eb']}
+            colors={[colors.primary, colors.primaryDark]}
             style={styles.addButtonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -219,7 +219,7 @@ export const MeterManagement: React.FC<MeterManagementProps> = ({
         {/* Info Box */}
         <View style={styles.infoBox}>
           <View style={styles.infoIconContainer}>
-            <Ionicons name="information-circle" size={22} color="#3b82f6" />
+            <Ionicons name="information-circle" size={22} color={colors.primary} />
           </View>
           <Text style={styles.infoText}>
             Toggle meters on/off to control data collection. Disable to permanently remove a meter.
@@ -232,7 +232,7 @@ export const MeterManagement: React.FC<MeterManagementProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -240,55 +240,48 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 24,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerIconContainer: {
-    marginBottom: 16,
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  headerIconGradient: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerContent: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 6,
+    color: colors.text,
+    marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#64748b',
-    marginBottom: 16,
+    color: colors.textSecondary,
   },
   countBadge: {
-    backgroundColor: '#dbeafe',
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    gap: 6,
   },
   countBadgeText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   metersContainer: {
     paddingHorizontal: 20,
     paddingTop: 8,
   },
   meterCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 18,
     marginBottom: 16,
@@ -329,7 +322,7 @@ const styles = StyleSheet.create({
   meterTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 12,
   },
   meterDetails: {
@@ -344,18 +337,18 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 6,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   detailText: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     flex: 1,
   },
   controlsSection: {
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: colors.border,
     paddingTop: 16,
     gap: 12,
   },
@@ -363,10 +356,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.backgroundSecondary,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   toggleLabelContainer: {
     flexDirection: 'row',
@@ -376,10 +371,10 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748b',
+    color: colors.textMuted,
   },
   toggleLabelActive: {
-    color: '#3b82f6',
+    color: colors.primary,
   },
   actionButtonsRow: {
     flexDirection: 'row',
@@ -392,23 +387,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 12,
     gap: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   disableButton: {
-    backgroundColor: '#fef2f2',
+    backgroundColor: colors.errorBackground,
+    borderColor: colors.errorBackground,
   },
   actionButtonIcon: {
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
   },
   disableButtonIcon: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   actionButtonText: {
     fontSize: 14,
@@ -420,7 +418,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#3b82f6',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -449,12 +447,12 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     marginHorizontal: 20,
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#dbeafe',
+    borderColor: colors.border,
     gap: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -466,14 +464,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#475569',
+    color: colors.textSecondary,
     lineHeight: 19,
   },
 });

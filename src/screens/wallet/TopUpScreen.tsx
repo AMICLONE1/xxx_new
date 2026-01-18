@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import { supabaseDatabaseService } from '@/services/supabase/databaseService';
 import { RazorpayCheckout } from '@/components/payments/RazorpayCheckout';
 import { getErrorMessage } from '@/utils/errorUtils';
 import { useTheme } from '@/contexts';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 import { useAuthStore, useWalletStore } from '@/store';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -34,6 +35,9 @@ const QUICK_AMOUNTS = [100, 500, 1000, 5000];
 
 export default function TopUpScreen({ navigation }: Props) {
   const { isDark } = useTheme();
+  const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const { user } = useAuthStore();
   const { updateBalance } = useWalletStore();
 
@@ -169,7 +173,7 @@ export default function TopUpScreen({ navigation }: Props) {
   return (
     <>
       <LinearGradient
-        colors={isDark ? ['#1e293b', '#0f172a', '#020617'] : ['#e0f2fe', '#f0f9ff', '#ffffff']}
+        colors={colors.backgroundGradient as [string, string, ...string[]]}
         style={styles.gradientBackground}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -178,15 +182,15 @@ export default function TopUpScreen({ navigation }: Props) {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity
-              style={[styles.backButton, isDark && styles.backButtonDark]}
+              style={styles.backButton}
               onPress={() => navigation.goBack()}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="arrow-back" size={24} color={isDark ? '#f1f5f9' : '#1e293b'} />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <View style={styles.headerTextContainer}>
-              <Text style={[styles.title, isDark && styles.titleDark]}>Top Up Wallet</Text>
-              <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>
+              <Text style={styles.title}>Top Up Wallet</Text>
+              <Text style={styles.subtitle}>
                 Purchase credits to trade solar energy instantly
               </Text>
             </View>
@@ -198,11 +202,11 @@ export default function TopUpScreen({ navigation }: Props) {
             contentContainerStyle={styles.scrollContent}
           >
             {/* Select Amount Card */}
-            <View style={[styles.card, isDark && styles.cardDark]}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>Select Amount</Text>
-                <View style={[styles.creditBadge, isDark && styles.creditBadgeDark]}>
-                  <Text style={[styles.creditBadgeText, isDark && styles.creditBadgeTextDark]}>
+                <Text style={styles.cardTitle}>Select Amount</Text>
+                <View style={styles.creditBadge}>
+                  <Text style={styles.creditBadgeText}>
                     1 Credit = ₹1.00
                   </Text>
                 </View>
@@ -215,7 +219,6 @@ export default function TopUpScreen({ navigation }: Props) {
                     key={quickAmount}
                     style={[
                       styles.quickAmountButton,
-                      isDark && styles.quickAmountButtonDark,
                       selectedAmount === quickAmount && styles.quickAmountButtonActive,
                     ]}
                     onPress={() => handleQuickAmount(quickAmount)}
@@ -223,7 +226,6 @@ export default function TopUpScreen({ navigation }: Props) {
                     <Text
                       style={[
                         styles.quickAmountText,
-                        isDark && styles.quickAmountTextDark,
                         selectedAmount === quickAmount && styles.quickAmountTextActive,
                       ]}
                     >
@@ -235,20 +237,20 @@ export default function TopUpScreen({ navigation }: Props) {
 
               {/* Divider */}
               <View style={styles.dividerContainer}>
-                <View style={[styles.dividerLine, isDark && styles.dividerLineDark]} />
-                <Text style={[styles.dividerText, isDark && styles.dividerTextDark]}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>
                   OR ENTER CUSTOM AMOUNT
                 </Text>
-                <View style={[styles.dividerLine, isDark && styles.dividerLineDark]} />
+                <View style={styles.dividerLine} />
               </View>
 
               {/* Custom Amount Input */}
-              <View style={[styles.amountInputContainer, isDark && styles.amountInputContainerDark]}>
-                <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>₹</Text>
+              <View style={styles.amountInputContainer}>
+                <Text style={styles.currencySymbol}>₹</Text>
                 <TextInput
-                  style={[styles.amountInput, isDark && styles.amountInputDark]}
+                  style={styles.amountInput}
                   placeholder="0"
-                  placeholderTextColor={isDark ? '#64748b' : '#9ca3af'}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"
                   value={amount}
                   onChangeText={(text) => {
@@ -260,33 +262,33 @@ export default function TopUpScreen({ navigation }: Props) {
             </View>
 
             {/* Transaction Summary Card */}
-            <View style={[styles.card, isDark && styles.cardDark]}>
+            <View style={styles.card}>
               <View style={styles.summaryHeader}>
-                <View style={[styles.summaryIconContainer, isDark && styles.summaryIconContainerDark]}>
-                  <Ionicons name="receipt-outline" size={20} color="#3b82f6" />
+                <View style={styles.summaryIconContainer}>
+                  <Ionicons name="receipt-outline" size={20} color={colors.primary} />
                 </View>
-                <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>Transaction Summary</Text>
+                <Text style={styles.cardTitle}>Transaction Summary</Text>
               </View>
 
               <View style={styles.summaryContent}>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, isDark && styles.summaryLabelDark]}>Top-up Amount</Text>
-                  <Text style={[styles.summaryValue, isDark && styles.summaryValueDark]}>
+                  <Text style={styles.summaryLabel}>Top-up Amount</Text>
+                  <Text style={styles.summaryValue}>
                     {formatCurrency(parsedAmount)}
                   </Text>
                 </View>
 
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, isDark && styles.summaryLabelDark]}>Platform Fee (2%)</Text>
-                  <Text style={[styles.summaryValue, isDark && styles.summaryValueDark]}>
+                  <Text style={styles.summaryLabel}>Platform Fee (2%)</Text>
+                  <Text style={styles.summaryValue}>
                     {formatCurrency(platformFee)}
                   </Text>
                 </View>
 
-                <View style={[styles.summaryDivider, isDark && styles.summaryDividerDark]} />
+                <View style={styles.summaryDivider} />
 
                 <View style={styles.summaryTotalRow}>
-                  <Text style={[styles.summaryTotalLabel, isDark && styles.summaryTotalLabelDark]}>Total to Pay</Text>
+                  <Text style={styles.summaryTotalLabel}>Total to Pay</Text>
                   <Text style={styles.summaryTotalValue}>
                     {formatCurrency(totalAmount)}
                   </Text>
@@ -295,16 +297,16 @@ export default function TopUpScreen({ navigation }: Props) {
             </View>
 
             {/* Payment Method Card */}
-            <View style={[styles.card, isDark && styles.cardDark]}>
+            <View style={styles.card}>
               <TouchableOpacity style={styles.paymentMethodRow}>
-                <View style={[styles.paymentMethodIcon, isDark && styles.paymentMethodIconDark]}>
-                  <MaterialCommunityIcons name="credit-card" size={24} color="#3b82f6" />
+                <View style={styles.paymentMethodIcon}>
+                  <MaterialCommunityIcons name="credit-card" size={24} color={colors.primary} />
                 </View>
                 <View style={styles.paymentMethodInfo}>
-                  <Text style={[styles.paymentMethodTitle, isDark && styles.paymentMethodTitleDark]}>
+                  <Text style={styles.paymentMethodTitle}>
                     Visa •••• 4242
                   </Text>
-                  <Text style={[styles.paymentMethodSubtitle, isDark && styles.paymentMethodSubtitleDark]}>
+                  <Text style={styles.paymentMethodSubtitle}>
                     Primary Method
                   </Text>
                 </View>
@@ -322,7 +324,7 @@ export default function TopUpScreen({ navigation }: Props) {
               disabled={isProcessing || !amount || parseFloat(amount) <= 0}
             >
               <LinearGradient
-                colors={['#3b82f6', '#2563eb']}
+                colors={[colors.primary, colors.primaryDark]}
                 style={styles.payButtonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -342,8 +344,8 @@ export default function TopUpScreen({ navigation }: Props) {
 
             {/* Security Note */}
             <View style={styles.securityNote}>
-              <Ionicons name="shield-checkmark" size={16} color="#3b82f6" />
-              <Text style={[styles.securityText, isDark && styles.securityTextDark]}>
+              <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
+              <Text style={styles.securityText}>
                 Secured by Razorpay. Your payment information is encrypted.
               </Text>
             </View>
@@ -376,7 +378,7 @@ export default function TopUpScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -395,7 +397,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -404,9 +406,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  backButtonDark: {
-    backgroundColor: 'rgba(30, 41, 59, 0.9)',
-  },
   headerTextContainer: {
     marginLeft: 14,
     flex: 1,
@@ -414,18 +413,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 4,
-  },
-  titleDark: {
-    color: '#f1f5f9',
   },
   subtitle: {
     fontSize: 14,
-    color: '#64748b',
-  },
-  subtitleDark: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
   },
   // ScrollView
   scrollView: {
@@ -436,7 +429,7 @@ const styles = StyleSheet.create({
   },
   // Card Styles
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
@@ -445,9 +438,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
-  },
-  cardDark: {
-    backgroundColor: '#1e293b',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -458,30 +448,20 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
-  },
-  cardTitleDark: {
-    color: '#f1f5f9',
+    color: colors.text,
   },
   creditBadge: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
-  },
-  creditBadgeDark: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: colors.border,
   },
   creditBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#3b82f6',
-  },
-  creditBadgeTextDark: {
-    color: '#60a5fa',
+    color: colors.primary,
   },
   // Quick Amount Grid
   quickAmountsGrid: {
@@ -492,31 +472,24 @@ const styles = StyleSheet.create({
   quickAmountButton: {
     flex: 1,
     paddingVertical: 16,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickAmountButtonDark: {
-    backgroundColor: '#0f172a',
-    borderColor: '#334155',
-  },
   quickAmountButtonActive: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
   },
   quickAmountText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
-  },
-  quickAmountTextDark: {
-    color: '#e2e8f0',
+    color: colors.text,
   },
   quickAmountTextActive: {
-    color: '#3b82f6',
+    color: colors.primary,
   },
   // Divider
   dividerContainer: {
@@ -527,54 +500,38 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e2e8f0',
-  },
-  dividerLineDark: {
-    backgroundColor: '#334155',
+    backgroundColor: colors.border,
   },
   dividerText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#94a3b8',
+    color: colors.textMuted,
     letterSpacing: 0.5,
     marginHorizontal: 12,
-  },
-  dividerTextDark: {
-    color: '#64748b',
   },
   // Amount Input
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
     paddingHorizontal: 16,
     paddingVertical: 4,
-  },
-  amountInputContainerDark: {
-    backgroundColor: '#0f172a',
-    borderColor: '#334155',
   },
   currencySymbol: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#64748b',
+    color: colors.textSecondary,
     marginRight: 8,
-  },
-  currencySymbolDark: {
-    color: '#94a3b8',
   },
   amountInput: {
     flex: 1,
     fontSize: 28,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     paddingVertical: 12,
-  },
-  amountInputDark: {
-    color: '#f1f5f9',
   },
   // Summary Styles
   summaryHeader: {
@@ -586,13 +543,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-  },
-  summaryIconContainerDark: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
   },
   summaryContent: {
     gap: 12,
@@ -604,26 +558,17 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 15,
-    color: '#64748b',
-  },
-  summaryLabelDark: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
   },
   summaryValue: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#1e293b',
-  },
-  summaryValueDark: {
-    color: '#e2e8f0',
+    color: colors.text,
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: colors.border,
     marginVertical: 8,
-  },
-  summaryDividerDark: {
-    backgroundColor: '#334155',
   },
   summaryTotalRow: {
     flexDirection: 'row',
@@ -633,15 +578,12 @@ const styles = StyleSheet.create({
   summaryTotalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
-  },
-  summaryTotalLabelDark: {
-    color: '#f1f5f9',
+    color: colors.text,
   },
   summaryTotalValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   // Payment Method
   paymentMethodRow: {
@@ -652,13 +594,10 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
-  },
-  paymentMethodIconDark: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
   },
   paymentMethodInfo: {
     flex: 1,
@@ -666,31 +605,25 @@ const styles = StyleSheet.create({
   paymentMethodTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 2,
-  },
-  paymentMethodTitleDark: {
-    color: '#f1f5f9',
   },
   paymentMethodSubtitle: {
     fontSize: 13,
-    color: '#3b82f6',
+    color: colors.primary,
     fontWeight: '500',
-  },
-  paymentMethodSubtitleDark: {
-    color: '#60a5fa',
   },
   changeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   // Pay Button
   payButton: {
     borderRadius: 16,
     overflow: 'hidden',
     marginTop: 8,
-    shadowColor: '#3b82f6',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -722,9 +655,6 @@ const styles = StyleSheet.create({
   },
   securityText: {
     fontSize: 13,
-    color: '#64748b',
-  },
-  securityTextDark: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
   },
 });

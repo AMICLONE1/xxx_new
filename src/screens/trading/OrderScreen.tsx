@@ -85,6 +85,15 @@ export default function OrderScreen({ navigation, route }: Props) {
 
     setIsSubmitting(true);
     try {
+      console.log('[OrderScreen] Placing order with:', {
+        buyerId: user.id,
+        sellerId,
+        sellerName,
+        energyAmount: energyValue,
+        pricePerUnit,
+        totalPrice,
+      });
+
       // Use the new placeOrderWithTransaction method for full transaction processing
       const response = await tradingService.placeOrderWithTransaction({
         buyerId: user.id,
@@ -94,16 +103,21 @@ export default function OrderScreen({ navigation, route }: Props) {
       });
 
       if (response.success && response.data) {
+        console.log('[OrderScreen] Order successful:', response.data);
         addOrder(response.data);
         // Update local wallet state with the deducted amount
         updateBalance(0, -totalPrice);
         navigation.goBack();
         Alert.alert('Success ✅', `Order completed! Purchased ${formatEnergy(energyValue, 'kWh')} for ${formatCurrency(totalPrice)}`);
       } else {
+        console.error('[OrderScreen] Order failed:', response.error);
         Alert.alert('Order Failed', response.error || 'Failed to place order. Please try again.');
       }
     } catch (error: unknown) {
-      Alert.alert('Error', getErrorMessage(error) || 'Failed to place order');
+      console.error('[OrderScreen] Order error:', error);
+      const errorMsg = getErrorMessage(error);
+      console.error('[OrderScreen] Error message:', errorMsg);
+      Alert.alert('Error', errorMsg || 'Failed to place order');
     } finally {
       setIsSubmitting(false);
     }

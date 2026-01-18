@@ -107,6 +107,7 @@ const getGreeting = (): string => {
 export default function HomeScreen({ navigation }: Props) {
   const { isDark } = useTheme();
   const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { currentMeter, energyData } = useMeterStore();
   const { activeOrders } = useTradingStore();
   const { wallet } = useWalletStore();
@@ -226,7 +227,7 @@ export default function HomeScreen({ navigation }: Props) {
   if (!currentMeter) {
     return (
       <LinearGradient
-        colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+        colors={colors.backgroundGradient as any}
         style={styles.gradientBackground}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -281,7 +282,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as any}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -294,7 +295,7 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.userName}>{user?.name || 'User'}</Text>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons name="notifications-outline" size={24} color="#1e293b" />
+            <Ionicons name="notifications-outline" size={24} color="#3a4e70ff" />
           </TouchableOpacity>
         </View>
 
@@ -334,8 +335,8 @@ export default function HomeScreen({ navigation }: Props) {
               onPress={navigateToMarketplace}
               activeOpacity={0.9}
             >
-              <View style={[styles.actionButtonIconContainer, { backgroundColor: 'rgba(25, 137, 242, 1)' }]}>
-                <MaterialCommunityIcons name="car-electric" size={24} color="#7dd3fc" />
+              <View style={[styles.actionButtonIconContainer, { backgroundColor: colors.primary }]}>
+                <MaterialCommunityIcons name="car-electric" size={24} color={colors.primaryLight} />
               </View>
               <Text style={styles.actionButtonLabel}>Charge EV</Text>
             </TouchableOpacity>
@@ -348,8 +349,8 @@ export default function HomeScreen({ navigation }: Props) {
               }}
               activeOpacity={0.9}
             >
-              <View style={[styles.actionButtonIconContainer, { backgroundColor: 'rgba(25, 137, 242, 1)' }]}>
-                <MaterialCommunityIcons name="currency-usd" size={24} color="#93c5fd" />
+              <View style={[styles.actionButtonIconContainer, { backgroundColor: colors.primary }]}>
+                <MaterialCommunityIcons name="currency-usd" size={24} color={colors.primaryLight} />
               </View>
               <Text style={styles.actionButtonLabel}>Sell Surplus</Text>
             </TouchableOpacity>
@@ -456,8 +457,8 @@ export default function HomeScreen({ navigation }: Props) {
 
               <View style={styles.marketPriceTrendContainer}>
                 <View style={styles.marketPriceTrendRow}>
-                  <Ionicons name="trending-up" size={14} color="#0ea5e9" />
-                  <Text style={[styles.statTrendTextLarge, { color: '#0ea5e9' }]}>+2.4%</Text>
+                  <Ionicons name="trending-up" size={14} color={colors.primary} />
+                  <Text style={[styles.statTrendTextLarge, { color: colors.primary, }]}>+2.4%</Text>
                 </View>
                 <Text style={styles.statSubtextSmall}>vs yesterday</Text>
               </View>
@@ -494,10 +495,10 @@ export default function HomeScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: colors.background,
   },
   gradientBackground: {
     flex: 1,
@@ -519,20 +520,20 @@ const styles = StyleSheet.create({
   },
   greetingText: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '400',
     marginBottom: 4,
   },
   userName: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   notificationButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -550,10 +551,10 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -568,7 +569,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -580,7 +581,7 @@ const styles = StyleSheet.create({
   profileButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 22,
@@ -594,14 +595,14 @@ const styles = StyleSheet.create({
   profileButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
   },
   mainCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
     marginBottom: 24,
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 16,
@@ -609,7 +610,7 @@ const styles = StyleSheet.create({
   },
   mainCardLabel: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
     marginBottom: 8,
   },
@@ -622,14 +623,14 @@ const styles = StyleSheet.create({
   mainCardValue: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: colors.text,
     letterSpacing: -0.5,
   },
   mainCardArrow: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -655,7 +656,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0f172a',
+    color: colors.text,
     marginBottom: 16,
   },
   highlightsRow: {
@@ -665,7 +666,7 @@ const styles = StyleSheet.create({
   },
   highlightCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
     shadowColor: '#000',
@@ -687,13 +688,13 @@ const styles = StyleSheet.create({
   },
   highlightLabelGreen: {
     fontSize: 12,
-    color: '#10b981',
+    color: colors.success,
     fontWeight: '500',
   },
   highlightValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: colors.text,
     marginBottom: 2,
   },
   highlightChange: {
@@ -704,13 +705,13 @@ const styles = StyleSheet.create({
   },
   highlightChangeGreen: {
     fontSize: 13,
-    color: '#10b981',
+    color: colors.success,
     fontWeight: '500',
     marginBottom: 8,
   },
   highlightSubtext: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: colors.textMuted,
     lineHeight: 16,
   },
   quickActionsGrid: {
@@ -720,7 +721,7 @@ const styles = StyleSheet.create({
   quickActionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
@@ -733,7 +734,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -747,11 +748,11 @@ const styles = StyleSheet.create({
   quickActionTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0f172a',
+    color: colors.text,
   },
   quickActionSubtitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   gradientHeader: {
@@ -798,7 +799,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tickerContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
@@ -811,14 +812,14 @@ const styles = StyleSheet.create({
   },
   tickerLabel: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.textSecondary,
     marginLeft: 8,
     marginRight: 8,
   },
   tickerPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#10b981',
+    color: colors.success,
     marginRight: 12,
   },
   tickerChange: {
@@ -832,7 +833,7 @@ const styles = StyleSheet.create({
   tickerChangeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#10b981',
+    color: colors.success,
     marginLeft: 4,
   },
   scrollView: {
@@ -846,7 +847,7 @@ const styles = StyleSheet.create({
   // NEW REDESIGNED UI STYLES
   // ============================================
   heroCardNew: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
     marginBottom: 20,
@@ -867,14 +868,14 @@ const styles = StyleSheet.create({
   heroCardTitle: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#64748b',
+    color: colors.textSecondary,
     letterSpacing: 0.5,
     marginBottom: 12,
   },
   heroCardValueNew: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 8,
   },
   peakEfficiencyBadge: {
@@ -889,7 +890,7 @@ const styles = StyleSheet.create({
   peakEfficiencyText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   heroCardRight: {
     marginLeft: 16,
@@ -905,9 +906,9 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 6,
-    borderColor: '#3b82f6',
-    borderTopColor: '#e0f2fe',
-    borderRightColor: '#e0f2fe',
+    borderColor: colors.primary,
+    borderTopColor: colors.primaryLight,
+    borderRightColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     transform: [{ rotate: '-45deg' }],
@@ -920,11 +921,11 @@ const styles = StyleSheet.create({
   circularProgressText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   circularProgressLabel: {
     fontSize: 10,
-    color: '#64748b',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   actionButtonsRowNew: {
@@ -934,7 +935,7 @@ const styles = StyleSheet.create({
   },
   actionButtonNew: {
     flex: 1,
-    backgroundColor: '#1766e4ff',
+    backgroundColor: colors.primary,
     borderRadius: 20,
     padding: 20,
     alignItems: 'center',
@@ -945,7 +946,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   actionButtonSell: {
-    backgroundColor: '#1766e4ff',
+    backgroundColor: colors.primary,
   },
   actionButtonIconContainer: {
     width: 48,
@@ -973,7 +974,7 @@ const styles = StyleSheet.create({
   liveEnergySectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   realTimeBadge: {
     backgroundColor: '#dbeafe',
@@ -984,7 +985,7 @@ const styles = StyleSheet.create({
   realTimeBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -994,7 +995,7 @@ const styles = StyleSheet.create({
   },
   statCardSmallNew: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 18,
     // shadowColor: '#0ea5e9',
@@ -1006,7 +1007,7 @@ const styles = StyleSheet.create({
   },
   statCardFullWidth: {
     width: width - 40,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
     shadowColor: '#000',
@@ -1036,25 +1037,25 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   statLabelSmall: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
     marginBottom: 6,
   },
   statValueSmall: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1e293b',
+    color: colors.text,
   },
   statUnitSmall: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '400',
   },
   statTrendBadge: {
@@ -1065,16 +1066,16 @@ const styles = StyleSheet.create({
   statTrendText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#10b981',
+    color: colors.success,
   },
   statTrendTextLarge: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#10b981',
+    color: colors.success,
   },
   statSubtextSmall: {
     fontSize: 10,
-    color: '#94a3b8',
+    color: colors.textMuted,
   },
   secondaryActionsRowNew: {
     flexDirection: 'row',
@@ -1083,7 +1084,7 @@ const styles = StyleSheet.create({
   },
   secondaryActionButtonNew: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
@@ -1106,7 +1107,7 @@ const styles = StyleSheet.create({
   secondaryActionLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
     flex: 1,
   },
   // ============================================
@@ -1119,7 +1120,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     marginBottom: 16,
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
@@ -1145,7 +1146,7 @@ const styles = StyleSheet.create({
   heroCardBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: colors.card,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -1154,7 +1155,7 @@ const styles = StyleSheet.create({
   heroCardBadgeText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#10b981',
+    color: colors.success,
   },
   heroCardLabel: {
     fontSize: 14,
@@ -1186,7 +1187,7 @@ const styles = StyleSheet.create({
   },
   statCardModern: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 18,
     shadowColor: '#000',
@@ -1208,12 +1209,12 @@ const styles = StyleSheet.create({
   statCardModernValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: colors.text,
     marginBottom: 4,
   },
   statCardModernLabel: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
     marginBottom: 10,
   },
@@ -1229,14 +1230,14 @@ const styles = StyleSheet.create({
   },
   statCardModernStatus: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: colors.textMuted,
     fontWeight: '500',
   },
   marketPriceCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 18,
     padding: 16,
     shadowColor: '#000',
@@ -1256,13 +1257,13 @@ const styles = StyleSheet.create({
   },
   marketPriceLabel: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   marketPriceValue: {
     fontSize: 19,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: colors.text,
   },
   marketPriceTrend: {
     flexDirection: 'row',
@@ -1276,13 +1277,13 @@ const styles = StyleSheet.create({
   marketPriceTrendText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10b981',
+    color: colors.success,
   },
   // ============================================
   // WALLET CARD MODERN STYLES
   // ============================================
   walletCardModern: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 18,
     marginBottom: 16,
@@ -1306,7 +1307,7 @@ const styles = StyleSheet.create({
   walletCardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0f172a',
+    color: colors.text,
   },
   walletBalancesModern: {
     flexDirection: 'row',
@@ -1330,14 +1331,14 @@ const styles = StyleSheet.create({
   },
   walletBalanceLabelModern: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: colors.textMuted,
     fontWeight: '500',
     marginBottom: 2,
   },
   walletBalanceValueModern: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: colors.text,
   },
   walletBalanceDividerModern: {
     width: 1,
@@ -1349,7 +1350,7 @@ const styles = StyleSheet.create({
   // ORDERS CARD MODERN STYLES
   // ============================================
   ordersCardModern: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 18,
     marginBottom: 16,
@@ -1368,7 +1369,7 @@ const styles = StyleSheet.create({
   ordersTitleModern: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0f172a',
+    color: colors.text,
     marginLeft: 12,
   },
   ordersCountBadgeModern: {
@@ -1396,12 +1397,12 @@ const styles = StyleSheet.create({
   orderEnergyModern: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0f172a',
+    color: colors.text,
     marginBottom: 2,
   },
   orderPriceModern: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textSecondary,
   },
   orderStatusBadgeModern: {
     paddingHorizontal: 10,
@@ -1453,7 +1454,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 14,
     padding: 14,
     gap: 10,
@@ -1474,10 +1475,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '600',
-    color: '#0f172a',
+    color: colors.text,
   },
   energyFlowContainerCompact: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
     marginTop: 8,
@@ -1497,7 +1498,7 @@ const styles = StyleSheet.create({
   energyFlowTitleCompact: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   energyFlowDiagramCompact: {
     flexDirection: 'row',
@@ -1528,12 +1529,12 @@ const styles = StyleSheet.create({
   flowLabelCompact: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 2,
   },
   flowValueCompact: {
     fontSize: 9,
-    color: '#6b7280',
+    color: colors.textSecondary,
   },
   flowArrowCompact: {
     paddingHorizontal: 2,
@@ -1541,11 +1542,11 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: width - 40,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 12,
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -1553,7 +1554,7 @@ const styles = StyleSheet.create({
   },
   statCardSmall: {
     width: (width - 52) / 2,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -1586,7 +1587,7 @@ const styles = StyleSheet.create({
   },
   statCardLabelSmall: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textSecondary,
     fontWeight: '500',
     marginTop: 8,
     marginBottom: 4,
@@ -1600,7 +1601,7 @@ const styles = StyleSheet.create({
   statCardValueSmall: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 2,
   },
   statCardUnit: {
@@ -1613,7 +1614,7 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
   },
   walletCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
@@ -1636,12 +1637,12 @@ const styles = StyleSheet.create({
   walletTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginLeft: 8,
   },
   walletLink: {
     fontSize: 14,
-    color: '#10b981',
+    color: colors.success,
     fontWeight: '600',
   },
   walletBalances: {
@@ -1666,13 +1667,13 @@ const styles = StyleSheet.create({
   },
   walletBalanceLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   walletBalanceValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
   },
   walletDivider: {
     width: 1,
@@ -1681,7 +1682,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   ordersCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
@@ -1704,7 +1705,7 @@ const styles = StyleSheet.create({
   ordersTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginLeft: 8,
   },
   ordersCountBadge: {
@@ -1716,7 +1717,7 @@ const styles = StyleSheet.create({
   ordersCount: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10b981',
+    color: colors.success,
   },
   orderItem: {
     flexDirection: 'row',
@@ -1732,12 +1733,12 @@ const styles = StyleSheet.create({
   orderEnergy: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 2,
   },
   orderPrice: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textSecondary,
   },
   orderStatusBadge: {
     paddingHorizontal: 12,
@@ -1762,7 +1763,7 @@ const styles = StyleSheet.create({
   orderStatusText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
     textTransform: 'capitalize',
   },
   quickActions: {
@@ -1797,7 +1798,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   withdrawButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
@@ -1812,10 +1813,10 @@ const styles = StyleSheet.create({
   withdrawButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   chartButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
@@ -1829,7 +1830,7 @@ const styles = StyleSheet.create({
   chartButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
     marginLeft: 12,
     flex: 1,
   },
@@ -1852,13 +1853,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 32,

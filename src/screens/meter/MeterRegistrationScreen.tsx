@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -26,7 +26,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { MeterManagement } from '@/components/meter/MeterManagement';
 import { getErrorMessage } from '@/utils/errorUtils';
 import { useTheme } from '@/contexts';
-import { getThemedColors } from '@/utils/themedStyles';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 
 type MeterRegistrationScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -56,6 +56,7 @@ interface ExtractedBillData {
 export default function MeterRegistrationScreen({ navigation, route }: Props) {
   const { isDark } = useTheme();
   const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   // Check if this is a hardware request flow
   const isHardwareRequest = route?.params?.isHardwareRequest || false;
@@ -102,7 +103,7 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
   if (showManagement && meters.length > 0 && !showRegistrationForm) {
     return (
       <LinearGradient
-        colors={isDark ? ['#1f2937', '#111827', '#0f172a'] : ['#e0f2fe', '#f0f9ff', '#ffffff']}
+        colors={colors.backgroundGradient as [string, string, ...string[]]}
         style={styles.gradientBackground}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -110,18 +111,19 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
         <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.header}>
             <TouchableOpacity
-              style={[styles.backButton, { backgroundColor: isDark ? colors.cardElevated : '#ffffff' }]}
+              style={styles.backButton}
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}
             >
-              <Ionicons name="arrow-back" size={20} color="#3b82f6" />
+              <Ionicons name="arrow-back" size={20} color={colors.primary} />
             </TouchableOpacity>
+
             <View style={styles.headerContent}>
-              <Text style={[styles.headerTitle, { color: colors.text }]}>Meter Management</Text>
-              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Manage your smart meters</Text>
+              <Text style={styles.headerTitle}>Meter Management</Text>
+              <Text style={styles.headerSubtitle}>Manage your smart meters</Text>
             </View>
-            <View style={[styles.headerIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-              <MaterialCommunityIcons name="meter-electric" size={24} color="#3b82f6" />
+            <View style={styles.headerIconContainer}>
+              <MaterialCommunityIcons name="meter-electric" size={24} color={colors.primary} />
             </View>
           </View>
           <MeterManagement
@@ -749,7 +751,7 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
 
   return (
     <LinearGradient
-      colors={isDark ? ['#1f2937', '#111827', '#0f172a'] : ['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -758,18 +760,18 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={[styles.backButton, { backgroundColor: isDark ? colors.cardElevated : '#ffffff' }]}
+            style={styles.backButton}
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={20} color="#3b82f6" />
+            <Ionicons name="arrow-back" size={20} color={colors.primary} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Register Meter</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Connect your smart meter</Text>
+            <Text style={styles.headerTitle}>Register Meter</Text>
+            <Text style={styles.headerSubtitle}>Connect your smart meter</Text>
           </View>
-          <View style={[styles.headerIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-            <MaterialCommunityIcons name="meter-electric" size={24} color="#3b82f6" />
+          <View style={styles.headerIconContainer}>
+            <MaterialCommunityIcons name="meter-electric" size={24} color={colors.primary} />
           </View>
         </View>
 
@@ -780,14 +782,14 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
         >
           {/* Bill Preview Card */}
           {hasBillUploaded && (
-            <View style={[styles.sectionCard, styles.successCard, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
+            <View style={[styles.sectionCard, styles.successCard]}>
               <View style={styles.billPreviewContent}>
-                <View style={[styles.billIconContainer, { backgroundColor: isDark ? '#3b82f6' : '#3b82f6' }]}>
+                <View style={styles.billIconContainer}>
                   <MaterialCommunityIcons name="file-document-check" size={28} color="#ffffff" />
                 </View>
                 <View style={styles.billPreviewTextContainer}>
-                  <Text style={[styles.billPreviewTitle, { color: isDark ? '#ffffff' : '#1e40af' }]}>Bill Uploaded</Text>
-                  <Text style={[styles.billPreviewSubtitle, { color: isDark ? '#93c5fd' : '#3b82f6' }]}>
+                  <Text style={styles.billPreviewTitle}>Bill Uploaded</Text>
+                  <Text style={styles.billPreviewSubtitle}>
                     {extractedBillData?.consumerNumber
                       ? `Consumer: ${extractedBillData.consumerNumber}`
                       : 'Ready for verification'}
@@ -795,29 +797,29 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
                 </View>
               </View>
               <TouchableOpacity
-                style={[styles.uploadAnotherButton, { backgroundColor: isDark ? colors.card : '#ffffff' }]}
+                style={styles.uploadAnotherButton}
                 onPress={handleUploadAnother}
               >
-                <Ionicons name="refresh" size={16} color="#3b82f6" />
+                <Ionicons name="refresh" size={16} color={colors.primary} />
                 <Text style={styles.uploadAnotherText}>Change Bill</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {/* DISCOM Selection Card */}
-          <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+          <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-                <MaterialCommunityIcons name="office-building" size={20} color="#3b82f6" />
+              <View style={styles.sectionIconContainer}>
+                <MaterialCommunityIcons name="office-building" size={20} color={colors.primary} />
               </View>
               <View style={styles.sectionHeaderText}>
-                <Text style={[styles.sectionLabel, { color: colors.text }]}>DISCOM Name</Text>
-                <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>Select your electricity provider</Text>
+                <Text style={styles.sectionLabel}>DISCOM Name</Text>
+                <Text style={styles.sectionHint}>Select your electricity provider</Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.pickerButton, { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: isDark ? colors.border : '#e2e8f0' }]}
+              style={styles.pickerButton}
               onPress={() => setShowDiscomPicker(!showDiscomPicker)}
             >
               <Text style={[styles.pickerText, { color: discomName ? colors.text : colors.textMuted }]}>
@@ -827,18 +829,18 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
             </TouchableOpacity>
 
             {showDiscomPicker && (
-              <View style={[styles.pickerOptions, { backgroundColor: isDark ? colors.card : '#ffffff', borderColor: isDark ? colors.border : '#e2e8f0' }]}>
+              <View style={styles.pickerOptions}>
                 <ScrollView style={styles.pickerScrollView} nestedScrollEnabled>
                   {DISCOM_NAMES.map((discom) => (
                     <TouchableOpacity
                       key={discom}
-                      style={[styles.pickerOption, { borderBottomColor: isDark ? colors.border : '#f1f5f9' }]}
+                      style={styles.pickerOption}
                       onPress={() => {
                         setDiscomName(discom);
                         setShowDiscomPicker(false);
                       }}
                     >
-                      <Text style={[styles.pickerOptionText, { color: colors.text }]}>{discom}</Text>
+                      <Text style={styles.pickerOptionText}>{discom}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -847,24 +849,24 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
           </View>
 
           {/* Consumer Number Card */}
-          <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+          <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-                <Ionicons name="person" size={20} color="#3b82f6" />
+              <View style={styles.sectionIconContainer}>
+                <Ionicons name="person" size={20} color={colors.primary} />
               </View>
               <View style={styles.sectionHeaderText}>
-                <Text style={[styles.sectionLabel, { color: colors.text }]}>Consumer Number</Text>
-                <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>6-12 digit number from your bill</Text>
+                <Text style={styles.sectionLabel}>Consumer Number</Text>
+                <Text style={styles.sectionHint}>6-12 digit number from your bill</Text>
               </View>
             </View>
 
             <View style={[
               styles.inputContainer,
-              { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: consumerNumberError ? colors.error : (isDark ? colors.border : '#e2e8f0') }
+              consumerNumberError ? { borderColor: colors.error } : null
             ]}>
               <Ionicons name="keypad-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={styles.input}
                 placeholder="Enter consumer number"
                 placeholderTextColor={colors.inputPlaceholder}
                 value={consumerNumber}
@@ -874,29 +876,29 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
               />
             </View>
             {consumerNumberError ? (
-              <Text style={[styles.errorText, { color: colors.error }]}>{consumerNumberError}</Text>
+              <Text style={styles.errorText}>{consumerNumberError}</Text>
             ) : null}
           </View>
 
           {/* Meter Serial ID Card */}
-          <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+          <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-                <MaterialCommunityIcons name="meter-electric-outline" size={20} color="#3b82f6" />
+              <View style={styles.sectionIconContainer}>
+                <MaterialCommunityIcons name="meter-electric-outline" size={20} color={colors.primary} />
               </View>
               <View style={styles.sectionHeaderText}>
-                <Text style={[styles.sectionLabel, { color: colors.text }]}>Meter Serial ID</Text>
-                <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>5-15 alphanumeric characters</Text>
+                <Text style={styles.sectionLabel}>Meter Serial ID</Text>
+                <Text style={styles.sectionHint}>5-15 alphanumeric characters</Text>
               </View>
             </View>
 
             <View style={[
               styles.inputContainer,
-              { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: meterSerialIdError ? colors.error : (isDark ? colors.border : '#e2e8f0') }
+              meterSerialIdError ? { borderColor: colors.error } : null
             ]}>
               <MaterialCommunityIcons name="barcode" size={18} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={styles.input}
                 placeholder="Enter meter serial ID"
                 placeholderTextColor={colors.inputPlaceholder}
                 value={meterSerialId}
@@ -906,51 +908,51 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
               />
             </View>
             {meterSerialIdError ? (
-              <Text style={[styles.errorText, { color: colors.error }]}>{meterSerialIdError}</Text>
+              <Text style={styles.errorText}>{meterSerialIdError}</Text>
             ) : null}
           </View>
 
           {/* Bill Upload Card */}
           {!hasBillUploaded && (
-            <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+            <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
-                <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-                  <Ionicons name="document-text" size={20} color="#3b82f6" />
+                <View style={styles.sectionIconContainer}>
+                  <Ionicons name="document-text" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.sectionHeaderText}>
-                  <Text style={[styles.sectionLabel, { color: colors.text }]}>Electricity Bill</Text>
-                  <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>Upload your latest bill for verification</Text>
+                  <Text style={styles.sectionLabel}>Electricity Bill</Text>
+                  <Text style={styles.sectionHint}>Upload your latest bill for verification</Text>
                 </View>
               </View>
 
               <TouchableOpacity
-                style={[styles.uploadButton, { borderColor: '#3b82f6', backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}
+                style={styles.uploadButton}
                 onPress={handleBillUpload}
                 disabled={isProcessing}
               >
                 {isProcessing ? (
                   <View style={styles.processingContainer}>
-                    <ActivityIndicator color="#3b82f6" size="small" />
-                    <Text style={[styles.processingText, { color: '#3b82f6' }]}>Processing...</Text>
+                    <ActivityIndicator color={colors.primary} size="small" />
+                    <Text style={styles.processingText}>Processing...</Text>
                   </View>
                 ) : (
                   <>
-                    <View style={[styles.uploadIconContainer, { backgroundColor: '#3b82f6' }]}>
+                    <View style={styles.uploadIconContainer}>
                       <Ionicons name="cloud-upload" size={24} color="#ffffff" />
                     </View>
-                    <Text style={[styles.uploadButtonText, { color: '#3b82f6' }]}>
+                    <Text style={styles.uploadButtonText}>
                       Upload Electricity Bill
                     </Text>
-                    <Text style={[styles.uploadButtonHint, { color: colors.textMuted }]}>
+                    <Text style={styles.uploadButtonHint}>
                       Tap to scan or select from gallery
                     </Text>
                   </>
                 )}
               </TouchableOpacity>
               {isExpoGo && (
-                <View style={[styles.warningBadge, { backgroundColor: isDark ? '#451a03' : '#fef3c7' }]}>
-                  <Ionicons name="warning" size={14} color="#f59e0b" />
-                  <Text style={[styles.warningText, { color: '#f59e0b' }]}>
+                <View style={styles.warningBadge}>
+                  <Ionicons name="warning" size={14} color={colors.warning} />
+                  <Text style={styles.warningText}>
                     OCR requires a development build
                   </Text>
                 </View>
@@ -966,7 +968,7 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#3b82f6', '#2563eb']}
+              colors={[colors.primary, colors.primaryDark]}
               style={styles.submitButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -984,12 +986,12 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
 
           {/* Hardware Request Link */}
           <TouchableOpacity
-            style={[styles.hardwareRequestButton, { backgroundColor: isDark ? colors.card : '#ffffff', borderColor: isDark ? colors.border : '#e2e8f0' }]}
+            style={styles.hardwareRequestButton}
             onPress={() => setShowHardwareRequest(true)}
             activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="chip" size={20} color="#3b82f6" />
-            <Text style={[styles.hardwareRequestText, { color: '#3b82f6' }]}>
+            <MaterialCommunityIcons name="chip" size={20} color={colors.primary} />
+            <Text style={styles.hardwareRequestText}>
               Don't have a Smart Meter? Request Installation
             </Text>
           </TouchableOpacity>
@@ -999,7 +1001,7 @@ export default function MeterRegistrationScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -1019,6 +1021,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.cardElevated,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -1033,10 +1036,12 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 4,
+    color: colors.text,
   },
   headerSubtitle: {
     fontSize: 14,
     fontWeight: '500',
+    color: colors.textSecondary,
   },
   headerIconContainer: {
     width: 48,
@@ -1044,6 +1049,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.backgroundSecondary,
   },
   scrollView: {
     flex: 1,
@@ -1057,6 +1063,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     marginBottom: 16,
+    backgroundColor: colors.card,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -1065,6 +1072,7 @@ const styles = StyleSheet.create({
   },
   successCard: {
     borderWidth: 0,
+    backgroundColor: colors.successBackground,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1078,6 +1086,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    backgroundColor: colors.primaryLight,
   },
   sectionHeaderText: {
     flex: 1,
@@ -1086,10 +1095,12 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     marginBottom: 4,
+    color: colors.text,
   },
   sectionHint: {
     fontSize: 13,
     lineHeight: 18,
+    color: colors.textSecondary,
   },
   // Bill Preview
   billPreviewContent: {
@@ -1104,6 +1115,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    backgroundColor: colors.primary,
   },
   billPreviewTextContainer: {
     flex: 1,
@@ -1112,9 +1124,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     marginBottom: 4,
+    color: colors.textInverse, // Or based on primary if background is light
   },
   billPreviewSubtitle: {
     fontSize: 14,
+    color: colors.primaryLight,
   },
   uploadAnotherButton: {
     flexDirection: 'row',
@@ -1124,10 +1138,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     gap: 6,
+    backgroundColor: colors.card,
   },
   uploadAnotherText: {
     fontSize: 14,
-    color: '#3b82f6',
+    color: colors.primary,
     fontWeight: '600',
   },
   // Picker
@@ -1139,10 +1154,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 52,
+    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.border,
   },
   pickerText: {
     fontSize: 16,
     fontWeight: '500',
+    color: colors.text, // Dynamic handled in component
   },
   pickerOptions: {
     marginTop: 8,
@@ -1150,6 +1168,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     maxHeight: 200,
     overflow: 'hidden',
+    backgroundColor: colors.card,
+    borderColor: colors.border,
   },
   pickerScrollView: {
     maxHeight: 200,
@@ -1158,10 +1178,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   pickerOptionText: {
     fontSize: 15,
     fontWeight: '500',
+    color: colors.text,
   },
   // Input
   inputContainer: {
@@ -1171,6 +1193,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     height: 52,
+    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.border, // Dynamic handled in component
   },
   inputIcon: {
     marginRight: 10,
@@ -1179,11 +1203,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
+    color: colors.text,
   },
   errorText: {
     fontSize: 12,
     marginTop: 8,
     fontWeight: '500',
+    color: colors.error,
   },
   // Upload Button
   uploadButton: {
@@ -1193,6 +1219,8 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 20,
     alignItems: 'center',
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   uploadIconContainer: {
     width: 56,
@@ -1201,14 +1229,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
+    backgroundColor: colors.primary,
   },
   uploadButtonText: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+    color: colors.primary,
   },
   uploadButtonHint: {
     fontSize: 13,
+    color: colors.textMuted,
   },
   processingContainer: {
     flexDirection: 'row',
@@ -1218,6 +1249,7 @@ const styles = StyleSheet.create({
   processingText: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.primary,
   },
   warningBadge: {
     flexDirection: 'row',
@@ -1228,17 +1260,19 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     gap: 6,
+    backgroundColor: colors.warningBackground,
   },
   warningText: {
     fontSize: 12,
     fontWeight: '500',
+    color: colors.warning,
   },
   // Submit Button
   submitButton: {
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 12,
-    shadowColor: '#3b82f6',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1266,9 +1300,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     marginBottom: 20,
     gap: 8,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
   },
   hardwareRequestText: {
     fontSize: 14,
     fontWeight: '600',
+    color: colors.primary,
   },
 });
