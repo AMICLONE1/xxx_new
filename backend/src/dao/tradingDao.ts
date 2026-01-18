@@ -78,5 +78,80 @@ export const tradingDao = {
 
         if (error) throw error;
         return data;
+    },
+
+    // Wallet methods
+    async getWallet(userId: string) {
+        const { data, error } = await supabase
+            .from('wallets')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+
+        if (error && error.code !== 'PGRST116') throw error;
+        return data;
+    },
+
+    async createWallet(userId: string) {
+        const { data, error } = await supabase
+            .from('wallets')
+            .insert({
+                user_id: userId,
+                energy_balance: 0,
+                cash_balance: 0
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async updateWallet(userId: string, updates: any) {
+        const { data, error } = await supabase
+            .from('wallets')
+            .update(updates)
+            .eq('user_id', userId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    // Transaction methods
+    async createTransaction(transaction: any) {
+        const { data, error } = await supabase
+            .from('transactions')
+            .insert(transaction)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    // Seller methods
+    async getSeller(userId: string) {
+        const { data, error } = await supabase
+            .from('sellers')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+
+        if (error && error.code !== 'PGRST116') throw error;
+        return data;
+    },
+
+    async updateSeller(userId: string, updates: any) {
+        const { data, error } = await supabase
+            .from('sellers')
+            .update(updates)
+            .eq('user_id', userId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
     }
 };

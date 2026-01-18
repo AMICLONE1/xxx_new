@@ -648,8 +648,8 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#fef3c7' }]}>
-                      <MaterialCommunityIcons name="flash-alert" size={18} color="#f59e0b" />
+                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                      <MaterialCommunityIcons name="flash-alert" size={18} color="#3b82f6" />
                     </View>
                     <Text style={styles.metricLabel}>PEAK DEMAND</Text>
                     <Text style={styles.metricValue}>
@@ -675,15 +675,15 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#fef3c7' }]}>
-                      <MaterialCommunityIcons name="weather-sunny" size={18} color="#f59e0b" />
+                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                      <MaterialCommunityIcons name="weather-sunny" size={18} color="#3b82f6" />
                     </View>
                     <Text style={styles.metricLabel}>PEAK HOURS (6-10 PM)</Text>
                     <Text style={styles.metricValue}>
                       {buyerAnalytics.peakHoursConsumption.toFixed(2)} <Text style={styles.metricUnit}>kWh</Text>
                     </Text>
-                    <View style={[styles.trendBadge, { backgroundColor: '#fef3c7' }]}>
-                      <Text style={[styles.trendText, { color: '#f59e0b' }]}>
+                    <View>
+                      <Text style={[styles.trendText, { color: '#3b82f6' }]}>
                         {buyerAnalytics.peakHoursPercentage.toFixed(1)}% of total
                       </Text>
                     </View>
@@ -697,7 +697,7 @@ const AnalyticsScreen = () => {
                     <Text style={styles.metricValue}>
                       {buyerAnalytics.offPeakHoursConsumption.toFixed(2)} <Text style={styles.metricUnit}>kWh</Text>
                     </Text>
-                    <View style={[styles.trendBadge, { backgroundColor: '#dbeafe' }]}>
+                    <View>
                       <Text style={[styles.trendText, { color: '#3b82f6' }]}>
                         {(100 - buyerAnalytics.peakHoursPercentage).toFixed(1)}% of total
                       </Text>
@@ -712,8 +712,8 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#fee2e2' }]}>
-                      <MaterialCommunityIcons name="currency-inr" size={18} color="#ef4444" />
+                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                      <MaterialCommunityIcons name="currency-inr" size={18} color="#3b82f6" />
                     </View>
                     <Text style={styles.metricLabel}>TOTAL COST</Text>
                     <Text style={styles.metricValue}>
@@ -722,8 +722,8 @@ const AnalyticsScreen = () => {
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#fef3c7' }]}>
-                      <MaterialCommunityIcons name="calendar-today" size={18} color="#f59e0b" />
+                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                      <MaterialCommunityIcons name="calendar-today" size={18} color="#3b82f6" />
                     </View>
                     <Text style={styles.metricLabel}>AVG DAILY COST</Text>
                     <Text style={styles.metricValue}>
@@ -741,7 +741,7 @@ const AnalyticsScreen = () => {
                     <Text style={styles.metricValue}>
                       {formatCurrency(buyerAnalytics.totalPurchaseCost)}
                     </Text>
-                    <View style={[styles.trendBadge, { backgroundColor: '#dbeafe' }]}>
+                    <View>
                       <Text style={[styles.trendText, { color: '#3b82f6' }]}>
                         Avg: {formatCurrency(buyerAnalytics.avgPurchaseRate)}/kWh
                       </Text>
@@ -749,8 +749,8 @@ const AnalyticsScreen = () => {
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
-                      <MaterialCommunityIcons name="piggy-bank" size={18} color="#10b981" />
+                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                      <MaterialCommunityIcons name="piggy-bank" size={18} color="#3b82f6" />
                     </View>
                     <Text style={styles.metricLabel}>P2P SAVINGS</Text>
                     <Text style={[styles.metricValue, { color: buyerAnalytics.savingsFromP2P >= 0 ? '#10b981' : '#ef4444' }]}>
@@ -766,18 +766,18 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#ede9fe' }]}>
-                      <MaterialCommunityIcons name="sine-wave" size={18} color="#8b5cf6" />
+                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                      <MaterialCommunityIcons name="sine-wave" size={18} color="#3b82f6" />
                     </View>
                     <Text style={styles.metricLabel}>POWER FACTOR</Text>
                     <Text style={styles.metricValue}>
                       {buyerAnalytics.powerFactor.toFixed(2)}
                     </Text>
                     <View style={[styles.efficiencyBadge, {
-                      backgroundColor: buyerAnalytics.powerFactor >= 0.95 ? '#dcfce7' : buyerAnalytics.powerFactor >= 0.9 ? '#fef3c7' : '#fee2e2'
+                      backgroundColor: buyerAnalytics.powerFactor >= 0.95 ? '#dbeafe' : buyerAnalytics.powerFactor >= 0.9 ? '#dbeafe' : '#dbeafe'
                     }]}>
                       <Text style={[styles.efficiencyBadgeText, {
-                        color: buyerAnalytics.powerFactor >= 0.95 ? '#10b981' : buyerAnalytics.powerFactor >= 0.9 ? '#f59e0b' : '#ef4444'
+                        color: buyerAnalytics.powerFactor >= 0.95 ? '#3b82f6' : buyerAnalytics.powerFactor >= 0.9 ? '#3b82f6' : '#ef4444'
                       }]}>
                         {buyerAnalytics.powerFactor >= 0.95 ? 'Excellent' : buyerAnalytics.powerFactor >= 0.9 ? 'Good' : 'Fair'}
                       </Text>
@@ -807,8 +807,8 @@ const AnalyticsScreen = () => {
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
-                      <MaterialCommunityIcons name="check-circle" size={18} color="#10b981" />
+                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                      <MaterialCommunityIcons name="check-circle" size={18} color="#3b82f6" />
                     </View>
                     <Text style={styles.metricLabel}>SUPPLY QUALITY</Text>
                     <Text style={styles.metricValue}>Good</Text>
@@ -822,23 +822,23 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
-                      <MaterialCommunityIcons name="leaf" size={18} color="#10b981" />
+                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                      <MaterialCommunityIcons name="leaf" size={18} color="#3b82f6" />
                     </View>
                     <Text style={styles.metricLabel}>GREEN ENERGY</Text>
                     <Text style={styles.metricValue}>
                       {buyerAnalytics.greenEnergyPercentage.toFixed(1)}<Text style={styles.metricUnit}>%</Text>
                     </Text>
-                    <View style={[styles.trendBadge, { backgroundColor: '#dcfce7' }]}>
-                      <Text style={[styles.trendText, { color: '#10b981' }]}>
+                    <View>
+                      <Text style={[styles.trendText, { color: '#3b82f6' }]}>
                         From P2P solar
                       </Text>
                     </View>
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#fee2e2' }]}>
-                      <MaterialCommunityIcons name="factory" size={18} color="#ef4444" />
+                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                      <MaterialCommunityIcons name="factory" size={18} color="#3b82f6" />
                     </View>
                     <Text style={styles.metricLabel}>CO2 EMISSIONS</Text>
                     <Text style={styles.metricValue}>
@@ -849,21 +849,21 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
-                      <MaterialCommunityIcons name="cloud-check" size={18} color="#10b981" />
+                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                      <MaterialCommunityIcons name="cloud-check" size={18} color="#3b82f6" />
                     </View>
                     <Text style={styles.metricLabel}>EMISSIONS SAVED</Text>
-                    <Text style={[styles.metricValue, { color: '#10b981' }]}>
+                    <Text style={[styles.metricValue, { color: '#3b82f6' }]}>
                       {buyerAnalytics.emissionsSaved.toFixed(1)} <Text style={styles.metricUnit}>kg CO2</Text>
                     </Text>
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dcfce7' }]}>
-                      <MaterialCommunityIcons name="tree" size={18} color="#10b981" />
+                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
+                      <MaterialCommunityIcons name="tree" size={18} color="#3b82f6" />
                     </View>
                     <Text style={styles.metricLabel}>TREES EQUIVALENT</Text>
-                    <Text style={[styles.metricValue, { color: '#10b981' }]}>
+                    <Text style={[styles.metricValue, { color: '#3b82f6' }]}>
                       {buyerAnalytics.treesEquivalent} <Text style={styles.metricUnit}>trees</Text>
                     </Text>
                   </View>
@@ -2147,6 +2147,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
+    justifyContent: 'space-between'
   },
   metricIcon: {
     width: 36,

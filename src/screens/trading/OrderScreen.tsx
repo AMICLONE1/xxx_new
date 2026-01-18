@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
-import { useTradingStore, useWalletStore } from '@/store';
+import { useTradingStore, useWalletStore, useAuthStore } from '@/store';
 import { tradingService } from '@/services/api/tradingService';
 import { formatEnergy, formatCurrency } from '@/utils/helpers';
 import { getErrorMessage } from '@/utils/errorUtils';
@@ -50,7 +50,8 @@ export default function OrderScreen({ navigation, route }: Props) {
 
   const { sellerId, sellerName, pricePerUnit, availableEnergy } = route.params;
   const { addOrder } = useTradingStore();
-  const { wallet } = useWalletStore();
+  const { wallet, updateBalance } = useWalletStore();
+  const { user } = useAuthStore();
   const [energyAmount, setEnergyAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -77,37 +78,29 @@ export default function OrderScreen({ navigation, route }: Props) {
       return;
     }
 
+    if (!user?.id) {
+      Alert.alert('Error', 'User not authenticated');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const response = await tradingService.createOrder({
+      // Use the new placeOrderWithTransaction method for full transaction processing
+      const response = await tradingService.placeOrderWithTransaction({
+        buyerId: user.id,
         sellerId,
         energyAmount: energyValue,
         pricePerUnit,
       });
-      
+
       if (response.success && response.data) {
         addOrder(response.data);
+        // Update local wallet state with the deducted amount
+        updateBalance(0, -totalPrice);
         navigation.goBack();
-        Alert.alert('Success ✅', 'Order placed successfully!');
+        Alert.alert('Success ✅', `Order completed! Purchased ${formatEnergy(energyValue, 'kWh')} for ${formatCurrency(totalPrice)}`);
       } else {
-        // Fallback to mock if API fails (for development)
-        if (__DEV__) {
-          const mockOrder = {
-            id: `order_${Date.now()}`,
-            buyerId: 'current_user_id',
-            sellerId,
-            energyAmount: energyValue,
-            pricePerUnit,
-            totalPrice,
-            status: 'pending' as const,
-            createdAt: new Date(),
-          };
-          addOrder(mockOrder);
-          navigation.goBack();
-          Alert.alert('Success (Mock)', 'Order placed successfully (using mock data)');
-        } else {
-          throw new Error(response.error || 'Failed to place order');
-        }
+        Alert.alert('Order Failed', response.error || 'Failed to place order. Please try again.');
       }
     } catch (error: unknown) {
       Alert.alert('Error', getErrorMessage(error) || 'Failed to place order');
@@ -117,12 +110,12 @@ export default function OrderScreen({ navigation, route }: Props) {
   };
 
   return (
-    <LinearGradient 
+    <LinearGradient
       colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      >
+    >
 
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView style={styles.scrollView}>
@@ -201,10 +194,10 @@ export default function OrderScreen({ navigation, route }: Props) {
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                (!canAfford || isSubmitting) && styles.submitButtonDisabled,
+                isSubmitting && styles.submitButtonDisabled,
               ]}
               onPress={handlePlaceOrder}
-              disabled={!canAfford || isSubmitting}
+              disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <ActivityIndicator color="#ffffff" />
@@ -216,7 +209,7 @@ export default function OrderScreen({ navigation, route }: Props) {
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
-    
+
   );
 }
 
@@ -253,7 +246,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    elevation : 3
+    elevation: 3
   },
   sellerLabel: {
     fontSize: 14,
@@ -270,7 +263,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
-    elevation : 3
+    elevation: 3
   },
   priceLabel: {
     fontSize: 14,
@@ -310,7 +303,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
-    elevation : 3
+    elevation: 3
   },
   summaryRow: {
     flexDirection: 'row',

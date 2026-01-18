@@ -180,7 +180,7 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
       el.style.width = '20px';
       el.style.height = '20px';
       el.style.borderRadius = '50%';
-      el.style.backgroundColor = '#3b82f6';
+      el.style.backgroundColor = '#0062ff7a';
       el.style.border = '3px solid #ffffff';
       el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
       
@@ -195,8 +195,38 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
       markers.forEach(marker => marker.remove());
       markers = [];
 
+      // Helper to hash string to number for stable positioning
+      function hashString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          const char = str.charCodeAt(i);
+          hash = ((hash << 5) - hash) + char;
+          hash = hash & hash;
+        }
+        return Math.abs(hash);
+      }
+
+      // Apply offset to markers based on their ID for stable, spread-out positioning
+      const OFFSET_DIST = 0.004; // ~400 meters
+      function applyOffset(items) {
+        return items.map((item, index) => {
+          const idHash = hashString(item.id);
+          const angle = ((idHash % 360) * Math.PI) / 180;
+          const radius = OFFSET_DIST * (0.5 + (index % 5) * 0.3);
+          return {
+            ...item,
+            lat: item.lat + radius * Math.cos(angle),
+            lng: item.lng + radius * Math.sin(angle),
+          };
+        });
+      }
+
+      // Apply offset to prevent overlapping
+      const offsetSellers = applyOffset(sellersData || []);
+      const offsetBuyers = applyOffset(buyersData || []);
+
       // Add seller markers
-      (sellersData || []).forEach(seller => {
+      offsetSellers.forEach(seller => {
         const el = document.createElement('div');
         el.className = 'seller-marker';
         el.style.width = '40px';
@@ -288,7 +318,7 @@ export const MapboxWebView: React.FC<MapboxWebViewProps> = ({
       });
 
       // Add buyer markers
-      (buyersData || []).forEach(buyer => {
+      offsetBuyers.forEach(buyer => {
         const el = document.createElement('div');
         el.className = 'buyer-marker';
         el.style.width = '40px';

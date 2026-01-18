@@ -17,9 +17,11 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { formatCurrency } from '@/utils/helpers';
 import { paymentService } from '@/services/payments/paymentService';
+import { supabaseDatabaseService } from '@/services/supabase/databaseService';
 import { RazorpayCheckout } from '@/components/payments/RazorpayCheckout';
 import { getErrorMessage } from '@/utils/errorUtils';
 import { useTheme } from '@/contexts';
+import { useAuthStore, useWalletStore } from '@/store';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type TopUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -32,6 +34,8 @@ const QUICK_AMOUNTS = [100, 500, 1000, 5000];
 
 export default function TopUpScreen({ navigation }: Props) {
   const { isDark } = useTheme();
+  const { user } = useAuthStore();
+  const { updateBalance } = useWalletStore();
 
   const [amount, setAmount] = useState('');
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
@@ -60,46 +64,60 @@ export default function TopUpScreen({ navigation }: Props) {
       return;
     }
 
+    if (!user?.id) {
+      Alert.alert('Error', 'User not authenticated. Please login again.');
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      const response = await paymentService.initiateTopUp({
-        amount: topUpAmount,
-        paymentMethod: 'upi',
-      });
+      // FAKE TRANSACTION: Simulate payment processing
+      console.log('[TopUp] Processing fake top-up for user:', user.id, 'Amount:', topUpAmount);
 
-      console.log('Top-up response:', JSON.stringify(response, null, 2));
-
-      if (response.success && response.data) {
-        if (response.data.razorpayKeyId) {
-          console.log('Opening Razorpay checkout with key:', response.data.razorpayKeyId);
-          setRazorpayData({
-            orderId: response.data.orderId,
-            amount: topUpAmount,
-            keyId: response.data.razorpayKeyId,
-          });
-          setShowRazorpayCheckout(true);
-        } else {
-          console.warn('Razorpay key not found in response. Response data:', response.data);
-          Alert.alert(
-            'Payment Gateway Not Configured',
-            `Razorpay is not configured on the backend. Please check Railway environment variables.\n\nResponse: ${JSON.stringify(response.data)}`,
-            [{ text: 'OK' }]
-          );
-        }
-      } else {
-        const errorMsg = response.error || 'Failed to initiate payment';
-        console.error('Top-up failed:', errorMsg);
-        Alert.alert(
-          'Payment Failed',
-          `${errorMsg}\n\nPlease check:\n1. Backend is running\n2. Razorpay keys are set in Railway\n3. Network connection`,
-          [{ text: 'OK' }]
-        );
+      // 1. Get current wallet (or create if doesn't exist)
+      let currentWallet = await supabaseDatabaseService.getWallet(user.id);
+      if (!currentWallet) {
+        console.log('[TopUp] Creating wallet for user:', user.id);
+        currentWallet = await supabaseDatabaseService.createWallet(user.id);
       }
-    } catch (error: unknown) {
-      console.error('Top-up error:', getErrorMessage(error));
+
+      // 2. Update wallet balance with top-up amount
+      const newBalance = currentWallet.cashBalance + topUpAmount;
+      await supabaseDatabaseService.updateWallet(user.id, {
+        cashBalance: newBalance,
+      });
+      console.log('[TopUp] Wallet updated. New balance:', newBalance);
+
+      // 3. Create transaction record
+      await supabaseDatabaseService.createTransaction({
+        userId: user.id,
+        type: 'topup',
+        amount: topUpAmount,
+        currency: 'INR',
+        status: 'completed',
+        description: `Wallet top-up of ${formatCurrency(topUpAmount)}`,
+      });
+      console.log('[TopUp] Transaction record created');
+
+      // 4. Update local wallet state
+      updateBalance(0, topUpAmount);
+
+      // 5. Show success and navigate back
       Alert.alert(
-        'Error',
-        getErrorMessage(error) || 'Failed to initiate payment. Please check your network connection and backend status.'
+        'Top-Up Successful! ✅',
+        `Your wallet has been credited with ${formatCurrency(topUpAmount)}\n\nNew Balance: ${formatCurrency(newBalance)}`,
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+    } catch (error: unknown) {
+      console.error('[TopUp] Error:', getErrorMessage(error));
+      Alert.alert(
+        'Top-Up Failed',
+        getErrorMessage(error) || 'Failed to process top-up. Please try again.'
       );
     } finally {
       setIsProcessing(false);

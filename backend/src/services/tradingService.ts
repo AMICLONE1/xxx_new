@@ -61,18 +61,91 @@ export const tradingService = {
             throw new AppError(errorMessage, 400);
         }
 
-        try {
-            const totalPrice = data.energyAmount * data.pricePerUnit;
+        const totalPrice = data.energyAmount * data.pricePerUnit;
 
+        try {
+            // 1. Get seller info to verify and update available energy
+            console.log(`[TradingService] 1. Fetching seller: ${data.sellerId}`);
+            const seller = await tradingDao.getSeller(data.sellerId);
+            if (!seller) {
+                console.error(`[TradingService] Seller not found: ${data.sellerId}`);
+                throw new AppError('Seller not found', 404);
+            }
+            console.log(`[TradingService] Seller found: ${seller.id}, Available: ${seller.available_energy}`);
+
+            if (seller.available_energy < data.energyAmount) {
+                throw new AppError(`Seller only has ${seller.available_energy} kWh available`, 400);
+            }
+
+            // 2. Get buyer wallet to verify balance
+            console.log(`[TradingService] 2. Fetching buyer wallet: ${data.buyerId}`);
+            const buyerWallet = await tradingDao.getWallet(data.buyerId);
+            if (!buyerWallet) {
+                throw new AppError('Buyer wallet not found', 404);
+            }
+
+            if (buyerWallet.cash_balance < totalPrice) {
+                throw new AppError('Insufficient wallet balance', 400);
+            }
+
+            // 3. Create the order with status 'completed'
+            console.log('[TradingService] 3. Creating order...');
             const order = await tradingDao.createOrder({
                 buyer_id: data.buyerId,
                 seller_id: data.sellerId,
                 energy_amount: data.energyAmount,
                 price_per_unit: data.pricePerUnit,
                 total_price: totalPrice,
-                status: 'pending',
+                status: 'completed',
                 created_at: new Date().toISOString(),
             });
+
+            // 4. Deduct cash from buyer's wallet
+            console.log('[TradingService] 4. Updating buyer wallet...');
+            await tradingDao.updateWallet(data.buyerId, {
+                cash_balance: buyerWallet.cash_balance - totalPrice,
+            });
+
+            // 5. Add cash to seller's wallet (create if doesn't exist)
+            console.log('[TradingService] 5. Updating seller wallet...');
+            let sellerWallet = await tradingDao.getWallet(data.sellerId);
+            if (!sellerWallet) {
+                sellerWallet = await tradingDao.createWallet(data.sellerId);
+            }
+            await tradingDao.updateWallet(data.sellerId, {
+                cash_balance: sellerWallet.cash_balance + totalPrice,
+            });
+
+            // 6. Create transaction record for buyer (energy_purchase)
+            console.log('[TradingService] 6. Creating buyer transaction...');
+            await tradingDao.createTransaction({
+                user_id: data.buyerId,
+                type: 'energy_purchase',
+                amount: totalPrice,
+                currency: 'INR',
+                status: 'completed',
+                description: `Purchased ${data.energyAmount} kWh from ${seller.name} at Rs ${data.pricePerUnit}/kWh`,
+            });
+
+            // 7. Create transaction record for seller (energy_sale)
+            console.log('[TradingService] 7. Creating seller transaction...');
+            await tradingDao.createTransaction({
+                user_id: data.sellerId,
+                type: 'energy_sale',
+                amount: totalPrice,
+                currency: 'INR',
+                status: 'completed',
+                description: `Sold ${data.energyAmount} kWh at Rs ${data.pricePerUnit}/kWh`,
+            });
+
+            // 8. Update seller's available energy
+            const newAvailableEnergy = seller.available_energy - data.energyAmount;
+            console.log(`[TradingService] 8. Updating seller energy: ${seller.available_energy} -> ${newAvailableEnergy}`);
+            const updatedSeller = await tradingDao.updateSeller(data.sellerId, {
+                available_energy: newAvailableEnergy,
+                total_energy_sold: (seller.total_energy_sold || 0) + data.energyAmount,
+            });
+            console.log(`[TradingService] Seller updated. New available: ${updatedSeller?.available_energy}`);
 
             return order;
         } catch (error) {

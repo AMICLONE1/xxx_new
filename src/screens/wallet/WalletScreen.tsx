@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '@/types';
-import { useWalletStore } from '@/store';
+import { useWalletStore, useAuthStore } from '@/store';
+import { supabaseDatabaseService } from '@/services/supabase/databaseService';
 import { formatCurrency, formatEnergy, getTimeAgo } from '@/utils/helpers';
 import { Transaction } from '@/types';
 
@@ -24,13 +26,41 @@ interface Props {
 }
 
 export default function WalletScreen({ navigation }: Props) {
-  const { wallet, transactions } = useWalletStore();
+  const { wallet, transactions, setWallet, setTransactions } = useWalletStore();
+  const { user } = useAuthStore();
   const [refreshing, setRefreshing] = React.useState(false);
+
+  // Reload wallet data from database when screen is focused
+  const loadWalletData = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      // Fetch wallet from database
+      const walletData = await supabaseDatabaseService.getWallet(user.id);
+      if (walletData) {
+        setWallet(walletData);
+      }
+
+      // Fetch transactions from database
+      const transactionsData = await supabaseDatabaseService.getTransactions(user.id, 10);
+      if (transactionsData) {
+        setTransactions(transactionsData);
+      }
+    } catch (error) {
+      console.error('[WalletScreen] Error loading wallet data:', error);
+    }
+  }, [user?.id, setWallet, setTransactions]);
+
+  // Reload data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadWalletData();
+    }, [loadWalletData])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Simulate refresh delay - data is managed by store
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await loadWalletData();
     setRefreshing(false);
   };
 
@@ -53,7 +83,7 @@ export default function WalletScreen({ navigation }: Props) {
       case 'energy_purchase':
         return <MaterialCommunityIcons name="flash" size={20} color="#3b82f6" />;
       case 'topup':
-        return <MaterialCommunityIcons name="plus-circle" size={20} color="#10b981" />;
+        return <MaterialCommunityIcons name="plus-circle" size={20} color="#3b82f6" />;
       case 'withdrawal':
         return <MaterialCommunityIcons name="minus-circle" size={20} color="#ef4444" />;
       default:
@@ -64,11 +94,11 @@ export default function WalletScreen({ navigation }: Props) {
   const renderTransaction = ({ item }: { item: Transaction }) => {
     const isPositive = item.type === 'energy_sale' || item.type === 'topup';
     const amountPrefix = isPositive ? '+' : '-';
-    const amountColor = isPositive ? '#10b981' : '#ef4444';
+    const amountColor = isPositive ? '#3b82f6' : '#ef4444';
 
     return (
       <View style={styles.transactionItem}>
-        <View style={[styles.transactionIconContainer, { backgroundColor: isPositive ? '#dcfce7' : '#fee2e2' }]}>
+        <View style={[styles.transactionIconContainer, { backgroundColor: isPositive ? '#dbeafe' : '#dbeafe' }]}>
           {getTransactionIcon(item.type || '')}
         </View>
         <View style={styles.transactionInfo}>
@@ -125,7 +155,7 @@ export default function WalletScreen({ navigation }: Props) {
             {savingsThisMonth > 0 && (
               <View style={styles.savingsRow}>
                 <View style={styles.savingsBadge}>
-                  <Ionicons name="trending-up" size={14} color="#10b981" />
+                  <Ionicons name="trending-up" size={14} color="#3b82f6" />
                   <Text style={styles.savingsAmount}>{formatCurrency(savingsThisMonth)}</Text>
                 </View>
                 <Text style={styles.savingsText}>Nice job! You've saved this month</Text>
@@ -198,7 +228,7 @@ export default function WalletScreen({ navigation }: Props) {
           ) : (
             <View style={styles.emptyTransactions}>
               <View style={styles.emptyIconContainer}>
-                <MaterialCommunityIcons name="history" size={40} color="#d1d5db" />
+                <MaterialCommunityIcons name="history" size={40} color="#dbeafe" />
               </View>
               <Text style={styles.emptyText}>No transactions yet</Text>
               <Text style={styles.emptySubtext}>
@@ -211,8 +241,8 @@ export default function WalletScreen({ navigation }: Props) {
           {wallet && (
             <View style={styles.statsContainer}>
               <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#dcfce7' }]}>
-                  <MaterialCommunityIcons name="trending-up" size={20} color="#10b981" />
+                <View style={[styles.statIcon, { backgroundColor: '#dbeafe' }]}>
+                  <MaterialCommunityIcons name="trending-up" size={20} color="#3b82f6" />
                 </View>
                 <Text style={styles.statLabel}>Energy Sold</Text>
                 <Text style={styles.statValue}>{formatEnergy(wallet.energyBalance * 0.3, 'kWh')}</Text>
@@ -298,7 +328,7 @@ const styles = StyleSheet.create({
   savingsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#dcfce7',
+    backgroundColor: '#dbeafe',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -307,7 +337,7 @@ const styles = StyleSheet.create({
   savingsAmount: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#10b981',
+    color: '#3b82f6',
   },
   savingsText: {
     fontSize: 13,
@@ -418,6 +448,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    backgroundColor: '#dbeafe',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   transactionInfo: {
     flex: 1,
@@ -438,7 +474,7 @@ const styles = StyleSheet.create({
   },
   transactionSeparator: {
     height: 1,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#dbeafe',
     marginLeft: 72,
   },
   emptyTransactions: {
