@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import Slider from '@react-native-community/slider';
 import { TradingBotConfig } from '@/types';
 import { MIN_SELL_PRICE, MAX_SELL_PRICE, DEFAULT_RESERVE_POWER } from '@/utils/constants';
 import { useTheme } from '@/contexts';
-import { getThemedColors } from '@/utils/themedStyles';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
@@ -35,6 +35,7 @@ interface Props {
 export default function TradingBotScreen({ navigation, config, onSave }: Props) {
   const { isDark } = useTheme();
   const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [enabled, setEnabled] = useState(config?.enabled || false);
   const [reservePower, setReservePower] = useState(
@@ -83,7 +84,7 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
 
   return (
     <LinearGradient
-      colors={isDark ? ['#1f2937', '#111827', '#0f172a'] : ['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -92,19 +93,19 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={[styles.backButton, { backgroundColor: isDark ? colors.cardElevated : '#ffffff' }]}
+            style={styles.backButton}
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={20} color="#3b82f6" />
+            <Ionicons name="arrow-back" size={20} color={colors.primary} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Trading Bot</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Auto-pilot trading rules</Text>
+            <Text style={styles.headerTitle}>Trading Bot</Text>
+            <Text style={styles.headerSubtitle}>Auto-pilot trading rules</Text>
           </View>
-          <View style={[styles.robotIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-            <MaterialCommunityIcons name="robot" size={24} color="#3b82f6" />
+          <View style={styles.robotIconContainer}>
+            <MaterialCommunityIcons name="robot" size={24} color={colors.primary} />
           </View>
         </View>
 
@@ -114,25 +115,25 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
           showsVerticalScrollIndicator={false}
         >
           {/* Enable/Disable Card */}
-          <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+          <View style={styles.sectionCard}>
             <View style={styles.switchRow}>
-              <View style={[styles.switchIconContainer, { backgroundColor: enabled ? (isDark ? '#1e3a5f' : '#dbeafe') : (isDark ? colors.backgroundSecondary : '#f1f5f9') }]}>
+              <View style={[styles.switchIconContainer, { backgroundColor: enabled ? colors.primaryLight : colors.backgroundSecondary }]}>
                 <MaterialCommunityIcons
                   name={enabled ? "robot" : "robot-off"}
                   size={22}
-                  color={enabled ? "#3b82f6" : colors.textMuted}
+                  color={enabled ? colors.primary : colors.textMuted}
                 />
               </View>
               <View style={styles.switchLabelContainer}>
-                <Text style={[styles.switchLabel, { color: colors.text }]}>Enable Auto-Selling</Text>
-                <Text style={[styles.switchHint, { color: colors.textSecondary }]}>
+                <Text style={styles.switchLabel}>Enable Auto-Selling</Text>
+                <Text style={styles.switchHint}>
                   Automatically sell excess energy
                 </Text>
               </View>
               <Switch
                 value={enabled}
                 onValueChange={setEnabled}
-                trackColor={{ false: isDark ? '#374151' : '#d1d5db', true: '#3b82f6' }}
+                trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor="#ffffff"
               />
             </View>
@@ -141,41 +142,41 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
           {enabled && (
             <>
               {/* Reserve Power Card */}
-              <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+              <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
-                  <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-                    <MaterialCommunityIcons name="battery-charging" size={20} color="#3b82f6" />
+                  <View style={styles.sectionIconContainer}>
+                    <MaterialCommunityIcons name="battery-charging" size={20} color={colors.primary} />
                   </View>
                   <View style={styles.sectionHeaderText}>
-                    <Text style={[styles.label, { color: colors.text }]}>Reserve Power</Text>
-                    <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                    <Text style={styles.label}>Reserve Power</Text>
+                    <Text style={styles.hint}>
                       Keep this % for home use
                     </Text>
                   </View>
                 </View>
 
                 <View style={styles.sliderContainer}>
-                  <Text style={[styles.sliderValue, { color: '#3b82f6' }]}>{reservePower}%</Text>
+                  <Text style={styles.sliderValue}>{reservePower}%</Text>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
                     maximumValue={100}
                     value={reservePower}
                     onValueChange={(value) => setReservePower(Math.round(value))}
-                    minimumTrackTintColor="#3b82f6"
-                    maximumTrackTintColor={isDark ? '#374151' : '#e5e7eb'}
-                    thumbTintColor="#3b82f6"
+                    minimumTrackTintColor={colors.primary}
+                    maximumTrackTintColor={colors.border}
+                    thumbTintColor={colors.primary}
                   />
                   <View style={styles.sliderLabels}>
-                    <Text style={[styles.sliderLabel, { color: colors.textMuted }]}>0%</Text>
-                    <Text style={[styles.sliderLabel, { color: colors.textMuted }]}>100%</Text>
+                    <Text style={styles.sliderLabel}>0%</Text>
+                    <Text style={styles.sliderLabel}>100%</Text>
                   </View>
                 </View>
 
-                <View style={[styles.inputContainer, { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: isDark ? colors.border : '#e2e8f0' }]}>
+                <View style={styles.inputContainer}>
                   <MaterialCommunityIcons name="percent" size={18} color={colors.textMuted} style={styles.inputIcon} />
                   <TextInput
-                    style={[styles.input, { color: colors.text }]}
+                    style={styles.input}
                     value={reservePower.toString()}
                     onChangeText={(text) => {
                       const value = parseInt(text, 10);
@@ -191,23 +192,23 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
               </View>
 
               {/* Minimum Sell Price Card */}
-              <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+              <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
-                  <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-                    <MaterialCommunityIcons name="currency-inr" size={20} color="#3b82f6" />
+                  <View style={styles.sectionIconContainer}>
+                    <MaterialCommunityIcons name="currency-inr" size={20} color={colors.primary} />
                   </View>
                   <View style={styles.sectionHeaderText}>
-                    <Text style={[styles.label, { color: colors.text }]}>Minimum Sell Price</Text>
-                    <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                    <Text style={styles.label}>Minimum Sell Price</Text>
+                    <Text style={styles.hint}>
                       Only sell above this price
                     </Text>
                   </View>
                 </View>
 
-                <View style={[styles.priceInputContainer, { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: isDark ? colors.border : '#e2e8f0' }]}>
-                  <Text style={[styles.currencySymbol, { color: '#3b82f6' }]}>₹</Text>
+                <View style={styles.priceInputContainer}>
+                  <Text style={styles.currencySymbol}>₹</Text>
                   <TextInput
-                    style={[styles.priceInput, { color: colors.text }]}
+                    style={styles.priceInput}
                     value={minSellPrice.toString()}
                     onChangeText={(text) => {
                       const value = parseFloat(text);
@@ -219,27 +220,27 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
                     placeholder="8.00"
                     placeholderTextColor={colors.inputPlaceholder}
                   />
-                  <View style={[styles.unitBadge, { backgroundColor: isDark ? colors.border : '#e2e8f0' }]}>
-                    <Text style={[styles.unitText, { color: colors.textSecondary }]}>per unit</Text>
+                  <View style={styles.unitBadge}>
+                    <Text style={styles.unitText}>per unit</Text>
                   </View>
                 </View>
 
                 <View style={styles.priceRange}>
-                  <Text style={[styles.priceRangeText, { color: colors.textMuted }]}>
+                  <Text style={styles.priceRangeText}>
                     Range: ₹{MIN_SELL_PRICE} - ₹{MAX_SELL_PRICE}
                   </Text>
                 </View>
               </View>
 
               {/* Priority Card */}
-              <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+              <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
-                  <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-                    <MaterialCommunityIcons name="sort" size={20} color="#3b82f6" />
+                  <View style={styles.sectionIconContainer}>
+                    <MaterialCommunityIcons name="sort" size={20} color={colors.primary} />
                   </View>
                   <View style={styles.sectionHeaderText}>
-                    <Text style={[styles.label, { color: colors.text }]}>Selling Priority</Text>
-                    <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                    <Text style={styles.label}>Selling Priority</Text>
+                    <Text style={styles.hint}>
                       Where to sell first
                     </Text>
                   </View>
@@ -253,11 +254,11 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
                         styles.priorityOption,
                         {
                           backgroundColor: priority === option.value
-                            ? (isDark ? '#1e3a5f' : '#dbeafe')
-                            : (isDark ? colors.backgroundSecondary : '#f8fafc'),
+                            ? colors.primaryLight
+                            : colors.backgroundSecondary,
                           borderColor: priority === option.value
-                            ? '#3b82f6'
-                            : (isDark ? colors.border : '#e2e8f0'),
+                            ? colors.primary
+                            : colors.border,
                         },
                       ]}
                       onPress={() => setPriority(option.value)}
@@ -265,7 +266,7 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
                     >
                       <View style={[
                         styles.priorityIconContainer,
-                        { backgroundColor: priority === option.value ? '#3b82f6' : (isDark ? colors.card : '#ffffff') }
+                        { backgroundColor: priority === option.value ? colors.primary : colors.card }
                       ]}>
                         <MaterialCommunityIcons
                           name={option.icon as any}
@@ -276,7 +277,7 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
                       <Text
                         style={[
                           styles.priorityOptionText,
-                          { color: priority === option.value ? '#3b82f6' : colors.textSecondary },
+                          { color: priority === option.value ? colors.primary : colors.textSecondary },
                         ]}
                       >
                         {option.label}
@@ -295,7 +296,7 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#3b82f6', '#2563eb']}
+              colors={[colors.primary, colors.primaryDark]}
               style={styles.saveButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -307,11 +308,11 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
 
           {/* Cancel Button */}
           <TouchableOpacity
-            style={[styles.cancelButton, { backgroundColor: isDark ? colors.card : '#ffffff', borderColor: isDark ? colors.border : '#e2e8f0' }]}
+            style={styles.cancelButton}
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -319,7 +320,7 @@ export default function TradingBotScreen({ navigation, config, onSave }: Props) 
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -339,6 +340,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.cardElevated,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -353,10 +355,12 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 4,
+    color: colors.text,
   },
   headerSubtitle: {
     fontSize: 14,
     fontWeight: '500',
+    color: colors.textSecondary,
   },
   robotIconContainer: {
     width: 48,
@@ -364,6 +368,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.primaryLight,
   },
   scrollView: {
     flex: 1,
@@ -377,6 +382,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     marginBottom: 16,
+    backgroundColor: colors.card,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -395,6 +401,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    backgroundColor: colors.primaryLight,
   },
   sectionHeaderText: {
     flex: 1,
@@ -420,20 +427,24 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     marginBottom: 4,
+    color: colors.text,
   },
   switchHint: {
     fontSize: 13,
     lineHeight: 18,
+    color: colors.textSecondary,
   },
   // Labels
   label: {
     fontSize: 17,
     fontWeight: '600',
     marginBottom: 4,
+    color: colors.text,
   },
   hint: {
     fontSize: 13,
     lineHeight: 18,
+    color: colors.textSecondary,
   },
   // Slider
   sliderContainer: {
@@ -444,6 +455,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 12,
+    color: colors.primary,
   },
   slider: {
     width: '100%',
@@ -458,6 +470,7 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontSize: 12,
     fontWeight: '500',
+    color: colors.textMuted,
   },
   // Input
   inputContainer: {
@@ -467,6 +480,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     height: 52,
+    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.border,
   },
   inputIcon: {
     marginRight: 10,
@@ -475,6 +490,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
+    color: colors.text,
   },
   // Price Input
   priceInputContainer: {
@@ -484,25 +500,31 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 56,
+    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.border,
   },
   currencySymbol: {
     fontSize: 24,
     fontWeight: '700',
     marginRight: 8,
+    color: colors.primary,
   },
   priceInput: {
     flex: 1,
     fontSize: 24,
     fontWeight: '600',
+    color: colors.text,
   },
   unitBadge: {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
+    backgroundColor: colors.border,
   },
   unitText: {
     fontSize: 12,
     fontWeight: '600',
+    color: colors.textSecondary,
   },
   priceRange: {
     marginTop: 12,
@@ -511,6 +533,7 @@ const styles = StyleSheet.create({
   priceRangeText: {
     fontSize: 12,
     fontStyle: 'italic',
+    color: colors.textMuted,
   },
   // Priority Options
   priorityOptions: {
@@ -544,7 +567,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginTop: 8,
     marginBottom: 12,
-    shadowColor: '#3b82f6',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -570,9 +593,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     marginBottom: 20,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.textSecondary,
   },
 });

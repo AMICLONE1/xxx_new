@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
   TextInput,
+  useColorScheme,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,7 +20,9 @@ import { RootStackParamList } from '@/types';
 import { ocrService, ExpoGoDetectedError, OCRNotAvailableError } from '@/services/mlkit/ocrService';
 import { useKYCStore, useAuthStore } from '@/store';
 import { getErrorMessage } from '@/utils/errorUtils';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 import * as FileSystem from 'expo-file-system/legacy';
+import { useTheme } from '@/contexts';
 
 type GSTScanScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'GSTScan'>;
 
@@ -38,6 +41,15 @@ interface ExtractedGSTData {
 }
 
 export default function GSTScanScreen({ navigation }: Props) {
+  const colorScheme = useColorScheme();
+  const { isDark } = useTheme();
+  const colors = useMemo(() => getThemedColors(isDark), [isDark]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  useEffect(() => {
+    console.log('[GSTScanScreen] Rendered. Color scheme:', colorScheme, 'isDark:', isDark);
+  }, [colorScheme, isDark]);
+
   const { submitDocument, isSubmitting, canUseOCR, getDocumentStatus } = useKYCStore();
   const { user } = useAuthStore();
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -681,7 +693,7 @@ export default function GSTScanScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -693,7 +705,7 @@ export default function GSTScanScreen({ navigation }: Props) {
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>GST Certificate</Text>
@@ -707,7 +719,7 @@ export default function GSTScanScreen({ navigation }: Props) {
             <View style={styles.uploadCard}>
               <View style={styles.uploadIconContainer}>
                 <LinearGradient
-                  colors={['#0ea5e9', '#0284c7']}
+                  colors={[colors.primary, colors.primaryDark]}
                   style={styles.uploadIconGradient}
                 >
                   <MaterialCommunityIcons name="file-certificate" size={48} color="#ffffff" />
@@ -720,7 +732,7 @@ export default function GSTScanScreen({ navigation }: Props) {
 
               {imageUri && isProcessing && (
                 <View style={styles.processingContainer}>
-                  <ActivityIndicator size="large" color="#0ea5e9" />
+                  <ActivityIndicator size="large" color={colors.primary} />
                   <Text style={styles.processingText}>Processing image with OCR...</Text>
                 </View>
               )}
@@ -738,7 +750,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['#0ea5e9', '#0284c7']}
+                  colors={[colors.primary, colors.primaryDark]}
                   style={styles.uploadButtonGradient}
                 >
                   <Ionicons name="camera" size={22} color="#ffffff" />
@@ -777,7 +789,7 @@ export default function GSTScanScreen({ navigation }: Props) {
               <View style={styles.formCard}>
                 <View style={styles.formHeaderRow}>
                   <View style={styles.formIconContainer}>
-                    <Ionicons name="document-text" size={20} color="#0ea5e9" />
+                    <Ionicons name="document-text" size={20} color={colors.primary} />
                   </View>
                   <Text style={styles.formSectionTitle}>GST Details</Text>
                 </View>
@@ -786,7 +798,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                 {/* GSTIN Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="barcode-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="barcode-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>GSTIN *</Text>
                   </View>
                   <TextInput
@@ -794,7 +806,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                     value={extractedData.gstin}
                     onChangeText={(text) => setExtractedData({ ...extractedData, gstin: formatGSTIN(text) })}
                     placeholder="Enter GSTIN (15 characters)"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder} // Fixed
                     autoCapitalize="characters"
                     maxLength={15}
                   />
@@ -804,7 +816,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                 {/* Legal Name Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="business-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="business-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>Legal Name of Business *</Text>
                   </View>
                   <TextInput
@@ -812,7 +824,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                     value={extractedData.legalName}
                     onChangeText={(text) => setExtractedData({ ...extractedData, legalName: text.toUpperCase() })}
                     placeholder="Enter legal business name"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={150}
                   />
@@ -821,7 +833,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                 {/* Trade Name Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="storefront-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="storefront-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>Trade Name (Optional)</Text>
                   </View>
                   <TextInput
@@ -829,7 +841,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                     value={extractedData.tradeName}
                     onChangeText={(text) => setExtractedData({ ...extractedData, tradeName: text.toUpperCase() })}
                     placeholder="Enter trade name if different"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={150}
                   />
@@ -838,7 +850,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                 {/* Constitution of Business Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="briefcase-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="briefcase-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>Constitution of Business</Text>
                   </View>
                   <TextInput
@@ -846,7 +858,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                     value={extractedData.constitutionOfBusiness}
                     onChangeText={(text) => setExtractedData({ ...extractedData, constitutionOfBusiness: text.toUpperCase() })}
                     placeholder="e.g., Proprietorship, Pvt Ltd, LLP"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={50}
                   />
@@ -855,7 +867,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                 {/* Date of Registration Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="calendar-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="calendar-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>Date of Registration</Text>
                   </View>
                   <TextInput
@@ -866,7 +878,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                       setExtractedData({ ...extractedData, dateOfRegistration: formatted });
                     }}
                     placeholder="DD/MM/YYYY"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     keyboardType="numeric"
                     maxLength={10}
                   />
@@ -875,7 +887,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                 {/* Business Address Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="location-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="location-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>Principal Place of Business</Text>
                   </View>
                   <TextInput
@@ -883,7 +895,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                     value={extractedData.businessAddress}
                     onChangeText={(text) => setExtractedData({ ...extractedData, businessAddress: text })}
                     placeholder="Enter complete business address"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     multiline
                     numberOfLines={3}
                     maxLength={300}
@@ -894,7 +906,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                 {/* State / Jurisdiction Input Card */}
                 <View style={styles.inputCard}>
                   <View style={styles.inputLabelRow}>
-                    <Ionicons name="map-outline" size={18} color="#0ea5e9" />
+                    <Ionicons name="map-outline" size={18} color={colors.primary} />
                     <Text style={styles.inputLabel}>State / Jurisdiction</Text>
                   </View>
                   <TextInput
@@ -902,7 +914,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                     value={extractedData.stateJurisdiction}
                     onChangeText={(text) => setExtractedData({ ...extractedData, stateJurisdiction: text.toUpperCase() })}
                     placeholder="Enter state"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.inputPlaceholder}
                     autoCapitalize="characters"
                     maxLength={50}
                   />
@@ -932,7 +944,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                   activeOpacity={0.8}
                 >
                   <LinearGradient
-                    colors={isConfirmed ? ['#0ea5e9', '#0284c7'] : ['#94a3b8', '#64748b']}
+                    colors={isConfirmed ? [colors.primary, colors.primaryDark] : [colors.textMuted, colors.textSecondary]}
                     style={styles.submitButtonGradient}
                   >
                     {isProcessing ? (
@@ -966,7 +978,7 @@ export default function GSTScanScreen({ navigation }: Props) {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="refresh" size={18} color="#0ea5e9" style={{ marginRight: 6 }} />
+                  <Ionicons name="refresh" size={18} color={colors.primary} style={{ marginRight: 6 }} />
                   <Text style={styles.retakeButtonText}>Scan Another Image</Text>
                 </TouchableOpacity>
               </View>
@@ -978,7 +990,7 @@ export default function GSTScanScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -998,7 +1010,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -1013,12 +1025,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 2,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   scrollView: {
@@ -1030,7 +1042,7 @@ const styles = StyleSheet.create({
   },
   // Upload Card
   uploadCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 28,
     alignItems: 'center',
@@ -1049,7 +1061,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -1058,13 +1070,13 @@ const styles = StyleSheet.create({
   uploadTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   uploadSubtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 20,
@@ -1074,14 +1086,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 20,
     padding: 20,
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 16,
     width: '100%',
   },
   processingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#0284c7',
+    color: colors.primaryDark,
     fontWeight: '500',
   },
   imagePreviewContainer: {
@@ -1090,9 +1102,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 20,
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: 2,
-    borderColor: '#e0f2fe',
+    borderColor: colors.border,
   },
   imagePreview: {
     width: '100%',
@@ -1102,7 +1114,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     width: '100%',
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -1126,16 +1138,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   manualEntryButtonText: {
-    color: '#0ea5e9',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   // Form Card
   formCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 16,
@@ -1150,7 +1162,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1158,21 +1170,21 @@ const styles = StyleSheet.create({
   formSectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   formHelperText: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     marginBottom: 20,
   },
   // Input Card
   inputCard: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.inputBackground,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.inputBorder,
   },
   inputLabelRow: {
     flexDirection: 'row',
@@ -1183,16 +1195,16 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.text,
   },
   input: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.inputBackground,
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
-    color: '#1e293b',
+    color: colors.inputText,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderColor: colors.inputBorder,
   },
   inputMultiline: {
     minHeight: 80,
@@ -1201,18 +1213,18 @@ const styles = StyleSheet.create({
   },
   inputHint: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: colors.textMuted,
     marginTop: 6,
     marginLeft: 2,
   },
   // Confirmation Card
   confirmationCard: {
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: colors.primaryLight,
   },
   checkbox: {
     flexDirection: 'row',
@@ -1224,18 +1236,18 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#cbd5e1',
+    borderColor: colors.textMuted,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
   },
   checkboxBoxChecked: {
-    backgroundColor: '#0ea5e9',
-    borderColor: '#0ea5e9',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#334155',
+    color: colors.text,
     flex: 1,
     lineHeight: 20,
   },
@@ -1244,7 +1256,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
-    shadowColor: '#0ea5e9',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -1270,13 +1282,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: colors.primaryLight,
   },
   retakeButtonText: {
-    color: '#0ea5e9',
+    color: colors.primary,
     fontSize: 15,
     fontWeight: '600',
   },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,7 @@ import { supabaseStorageService } from '@/services/supabase/storageService';
 import { supabaseAuthService } from '@/services/supabase/authService';
 import { UserLocation } from '@/store/profileStore';
 import { useTheme } from '@/contexts';
-import { getThemedColors } from '@/utils/themedStyles';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 import { getErrorMessage } from '@/utils/errorUtils';
 
 type EditProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditProfile'>;
@@ -49,6 +49,7 @@ const INDIAN_STATES = [
 export default function EditProfileScreen({ navigation }: Props) {
   const { isDark } = useTheme();
   const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, setUser } = useAuthStore();
   const { draft, hasChanges, isSaving, setDraft, updateDraft, clearDraft, saveLocation, restoreLocation } = useProfileStore();
 
@@ -312,7 +313,7 @@ export default function EditProfileScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={isDark ? ['#1f2937', '#111827', '#0f172a'] : ['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -321,16 +322,16 @@ export default function EditProfileScreen({ navigation }: Props) {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={[styles.backButton, { backgroundColor: isDark ? colors.cardElevated : '#ffffff' }]}
+            style={styles.backButton}
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={20} color="#3b82f6" />
+            <Ionicons name="arrow-back" size={20} color={colors.primary} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Profile</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Update your information</Text>
+            <Text style={styles.headerTitle}>Edit Profile</Text>
+            <Text style={styles.headerSubtitle}>Update your information</Text>
           </View>
           <View style={{ width: 44 }} />
         </View>
@@ -346,7 +347,7 @@ export default function EditProfileScreen({ navigation }: Props) {
             keyboardShouldPersistTaps="handled"
           >
             {/* Profile Picture Card */}
-            <View style={[styles.profileCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+            <View style={styles.profileCard}>
               <TouchableOpacity
                 style={styles.avatarContainer}
                 onPress={handlePickImage}
@@ -360,8 +361,8 @@ export default function EditProfileScreen({ navigation }: Props) {
                     resizeMode="cover"
                   />
                 ) : (
-                  <View style={[styles.avatarPlaceholder, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-                    <MaterialCommunityIcons name="account" size={48} color="#3b82f6" />
+                  <View style={styles.avatarPlaceholder}>
+                    <MaterialCommunityIcons name="account" size={48} color={colors.primary} />
                   </View>
                 )}
                 {isUploadingImage ? (
@@ -374,29 +375,29 @@ export default function EditProfileScreen({ navigation }: Props) {
                   </View>
                 )}
               </TouchableOpacity>
-              <Text style={[styles.userName, { color: colors.text }]}>{user?.name?.trim() || 'User'}</Text>
-              <Text style={[styles.changePhotoText, { color: colors.textSecondary }]}>Tap photo to change</Text>
+              <Text style={styles.userName}>{user?.name?.trim() || 'User'}</Text>
+              <Text style={styles.changePhotoText}>Tap photo to change</Text>
             </View>
 
             {/* Personal Information Card */}
-            <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+            <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
-                <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-                  <Ionicons name="person" size={18} color="#3b82f6" />
+                <View style={styles.sectionIconContainer}>
+                  <Ionicons name="person" size={18} color={colors.primary} />
                 </View>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Personal Information</Text>
+                <Text style={styles.sectionTitle}>Personal Information</Text>
               </View>
 
               {/* Full Name */}
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name</Text>
+                <Text style={styles.inputLabel}>Full Name</Text>
                 <View style={[
                   styles.inputContainer,
-                  { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: errors.name ? colors.error : (isDark ? colors.border : '#e2e8f0') }
+                  !!errors.name && { borderColor: colors.error }
                 ]}>
                   <Ionicons name="person-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                   <TextInput
-                    style={[styles.input, { color: colors.text }]}
+                    style={styles.input}
                     value={name}
                     onChangeText={setName}
                     placeholder="Enter your full name"
@@ -404,59 +405,57 @@ export default function EditProfileScreen({ navigation }: Props) {
                     autoCapitalize="words"
                   />
                 </View>
-                {errors.name && <Text style={[styles.errorText, { color: colors.error }]}>{errors.name}</Text>}
+                {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
               </View>
 
               {/* Email - Read-only */}
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email Address</Text>
+                <Text style={styles.inputLabel}>Email Address</Text>
                 <View style={[
                   styles.inputContainer,
                   styles.readOnlyContainer,
-                  { backgroundColor: isDark ? colors.backgroundSecondary : '#f1f5f9', borderColor: isDark ? colors.border : '#e2e8f0' }
                 ]}>
                   <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
-                  <Text style={[styles.readOnlyText, { color: colors.textSecondary, flex: 1 }]} numberOfLines={1}>
+                  <Text style={styles.readOnlyText} numberOfLines={1}>
                     {email || 'Not provided'}
                   </Text>
-                  <View style={[styles.lockedBadge, { backgroundColor: isDark ? colors.border : '#e2e8f0' }]}>
+                  <View style={styles.lockedBadge}>
                     <Ionicons name="lock-closed" size={12} color={colors.textMuted} />
                   </View>
                 </View>
-                <Text style={[styles.hintText, { color: colors.textMuted }]}>
+                <Text style={styles.hintText}>
                   Email cannot be changed after signup
                 </Text>
               </View>
 
               {/* Phone Number (Read-only) */}
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Phone Number</Text>
+                <Text style={styles.inputLabel}>Phone Number</Text>
                 <View style={[
                   styles.inputContainer,
                   styles.readOnlyContainer,
-                  { backgroundColor: isDark ? colors.backgroundSecondary : '#f1f5f9', borderColor: isDark ? colors.border : '#e2e8f0' }
                 ]}>
                   <Ionicons name="call-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
-                  <Text style={[styles.readOnlyText, { color: colors.textSecondary, flex: 1 }]} numberOfLines={1}>
+                  <Text style={styles.readOnlyText} numberOfLines={1}>
                     {phoneNumber || 'Not provided'}
                   </Text>
-                  <View style={[styles.lockedBadge, { backgroundColor: isDark ? colors.border : '#e2e8f0' }]}>
+                  <View style={styles.lockedBadge}>
                     <Ionicons name="lock-closed" size={12} color={colors.textMuted} />
                   </View>
                 </View>
-                <Text style={[styles.hintText, { color: colors.textMuted }]}>
+                <Text style={styles.hintText}>
                   Contact support to change phone number
                 </Text>
               </View>
             </View>
 
             {/* Location Card */}
-            <View style={[styles.sectionCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
+            <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
-                <View style={[styles.sectionIconContainer, { backgroundColor: isDark ? '#1e3a5f' : '#dbeafe' }]}>
-                  <Ionicons name="location" size={18} color="#3b82f6" />
+                <View style={styles.sectionIconContainer}>
+                  <Ionicons name="location" size={18} color={colors.primary} />
                 </View>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Location</Text>
+                <Text style={styles.sectionTitle}>Location</Text>
               </View>
 
               {/* Location Type Toggle */}
@@ -464,28 +463,25 @@ export default function EditProfileScreen({ navigation }: Props) {
                 <TouchableOpacity
                   style={[
                     styles.locationToggleButton,
-                    {
-                      backgroundColor: locationType === 'gps' ? '#3b82f6' : (isDark ? colors.backgroundSecondary : '#f8fafc'),
-                      borderColor: locationType === 'gps' ? '#3b82f6' : (isDark ? colors.border : '#e2e8f0'),
-                    },
+                    locationType === 'gps' && styles.locationToggleButtonActive
                   ]}
                   onPress={handleGetCurrentLocation}
                   disabled={isLoadingLocation}
                   activeOpacity={0.7}
                 >
                   {isLoadingLocation ? (
-                    <ActivityIndicator size="small" color={locationType === 'gps' ? '#ffffff' : '#3b82f6'} />
+                    <ActivityIndicator size="small" color={locationType === 'gps' ? '#ffffff' : colors.primary} />
                   ) : (
                     <Ionicons
                       name="navigate"
                       size={18}
-                      color={locationType === 'gps' ? '#ffffff' : '#3b82f6'}
+                      color={locationType === 'gps' ? '#ffffff' : colors.primary}
                     />
                   )}
                   <Text
                     style={[
                       styles.locationToggleText,
-                      { color: locationType === 'gps' ? '#ffffff' : colors.text },
+                      locationType === 'gps' && styles.locationToggleTextActive
                     ]}
                   >
                     Use GPS
@@ -495,10 +491,7 @@ export default function EditProfileScreen({ navigation }: Props) {
                 <TouchableOpacity
                   style={[
                     styles.locationToggleButton,
-                    {
-                      backgroundColor: locationType === 'manual' ? '#3b82f6' : (isDark ? colors.backgroundSecondary : '#f8fafc'),
-                      borderColor: locationType === 'manual' ? '#3b82f6' : (isDark ? colors.border : '#e2e8f0'),
-                    },
+                    locationType === 'manual' && styles.locationToggleButtonActive
                   ]}
                   onPress={() => setLocationType('manual')}
                   activeOpacity={0.7}
@@ -506,12 +499,12 @@ export default function EditProfileScreen({ navigation }: Props) {
                   <Ionicons
                     name="create-outline"
                     size={18}
-                    color={locationType === 'manual' ? '#ffffff' : '#3b82f6'}
+                    color={locationType === 'manual' ? '#ffffff' : colors.primary}
                   />
                   <Text
                     style={[
                       styles.locationToggleText,
-                      { color: locationType === 'manual' ? '#ffffff' : colors.text },
+                      locationType === 'manual' && styles.locationToggleTextActive
                     ]}
                   >
                     Manual
@@ -522,13 +515,10 @@ export default function EditProfileScreen({ navigation }: Props) {
               {/* Location Fields - 2 Column Grid */}
               <View style={styles.locationFieldsGrid}>
                 <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>City</Text>
-                  <View style={[
-                    styles.inputContainer,
-                    { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: isDark ? colors.border : '#e2e8f0' }
-                  ]}>
+                  <Text style={styles.inputLabel}>City</Text>
+                  <View style={styles.inputContainer}>
                     <TextInput
-                      style={[styles.input, { color: colors.text }]}
+                      style={styles.input}
                       value={city}
                       onChangeText={setCity}
                       placeholder="Enter city"
@@ -539,13 +529,10 @@ export default function EditProfileScreen({ navigation }: Props) {
                 </View>
 
                 <View style={[styles.inputGroup, styles.halfWidth]}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>State</Text>
-                  <View style={[
-                    styles.inputContainer,
-                    { backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc', borderColor: isDark ? colors.border : '#e2e8f0' }
-                  ]}>
+                  <Text style={styles.inputLabel}>State</Text>
+                  <View style={styles.inputContainer}>
                     <TextInput
-                      style={[styles.input, { color: colors.text }]}
+                      style={styles.input}
                       value={state}
                       onChangeText={setState}
                       placeholder="Enter state"
@@ -557,17 +544,14 @@ export default function EditProfileScreen({ navigation }: Props) {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Pincode</Text>
+                <Text style={styles.inputLabel}>Pincode</Text>
                 <View style={[
                   styles.inputContainer,
-                  {
-                    backgroundColor: isDark ? colors.backgroundSecondary : '#f8fafc',
-                    borderColor: errors.pincode ? colors.error : (isDark ? colors.border : '#e2e8f0')
-                  }
+                  !!errors.pincode && { borderColor: colors.error }
                 ]}>
                   <Ionicons name="keypad-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                   <TextInput
-                    style={[styles.input, { color: colors.text }]}
+                    style={styles.input}
                     value={pincode}
                     onChangeText={setPincode}
                     placeholder="Enter 6-digit pincode"
@@ -577,7 +561,7 @@ export default function EditProfileScreen({ navigation }: Props) {
                     editable={locationType === 'manual'}
                   />
                 </View>
-                {errors.pincode && <Text style={[styles.errorText, { color: colors.error }]}>{errors.pincode}</Text>}
+                {errors.pincode && <Text style={styles.errorText}>{errors.pincode}</Text>}
               </View>
             </View>
 
@@ -589,7 +573,7 @@ export default function EditProfileScreen({ navigation }: Props) {
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={['#3b82f6', '#2563eb']}
+                colors={[colors.primary, colors.primaryDark]}
                 style={[styles.saveButtonGradient, !canSave && { opacity: 0.5 }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -607,11 +591,11 @@ export default function EditProfileScreen({ navigation }: Props) {
 
             {/* Cancel Button */}
             <TouchableOpacity
-              style={[styles.cancelButton, { backgroundColor: isDark ? colors.card : '#ffffff', borderColor: isDark ? colors.border : '#e2e8f0' }]}
+              style={styles.cancelButton}
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}
             >
-              <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -620,7 +604,7 @@ export default function EditProfileScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -640,6 +624,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.cardElevated,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -654,10 +639,12 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 4,
+    color: colors.text,
   },
   headerSubtitle: {
     fontSize: 14,
     fontWeight: '500',
+    color: colors.textSecondary,
   },
   scrollView: {
     flex: 1,
@@ -672,6 +659,7 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     marginBottom: 16,
+    backgroundColor: colors.card,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -696,6 +684,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.primaryLight,
   },
   cameraIconOverlay: {
     position: 'absolute',
@@ -704,11 +693,11 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#ffffff',
+    borderColor: colors.card,
   },
   uploadingOverlay: {
     position: 'absolute',
@@ -725,16 +714,19 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginBottom: 4,
+    color: colors.text,
   },
   changePhotoText: {
     fontSize: 13,
     fontWeight: '500',
+    color: colors.textSecondary,
   },
   // Section Card
   sectionCard: {
     borderRadius: 24,
     padding: 20,
     marginBottom: 16,
+    backgroundColor: colors.card,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -753,10 +745,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    backgroundColor: colors.primaryLight,
   },
   sectionTitle: {
     fontSize: 17,
     fontWeight: '700',
+    color: colors.text,
   },
   // Input Styles
   inputGroup: {
@@ -768,6 +762,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    color: colors.textSecondary,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -776,6 +771,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     height: 52,
+    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.border,
   },
   inputIcon: {
     marginRight: 10,
@@ -784,6 +781,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '500',
+    color: colors.text,
   },
   readOnlyContainer: {
     opacity: 0.8,
@@ -791,23 +789,28 @@ const styles = StyleSheet.create({
   readOnlyText: {
     fontSize: 15,
     fontWeight: '500',
+    color: colors.textSecondary,
+    flex: 1,
   },
   lockedBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
+    backgroundColor: colors.border,
   },
   hintText: {
     fontSize: 12,
+    color: colors.textMuted,
     marginTop: 6,
-    fontStyle: 'italic',
+    marginLeft: 4,
   },
   errorText: {
     fontSize: 12,
-    marginTop: 6,
-    fontWeight: '500',
+    color: colors.error,
+    marginTop: 4,
+    marginLeft: 4,
   },
-  // Location Toggle
+  // Location Styles
   locationToggleRow: {
     flexDirection: 'row',
     gap: 12,
@@ -818,16 +821,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 14,
     borderWidth: 1.5,
     gap: 8,
+    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.border,
+  },
+  locationToggleButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   locationToggleText: {
     fontSize: 14,
     fontWeight: '600',
+    color: colors.text,
   },
-  // Location Fields Grid
+  locationToggleTextActive: {
+    color: '#ffffff',
+  },
   locationFieldsGrid: {
     flexDirection: 'row',
     gap: 12,
@@ -835,44 +847,45 @@ const styles = StyleSheet.create({
   halfWidth: {
     flex: 1,
   },
-  // Save Button
+  // Buttons
   saveButton: {
     borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 12,
-    shadowColor: '#3b82f6',
+    marginBottom: 16,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowRadius: 10,
+    elevation: 8,
   },
   saveButtonDisabled: {
-    shadowColor: '#64748b',
-    shadowOpacity: 0.15,
+    opacity: 0.5,
+    shadowOpacity: 0.1,
   },
   saveButtonGradient: {
-    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
     gap: 8,
   },
   saveButtonText: {
-    color: '#ffffff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#ffffff',
   },
-  // Cancel Button
   cancelButton: {
-    borderRadius: 16,
-    paddingVertical: 16,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
     borderWidth: 1.5,
-    marginBottom: 20,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.textSecondary,
   },
 });
+

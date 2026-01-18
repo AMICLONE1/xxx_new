@@ -1,13 +1,46 @@
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { getCurrentSession } from '@/services/supabase/client';
+import { Platform } from 'react-native';
 
-const API_BASE_URL =
-  Constants.expoConfig?.extra?.apiBaseUrl || process.env.API_BASE_URL || 'https://api.powernetpro.com';
+// Determine the correct localhost URL based on platform
+const getLocalApiUrl = (): string => {
+  const port = 3000;
+
+  if (Platform.OS === 'android') {
+    // Android emulator uses 10.0.2.2 to access host machine's localhost
+    return `http://10.0.2.2:${port}`;
+  } else if (Platform.OS === 'ios') {
+    // iOS simulator can use localhost directly
+    return `http://localhost:${port}`;
+  } else {
+    // Web or other platforms
+    return `http://localhost:${port}`;
+  }
+};
+
+// Use config from app.json if available, otherwise auto-detect for local development
+const API_BASE_URL = (() => {
+  const configUrl = Constants.expoConfig?.extra?.apiBaseUrl;
+
+  // Always use the configured URL from app.json if available
+  if (configUrl) {
+    return configUrl;
+  }
+
+  // Fallback: For local development without config, auto-detect based on platform
+  if (__DEV__) {
+    return getLocalApiUrl();
+  }
+
+  // Production fallback
+  return 'https://api.powernetpro.com';
+})();
 
 // Debug: Log the actual URL being used
 if (__DEV__) {
   console.log('🔗 API Base URL:', API_BASE_URL);
+  console.log('📱 Platform:', Platform.OS);
   console.log('📋 Config from app.json:', Constants.expoConfig?.extra?.apiBaseUrl);
 }
 
@@ -38,7 +71,7 @@ class ApiClient {
     retryCount: number = 0
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     // Debug logging
     if (__DEV__) {
       console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
@@ -46,14 +79,14 @@ class ApiClient {
         console.log('📤 Request body:', options.body);
       }
     }
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
       // Get auth headers asynchronously
       const authHeaders = await this.getAuthHeaders();
-      
+
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
@@ -97,12 +130,12 @@ class ApiClient {
       }
 
       const responseData = await response.json();
-      
+
       // Debug logging
       if (__DEV__) {
         console.log(`✅ API Response (${response.status}):`, JSON.stringify(responseData).substring(0, 200));
       }
-      
+
       // Check if we got the Expo manifest instead of API response
       if (responseData.id && responseData.runtimeVersion && responseData.launchAsset) {
         console.error('❌ ERROR: Received Expo manifest instead of API response!');
@@ -114,14 +147,14 @@ class ApiClient {
           status: response.status,
         } as ApiError;
       }
-      
+
       return responseData;
     } catch (error: unknown) {
       clearTimeout(timeoutId);
-      
+
       const errorName = error instanceof Error ? error.name : '';
       const errorMessage = error instanceof Error ? error.message : '';
-      
+
       // Enhanced error handling
       if (errorName === 'AbortError') {
         // Retry on timeout
@@ -130,30 +163,30 @@ class ApiClient {
           await new Promise((resolve) => setTimeout(resolve, delay));
           return this.request<T>(endpoint, options, retryCount + 1);
         }
-        throw { 
-          message: 'Request timeout - Server took too long to respond', 
+        throw {
+          message: 'Request timeout - Server took too long to respond',
           code: 'TIMEOUT',
-          originalError: error 
+          originalError: error
         } as ApiError;
       }
-      
+
       // Network errors (connection failed, DNS error, etc.)
-      if (errorMessage.includes('Network request failed') || 
-          errorMessage.includes('Failed to fetch') ||
-          errorMessage.includes('NetworkError')) {
+      if (errorMessage.includes('Network request failed') ||
+        errorMessage.includes('Failed to fetch') ||
+        errorMessage.includes('NetworkError')) {
         // Retry on network errors
         if (retryCount < this.maxRetries) {
           const delay = this.retryDelay * Math.pow(2, retryCount);
           await new Promise((resolve) => setTimeout(resolve, delay));
           return this.request<T>(endpoint, options, retryCount + 1);
         }
-        throw { 
-          message: `Network error: Unable to connect to ${this.baseUrl}. Please check your internet connection or backend server status.`, 
+        throw {
+          message: `Network error: Unable to connect to ${this.baseUrl}. Please check your internet connection or backend server status.`,
           code: 'NETWORK_ERROR',
-          originalError: error 
+          originalError: error
         } as ApiError;
       }
-      
+
       // Re-throw other errors
       throw error;
     }

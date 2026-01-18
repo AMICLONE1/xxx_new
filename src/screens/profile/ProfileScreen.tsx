@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,7 +22,7 @@ import type { ThemeMode } from '@/store';
 import { supabaseStorageService } from '@/services/supabase/storageService';
 import { supabaseAuthService } from '@/services/supabase/authService';
 import { useTheme } from '@/contexts';
-import { getThemedColors } from '@/utils/themedStyles';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 import { getErrorMessage } from '@/utils/errorUtils';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
@@ -38,41 +38,12 @@ const THEME_OPTIONS: { value: ThemeMode; label: string; icon: string }[] = [
   { value: 'dark', label: 'Dark Mode', icon: 'moon-outline' },
 ];
 
-// KYC Status configurations - Blue theme colors
-const KYC_STATUS_CONFIG = {
-  pending: {
-    badge: 'Pending',
-    badgeColor: '#3b82f6',
-    badgeBg: '#dbeafe',
-    description: 'Your KYC verification is pending review.',
-    icon: 'time-outline',
-  },
-  verified: {
-    badge: 'Verified',
-    badgeColor: '#3b82f6',
-    badgeBg: '#dbeafe',
-    description: 'Your identity has been successfully verified.',
-    icon: 'checkmark-circle',
-  },
-  rejected: {
-    badge: 'Rejected',
-    badgeColor: '#ef4444',
-    badgeBg: '#fee2e2',
-    description: 'Your KYC was rejected. Please re-submit documents.',
-    icon: 'close-circle',
-  },
-  'not-started': {
-    badge: 'Not Started',
-    badgeColor: '#64748b',
-    badgeBg: '#f1f5f9',
-    description: 'Complete KYC to unlock all features.',
-    icon: 'alert-circle-outline',
-  },
-};
+
 
 export default function ProfileScreen({ navigation }: Props) {
   const { isDark } = useTheme();
   const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { logout, user, setUser } = useAuthStore();
   const { overallStatus: kycStatus } = useKYCStore();
   const { themeMode, setThemeMode, restoreTheme } = useThemeStore();
@@ -86,6 +57,38 @@ export default function ProfileScreen({ navigation }: Props) {
     restoreTheme();
   }, []);
 
+  // KYC Status configurations
+  const kycStatusConfig = useMemo(() => ({
+    pending: {
+      badge: 'Pending',
+      badgeColor: colors.primary,
+      badgeBg: colors.primaryLight,
+      description: 'Your KYC verification is pending review.',
+      icon: 'time-outline',
+    },
+    verified: {
+      badge: 'Verified',
+      badgeColor: colors.primary,
+      badgeBg: colors.primaryLight,
+      description: 'Your identity has been successfully verified.',
+      icon: 'checkmark-circle',
+    },
+    rejected: {
+      badge: 'Rejected',
+      badgeColor: colors.error,
+      badgeBg: colors.errorBackground,
+      description: 'Your KYC was rejected. Please re-submit documents.',
+      icon: 'close-circle',
+    },
+    'not-started': {
+      badge: 'Not Started',
+      badgeColor: colors.textMuted,
+      badgeBg: colors.backgroundSecondary,
+      description: 'Complete KYC to unlock all features.',
+      icon: 'alert-circle-outline',
+    },
+  }), [colors]);
+
   // Get KYC display status
   const getKYCDisplayStatus = () => {
     if (!user) return 'not-started';
@@ -93,7 +96,7 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   const kycDisplayStatus = getKYCDisplayStatus();
-  const kycConfig = KYC_STATUS_CONFIG[kycDisplayStatus as keyof typeof KYC_STATUS_CONFIG] || KYC_STATUS_CONFIG['not-started'];
+  const kycConfig = kycStatusConfig[kycDisplayStatus as keyof typeof kycStatusConfig] || kycStatusConfig['not-started'];
 
   const handleLogout = async () => {
     Alert.alert(
@@ -283,7 +286,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -319,7 +322,7 @@ export default function ProfileScreen({ navigation }: Props) {
                   />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
-                    <MaterialCommunityIcons name="account" size={48} color="#3b82f6" />
+                    <MaterialCommunityIcons name="account" size={48} color={colors.primary} />
                   </View>
                 )}
                 {isUploadingImage ? (
@@ -328,7 +331,7 @@ export default function ProfileScreen({ navigation }: Props) {
                   </View>
                 ) : (
                   <View style={styles.cameraIcon}>
-                    <Ionicons name="camera" size={16} color="#ffffff" />
+                    <Ionicons name="camera" size={16} color={colors.card} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -338,14 +341,14 @@ export default function ProfileScreen({ navigation }: Props) {
               <View style={styles.userDetails}>
                 <View style={styles.userDetailItem}>
                   <View style={styles.detailIconContainer}>
-                    <Ionicons name="mail-outline" size={16} color="#3b82f6" />
+                    <Ionicons name="mail-outline" size={16} color={colors.primary} />
                   </View>
                   <Text style={styles.userDetailText} numberOfLines={1}>{user.email}</Text>
                 </View>
                 {user.phoneNumber && (
                   <View style={styles.userDetailItem}>
                     <View style={styles.detailIconContainer}>
-                      <Ionicons name="call-outline" size={16} color="#3b82f6" />
+                      <Ionicons name="call-outline" size={16} color={colors.primary} />
                     </View>
                     <Text style={styles.userDetailText}>{user.phoneNumber}</Text>
                   </View>
@@ -371,8 +374,8 @@ export default function ProfileScreen({ navigation }: Props) {
 
             {/* App Version */}
             <View style={styles.statCard}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#dbeafe' }]}>
-                <Ionicons name="information-circle-outline" size={20} color="#3b82f6" />
+              <View style={[styles.statIconContainer, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
               </View>
               <Text style={styles.statLabel}>App Version</Text>
               <Text style={styles.statValue}>v{getAppVersion()}</Text>
@@ -396,13 +399,13 @@ export default function ProfileScreen({ navigation }: Props) {
                   activeOpacity={0.7}
                 >
                   <View style={styles.menuIconContainer}>
-                    <MaterialCommunityIcons name={item.icon as any} size={22} color="#3b82f6" />
+                    <MaterialCommunityIcons name={item.icon as any} size={22} color={colors.primary} />
                   </View>
                   <View style={styles.menuContent}>
                     <Text style={styles.menuItemTitle}>{item.title}</Text>
                     <Text style={styles.menuItemSubtitle}>{item.subtitle}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -415,7 +418,7 @@ export default function ProfileScreen({ navigation }: Props) {
             activeOpacity={0.8}
           >
             <View style={styles.logoutButtonContent}>
-              <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+              <Ionicons name="log-out-outline" size={20} color={colors.error} />
               <Text style={styles.logoutText}>Logout</Text>
             </View>
           </TouchableOpacity>
@@ -426,7 +429,7 @@ export default function ProfileScreen({ navigation }: Props) {
             <View style={styles.dangerZoneCard}>
               <View style={styles.dangerZoneContent}>
                 <View style={styles.dangerZoneIconContainer}>
-                  <Ionicons name="warning" size={22} color="#ef4444" />
+                  <Ionicons name="warning" size={22} color={colors.error} />
                 </View>
                 <View style={styles.dangerZoneTextContainer}>
                   <Text style={styles.dangerZoneLabel}>Delete Account</Text>
@@ -463,7 +466,7 @@ export default function ProfileScreen({ navigation }: Props) {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Theme Preference</Text>
                 <TouchableOpacity onPress={() => setShowThemeModal(false)}>
-                  <Ionicons name="close" size={24} color="#1e293b" />
+                  <Ionicons name="close" size={24} color={colors.text} />
                 </TouchableOpacity>
               </View>
               <Text style={styles.modalSubtitle}>Choose your preferred appearance</Text>
@@ -485,7 +488,7 @@ export default function ProfileScreen({ navigation }: Props) {
                     <Ionicons
                       name={option.icon as any}
                       size={22}
-                      color={themeMode === option.value ? '#ffffff' : '#3b82f6'}
+                      color={themeMode === option.value ? '#ffffff' : colors.primary}
                     />
                   </View>
                   <Text style={[
@@ -495,7 +498,7 @@ export default function ProfileScreen({ navigation }: Props) {
                     {option.label}
                   </Text>
                   {themeMode === option.value && (
-                    <Ionicons name="checkmark-circle" size={22} color="#3b82f6" />
+                    <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -513,7 +516,7 @@ export default function ProfileScreen({ navigation }: Props) {
           <View style={styles.modalOverlay}>
             <View style={styles.deleteModalContent}>
               <View style={styles.deleteModalIconContainer}>
-                <Ionicons name="warning" size={48} color="#ef4444" />
+                <Ionicons name="warning" size={48} color={colors.error} />
               </View>
               <Text style={styles.deleteModalTitle}>Delete Account?</Text>
               <Text style={styles.deleteModalDescription}>
@@ -543,7 +546,7 @@ export default function ProfileScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -561,12 +564,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 30,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 15,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   scrollView: {
@@ -578,7 +581,7 @@ const styles = StyleSheet.create({
   },
   // Profile Card
   profileCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
@@ -605,7 +608,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 50,
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -616,11 +619,11 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#ffffff',
+    borderColor: colors.card,
   },
   uploadingOverlay: {
     position: 'absolute',
@@ -636,7 +639,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 12,
   },
   userDetails: {
@@ -653,13 +656,13 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   userDetailText: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     maxWidth: 200,
   },
   // Stats Row
@@ -670,7 +673,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
     alignItems: 'center',
@@ -690,18 +693,18 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
     marginBottom: 4,
   },
   statValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   // Meter Card
   meterCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
     marginBottom: 16,
@@ -720,7 +723,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -731,7 +734,7 @@ const styles = StyleSheet.create({
   meterLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#64748b',
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
@@ -739,26 +742,26 @@ const styles = StyleSheet.create({
   meterSerial: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 2,
   },
   meterDiscom: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
   },
   deleteMeterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    backgroundColor: '#fef2f2',
+    backgroundColor: colors.errorBackground,
     borderRadius: 12,
     gap: 6,
   },
   deleteMeterText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ef4444',
+    color: colors.error,
   },
   // Menu Section
   menuSection: {
@@ -767,11 +770,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 12,
   },
   menuCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -787,13 +790,13 @@ const styles = StyleSheet.create({
   },
   menuItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: colors.border,
   },
   menuIconContainer: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -804,19 +807,19 @@ const styles = StyleSheet.create({
   menuItemTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 2,
   },
   menuItemSubtitle: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textSecondary,
   },
   // Logout Button
   logoutButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: colors.errorBackground,
     overflow: 'hidden',
     marginBottom: 20,
   },
@@ -830,18 +833,18 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ef4444',
+    color: colors.error,
   },
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.modalOverlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.modalBackground,
     borderRadius: 24,
     padding: 24,
     width: '100%',
@@ -856,11 +859,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     marginBottom: 20,
   },
   themeOption: {
@@ -869,34 +872,34 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     marginBottom: 8,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   themeOptionActive: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
   },
   themeIconContainer: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   themeIconContainerActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
   },
   themeOptionText: {
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.text,
   },
   themeOptionTextActive: {
-    color: '#1e293b',
+    color: colors.text,
   },
   // Danger Zone Section
   dangerZoneSection: {
@@ -905,16 +908,16 @@ const styles = StyleSheet.create({
   dangerZoneTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ef4444',
+    color: colors.error,
     marginBottom: 12,
   },
   dangerZoneCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#fecaca',
-    shadowColor: '#ef4444',
+    borderColor: colors.errorBackground,
+    shadowColor: colors.error,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -929,7 +932,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: '#fee2e2',
+    backgroundColor: colors.errorBackground,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -940,18 +943,18 @@ const styles = StyleSheet.create({
   dangerZoneLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 2,
   },
   dangerZoneDescription: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textSecondary,
   },
   deleteAccountButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.error,
     borderRadius: 12,
     paddingVertical: 14,
     gap: 8,
@@ -959,11 +962,11 @@ const styles = StyleSheet.create({
   deleteAccountButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#ffffff', // Keep white as it's on red button
   },
   // Delete Modal Styles
   deleteModalContent: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.modalBackground,
     borderRadius: 24,
     padding: 24,
     width: '100%',
@@ -974,7 +977,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#fee2e2',
+    backgroundColor: colors.errorBackground,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -982,13 +985,13 @@ const styles = StyleSheet.create({
   deleteModalTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   deleteModalDescription: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
@@ -1000,7 +1003,7 @@ const styles = StyleSheet.create({
   },
   deleteModalCancelButton: {
     flex: 1,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -1008,11 +1011,11 @@ const styles = StyleSheet.create({
   deleteModalCancelText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748b',
+    color: colors.textSecondary,
   },
   deleteModalConfirmButton: {
     flex: 1,
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.error,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',

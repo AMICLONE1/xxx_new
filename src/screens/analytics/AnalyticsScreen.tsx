@@ -17,11 +17,16 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { formatEnergy as formatEnergyUtil, formatCurrency as formatCurrencyUtil } from '@/utils/helpers';
 import { logger } from '@/utils/logger';
+import { useTheme } from '@/contexts';
+import { getThemedColors } from '@/utils/themedStyles';
 
 const { width } = Dimensions.get('window');
 
 const AnalyticsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { isDark } = useTheme();
+  const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { meters, energyData } = useMeterStore();
   const { user } = useAuthStore();
   const { transactions } = useTransactionStore();
@@ -530,7 +535,7 @@ const AnalyticsScreen = () => {
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as any}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -541,7 +546,7 @@ const AnalyticsScreen = () => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
         >
           {/* Header */}
@@ -626,8 +631,8 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#fee2e2' }]}>
-                      <MaterialCommunityIcons name="flash" size={18} color="#ef4444" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.errorBackground }]}>
+                      <MaterialCommunityIcons name="flash" size={18} color={colors.error} />
                     </View>
                     <Text style={styles.metricLabel}>TOTAL CONSUMPTION</Text>
                     <Text style={styles.metricValue}>
@@ -636,8 +641,8 @@ const AnalyticsScreen = () => {
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#fee2e2' }]}>
-                      <MaterialCommunityIcons name="gauge" size={18} color="#ef4444" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.errorBackground }]}>
+                      <MaterialCommunityIcons name="gauge" size={18} color={colors.error} />
                     </View>
                     <Text style={styles.metricLabel}>AVG CONSUMPTION</Text>
                     <Text style={styles.metricValue}>
@@ -648,8 +653,8 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="flash-alert" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="flash-alert" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>PEAK DEMAND</Text>
                     <Text style={styles.metricValue}>
@@ -658,8 +663,8 @@ const AnalyticsScreen = () => {
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="cart" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="cart" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>P2P PURCHASED</Text>
                     <Text style={styles.metricValue}>
@@ -675,30 +680,30 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="weather-sunny" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="weather-sunny" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>PEAK HOURS (6-10 PM)</Text>
                     <Text style={styles.metricValue}>
                       {buyerAnalytics.peakHoursConsumption.toFixed(2)} <Text style={styles.metricUnit}>kWh</Text>
                     </Text>
                     <View>
-                      <Text style={[styles.trendText, { color: '#3b82f6' }]}>
+                      <Text style={[styles.trendText, { color: colors.primary }]}>
                         {buyerAnalytics.peakHoursPercentage.toFixed(1)}% of total
                       </Text>
                     </View>
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="weather-night" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="weather-night" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>OFF-PEAK HOURS</Text>
                     <Text style={styles.metricValue}>
                       {buyerAnalytics.offPeakHoursConsumption.toFixed(2)} <Text style={styles.metricUnit}>kWh</Text>
                     </Text>
                     <View>
-                      <Text style={[styles.trendText, { color: '#3b82f6' }]}>
+                      <Text style={[styles.trendText, { color: colors.primary }]}>
                         {(100 - buyerAnalytics.peakHoursPercentage).toFixed(1)}% of total
                       </Text>
                     </View>
@@ -712,8 +717,8 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="currency-inr" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="currency-inr" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>TOTAL COST</Text>
                     <Text style={styles.metricValue}>
@@ -722,8 +727,8 @@ const AnalyticsScreen = () => {
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="calendar-today" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="calendar-today" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>AVG DAILY COST</Text>
                     <Text style={styles.metricValue}>
@@ -734,26 +739,26 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="handshake" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="handshake" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>P2P PURCHASE COST</Text>
                     <Text style={styles.metricValue}>
                       {formatCurrency(buyerAnalytics.totalPurchaseCost)}
                     </Text>
                     <View>
-                      <Text style={[styles.trendText, { color: '#3b82f6' }]}>
+                      <Text style={[styles.trendText, { color: colors.primary }]}>
                         Avg: {formatCurrency(buyerAnalytics.avgPurchaseRate)}/kWh
                       </Text>
                     </View>
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="piggy-bank" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="piggy-bank" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>P2P SAVINGS</Text>
-                    <Text style={[styles.metricValue, { color: buyerAnalytics.savingsFromP2P >= 0 ? '#10b981' : '#ef4444' }]}>
+                    <Text style={[styles.metricValue, { color: buyerAnalytics.savingsFromP2P >= 0 ? colors.success : colors.error }]}>
                       {buyerAnalytics.savingsFromP2P >= 0 ? '+' : ''}{formatCurrency(buyerAnalytics.savingsFromP2P)}
                     </Text>
                   </View>
@@ -766,18 +771,18 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="sine-wave" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="sine-wave" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>POWER FACTOR</Text>
                     <Text style={styles.metricValue}>
                       {buyerAnalytics.powerFactor.toFixed(2)}
                     </Text>
                     <View style={[styles.efficiencyBadge, {
-                      backgroundColor: buyerAnalytics.powerFactor >= 0.95 ? '#dbeafe' : buyerAnalytics.powerFactor >= 0.9 ? '#dbeafe' : '#dbeafe'
+                      backgroundColor: buyerAnalytics.powerFactor >= 0.95 ? colors.primaryLight : buyerAnalytics.powerFactor >= 0.9 ? colors.primaryLight : colors.errorBackground
                     }]}>
                       <Text style={[styles.efficiencyBadgeText, {
-                        color: buyerAnalytics.powerFactor >= 0.95 ? '#3b82f6' : buyerAnalytics.powerFactor >= 0.9 ? '#3b82f6' : '#ef4444'
+                        color: buyerAnalytics.powerFactor >= 0.95 ? colors.primary : buyerAnalytics.powerFactor >= 0.9 ? colors.primary : colors.error
                       }]}>
                         {buyerAnalytics.powerFactor >= 0.95 ? 'Excellent' : buyerAnalytics.powerFactor >= 0.9 ? 'Good' : 'Fair'}
                       </Text>
@@ -785,8 +790,8 @@ const AnalyticsScreen = () => {
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="signal" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="signal" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>VOLTAGE STABILITY</Text>
                     <Text style={styles.metricValue}>
@@ -807,8 +812,8 @@ const AnalyticsScreen = () => {
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="check-circle" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="check-circle" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>SUPPLY QUALITY</Text>
                     <Text style={styles.metricValue}>Good</Text>
@@ -830,7 +835,7 @@ const AnalyticsScreen = () => {
                       {buyerAnalytics.greenEnergyPercentage.toFixed(1)}<Text style={styles.metricUnit}>%</Text>
                     </Text>
                     <View>
-                      <Text style={[styles.trendText, { color: '#3b82f6' }]}>
+                      <Text style={[styles.trendText, { color: colors.primary }]}>
                         From P2P solar
                       </Text>
                     </View>
@@ -902,8 +907,8 @@ const AnalyticsScreen = () => {
                 {/* Row 2: Average Consumption | Peak Consumption */}
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#fee2e2' }]}>
-                      <MaterialCommunityIcons name="flash" size={18} color="#ef4444" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.errorBackground }]}>
+                      <MaterialCommunityIcons name="flash" size={18} color={colors.error} />
                     </View>
                     <Text style={styles.metricLabel}>AVG CONSUMPTION</Text>
                     <Text style={styles.metricValue}>
@@ -925,8 +930,8 @@ const AnalyticsScreen = () => {
                 {/* Row 3: Total Generated | Net Export */}
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="chart-bar" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="chart-bar" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>TOTAL GENERATED</Text>
                     <Text style={styles.metricValue}>
@@ -1039,8 +1044,8 @@ const AnalyticsScreen = () => {
                   </View>
 
                   <View style={styles.metricCard}>
-                    <View style={[styles.metricIcon, { backgroundColor: '#dbeafe' }]}>
-                      <MaterialCommunityIcons name="currency-inr" size={18} color="#3b82f6" />
+                    <View style={[styles.metricIcon, { backgroundColor: colors.primaryLight }]}>
+                      <MaterialCommunityIcons name="currency-inr" size={18} color={colors.primary} />
                     </View>
                     <Text style={styles.metricLabel}>TOTAL REVENUE</Text>
                     <Text style={styles.metricValue}>{formatCurrency(analytics.totalRevenue)}</Text>
@@ -1067,7 +1072,7 @@ const AnalyticsScreen = () => {
                     <Text style={styles.metricValue}>{analytics.activeTrades}</Text>
                     <View style={styles.trendBadge}>
                       <MaterialCommunityIcons name="check-circle" size={12} color="#3b82f6" />
-                      <Text style={[styles.trendText, { color: '#3b82f6' }]}>
+                      <Text style={[styles.trendText, { color: colors.primary }]}>
                         {analytics.completedTrades} completed
                       </Text>
                     </View>
@@ -1578,10 +1583,16 @@ const AnalyticsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingBottom: 40,
@@ -1703,7 +1714,7 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   transactionItem: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
@@ -1732,7 +1743,7 @@ const styles = StyleSheet.create({
   transactionType: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1f2937',
+    color: '#3a4e70ff',
     marginBottom: 2,
   },
   transactionDate: {
@@ -1750,6 +1761,120 @@ const styles = StyleSheet.create({
   transactionStatus: {
     fontSize: 11,
     color: '#9ca3af',
+  },
+  chartCard: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  chartCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  chartCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  chartLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  chart: {
+    borderRadius: 16,
+    paddingRight: 40,
+  },
+  loadingContainerNew: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingTextNew: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  errorContainerNew: {
+    padding: 30,
+    alignItems: 'center',
+    backgroundColor: colors.errorBackground,
+    borderRadius: 16,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  errorTextNew: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ef4444',
+  },
+  errorSubtextNew: {
+    marginTop: 4,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  emptyContainerNew: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyTextNew: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  emptySubtextNew: {
+    marginTop: 6,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  noDataContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+  },
+  noDataText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  noDataSubtext: {
+    marginTop: 4,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   summaryCard: {
     backgroundColor: '#ffffff',
@@ -1769,7 +1894,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#d8d8d8cf',
   },
   summaryLabel: {
     fontSize: 13,
@@ -1778,7 +1903,7 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1f2937',
+    color: '#3a4e70ff',
   },
   loadingContainer: {
     padding: 40,
@@ -1913,55 +2038,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   siteInfoCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 16,
-    marginBottom: 16,
+    padding: 16,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#f0fdf4',
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10b981',
   },
   siteInfoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    gap: 12,
+    marginBottom: 12,
+    gap: 8,
   },
   siteInfoTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    flex: 1,
+    fontWeight: '600',
+    color: colors.text,
   },
   siteInfoDetails: {
-    gap: 12,
+    gap: 6,
   },
   siteInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
   },
   siteInfoLabel: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: 13,
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   siteInfoValue: {
-    fontSize: 14,
-    color: '#111827',
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.text,
     flex: 1,
     textAlign: 'right',
   },
@@ -1974,26 +2089,27 @@ const styles = StyleSheet.create({
   },
   timeRangeButton: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
+    paddingVertical: 10,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderRadius: 20,
+    backgroundColor: 'transparent',
   },
   timeRangeButtonActive: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.card,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   timeRangeText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#6b7280',
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
   timeRangeTextActive: {
-    color: '#ffffff',
+    color: colors.primary,
+    fontWeight: '600',
   },
   energyStatsContainer: {
     paddingHorizontal: 16,
@@ -2037,14 +2153,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
   },
-  noDataSubtext: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
-    textAlign: 'center',
-  },
+
   chartContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginTop: 12,
@@ -2059,78 +2170,46 @@ const styles = StyleSheet.create({
   },
   chartHint: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textSecondary,
     marginBottom: 12,
     textAlign: 'center',
   },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16,
-  },
-  chartLegend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    marginBottom: 12,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+
+
   legendDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
     marginRight: 6,
   },
-  legendText: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  noDataContainer: {
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    marginTop: 12,
-  },
-  noDataText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 12,
-  },
-  // New styles for redesigned UI
-  gradientBackground: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
+
+
   headerSimple: {
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 20,
   },
   headerTitleNew: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 6,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 4,
   },
   headerSubtitleNew: {
-    fontSize: 15,
-    color: '#64748b',
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
   energyMetricsSection: {
     paddingHorizontal: 16,
     marginBottom: 20,
   },
   sectionTitleNew: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   metricsRow: {
     flexDirection: 'row',
@@ -2139,14 +2218,14 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
+    backgroundColor: colors.card,
+    borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
     justifyContent: 'space-between'
   },
   metricIcon: {
@@ -2159,46 +2238,25 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 11,
+    color: colors.textSecondary,
     fontWeight: '600',
-    color: '#64748b',
+    marginBottom: 6,
     letterSpacing: 0.5,
-    marginBottom: 8,
   },
   metricValue: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1e293b',
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 4,
   },
   metricUnit: {
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '400',
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
   chartsSection: {
     paddingHorizontal: 16,
     marginBottom: 20,
-  },
-  chartCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  chartCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  chartCardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
   },
   transactionsSection: {
     paddingHorizontal: 16,
@@ -2209,7 +2267,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   summaryCardNew: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 20,
     shadowColor: '#000',
@@ -2221,7 +2279,7 @@ const styles = StyleSheet.create({
   chartTypeSelector: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.borderLight,
     borderRadius: 12,
     padding: 4,
     marginBottom: 16,
@@ -2238,107 +2296,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   chartTypeButtonActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
   },
   chartTypeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   chartTypeTextActive: {
     color: '#ffffff',
-  },
-  // New styles for redesigned stats section
-  loadingContainerNew: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 40,
-    marginHorizontal: 16,
-    marginBottom: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  loadingIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  loadingTextNew: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  loadingSubtext: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  errorContainerNew: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 40,
-    marginHorizontal: 16,
-    marginBottom: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  errorIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#fef2f2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  errorTextNew: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  errorSubtextNew: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  retryButtonNew: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  retryButtonGradientNew: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    gap: 8,
-  },
-  retryButtonTextNew: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '600',
   },
   analyticsStatsSection: {
     paddingHorizontal: 16,
@@ -2365,41 +2331,60 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  emptyContainerNew: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 40,
-    marginHorizontal: 16,
-    marginBottom: 20,
-    alignItems: 'center',
+  loadingIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  errorIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.errorBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   emptyIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
-  emptyTextNew: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 8,
+  retryButtonNew: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  emptySubtextNew: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-    lineHeight: 20,
+  retryButtonGradientNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    gap: 8,
   },
+  retryButtonTextNew: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  // End of styles
 });
 
 export default AnalyticsScreen;

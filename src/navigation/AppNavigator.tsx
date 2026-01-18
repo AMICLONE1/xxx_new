@@ -5,6 +5,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootStackParamList, MainTabParamList } from '@/types';
 import { useAuthStore } from '@/store';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet } from 'react-native';
 
 // Auth Screens
 import LoginScreen from '@/screens/auth/LoginScreen';
@@ -54,6 +56,7 @@ import WithdrawScreen from '@/screens/wallet/WithdrawScreen';
 
 // Meter Screens
 import MeterStatusScreen from '@/screens/meter/MeterStatusScreen';
+import { View } from 'react-native';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const MainTabs = createBottomTabNavigator<MainTabParamList>();
@@ -63,20 +66,24 @@ const MainTabNavigator = () => {
     <MainTabs.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#3b82f6',
-        tabBarInactiveTintColor: '#64748b',
+        tabBarShowLabel: false, // ✅ hide text labels
+        tabBarActiveTintColor: '#60a5fa',
+        tabBarInactiveTintColor: '#94a3b8',
+
         tabBarStyle: {
-          backgroundColor: '#f0f9ff',
+          backgroundColor: 'rgba(10, 35, 78, 1)',
           borderTopWidth: 1,
-          borderTopColor: '#e0f2fe',
-          height: 92,
-          paddingTop: 12,
-          paddingBottom: 12,
+          borderTopColor: 'rgba(148, 163, 184, 0.1)',
+          height: 90,
+          paddingTop: 16,
+          paddingBottom: 5,
         },
+
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
         },
+
         tabBarIconStyle: {
           marginBottom: 0,
         },
@@ -89,7 +96,7 @@ const MainTabNavigator = () => {
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? 'home' : 'home-outline'}
-              size={size}
+              size={25}
               color={color}
             />
           ),
@@ -103,27 +110,39 @@ const MainTabNavigator = () => {
           tabBarIcon: ({ color, size, focused }) => (
             <MaterialCommunityIcons
               name={focused ? 'chart-line' : 'chart-line'}
-              size={size}
+              size={25}
               color={color}
             />
           ),
           tabBarLabel: 'Analytics',
         }}
       />
+      {/* Marketplace */}
       <MainTabs.Screen
         name="Marketplace"
         component={MarketplaceScreen}
         options={{
-          tabBarIcon: ({ color, size, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'store' : 'store-outline'}
-              size={size}
-              color={color}
-            />
+          tabBarIcon: ({ focused }) => (
+            <View style={styles.fabWrapper}>
+              <LinearGradient
+                colors={
+                  focused
+                    ? ['#38bdf8', '#3b82f6', '#6366f1']
+                    : ['#1e293b', '#334155']
+                }
+                style={styles.fab}
+              >
+                <MaterialCommunityIcons
+                  name={focused ? 'store' : 'store-outline'}
+                  size={32}
+                  color="#fff"
+                />
+              </LinearGradient>
+            </View>
           ),
-          tabBarLabel: 'Marketplace',
         }}
       />
+
       <MainTabs.Screen
         name="Wallet"
         component={WalletScreen}
@@ -131,7 +150,7 @@ const MainTabNavigator = () => {
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? 'wallet' : 'wallet-outline'}
-              size={size}
+              size={25}
               color={color}
             />
           ),
@@ -145,7 +164,7 @@ const MainTabNavigator = () => {
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? 'person' : 'person-outline'}
-              size={size}
+              size={25}
               color={color}
             />
           ),
@@ -279,3 +298,26 @@ export const AppNavigator = () => {
   );
 };
 
+
+const styles = StyleSheet.create({
+  fabWrapper: {
+    position: 'absolute',
+    bottom: -19, // floats above tab bar
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fab: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    // subtle shadow
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
+});

@@ -6,31 +6,32 @@
 export interface ThemedColors {
   // Backgrounds
   background: string;
+  backgroundGradient: string[];
   backgroundSecondary: string;
   card: string;
   cardElevated: string;
-  
+
   // Text
   text: string;
   textSecondary: string;
   textMuted: string;
   textInverse: string;
-  
+
   // Primary (brand)
   primary: string;
   primaryLight: string;
   primaryDark: string;
-  
+
   // Borders
   border: string;
   borderLight: string;
-  
+
   // Input
   inputBackground: string;
   inputBorder: string;
   inputText: string;
   inputPlaceholder: string;
-  
+
   // Status
   error: string;
   errorBackground: string;
@@ -38,7 +39,7 @@ export interface ThemedColors {
   successBackground: string;
   warning: string;
   warningBackground: string;
-  
+
   // Modal
   modalOverlay: string;
   modalBackground: string;
@@ -46,84 +47,90 @@ export interface ThemedColors {
 
 export const lightColors: ThemedColors = {
   // Backgrounds
-  background: '#ffffff',
-  backgroundSecondary: '#f0fdf4',
+  background: '#f8fbff',
+  backgroundGradient: ['#e0f2fe', '#f0f9ff', '#ffffff'],
+  backgroundSecondary: '#eaf6ff',
   card: '#ffffff',
-  cardElevated: '#ffffff',
-  
+  cardElevated: '#f8fbff',
+
   // Text
-  text: '#111827',
-  textSecondary: '#6b7280',
-  textMuted: '#9ca3af',
+  text: '#0f172a',            // softer than pure black
+  textSecondary: '#475569',   // blue-gray, not neutral gray
+  textMuted: '#94a3b8',
   textInverse: '#ffffff',
-  
+
   // Primary (brand)
-  primary: '#10b981',
-  primaryLight: '#ecfdf5',
-  primaryDark: '#059669',
-  
+  primary: '#3b82f6',
+  primaryLight: '#e0f2fe',
+  primaryDark: '#1e40af',
+
   // Borders
-  border: '#e5e7eb',
-  borderLight: '#f3f4f6',
-  
+  border: '#dbeafe',
+  borderLight: '#eff6ff',
+
   // Input
   inputBackground: '#ffffff',
-  inputBorder: '#d1d5db',
-  inputText: '#111827',
-  inputPlaceholder: '#9ca3af',
-  
+  inputBorder: '#c7ddff',
+  inputText: '#0f172a',
+  inputPlaceholder: '#94a3b8',
+
   // Status
   error: '#ef4444',
-  errorBackground: '#fef2f2',
-  success: '#10b981',
-  successBackground: '#ecfdf5',
+  errorBackground: '#fff1f2',
+
+  success: '#2563eb',          // blue success = clean & on-brand
+  successBackground: '#e0f2fe',
+
   warning: '#f59e0b',
-  warningBackground: '#fef3c7',
-  
+  warningBackground: '#fffbeb',
+
   // Modal
-  modalOverlay: 'rgba(0, 0, 0, 0.5)',
+  modalOverlay: 'rgba(15, 23, 42, 0.45)',
   modalBackground: '#ffffff',
 };
 
 export const darkColors: ThemedColors = {
   // Backgrounds
-  background: '#111827',
-  backgroundSecondary: '#1f2937',
-  card: '#1f2937',
-  cardElevated: '#374151',
-  
+  background: '#02061b',
+  backgroundGradient: ['#02061bff', '#052037ff', '#052b66dd'],
+  backgroundSecondary: '#04152b',
+  card: 'rgba(10, 35, 78, 1)',          // glass-friendly
+  cardElevated: 'rgba(10, 35, 78, 0.8)',
+
   // Text
-  text: '#f9fafb',
-  textSecondary: '#d1d5db',
-  textMuted: '#9ca3af',
-  textInverse: '#111827',
-  
+  text: '#e5e7eb',
+  textSecondary: '#c7d2fe',
+  textMuted: '#94a3b8',
+  textInverse: '#02061b',
+
   // Primary (brand)
-  primary: '#10b981',
-  primaryLight: '#064e3b',
-  primaryDark: '#34d399',
-  
+  primary: '#3b82f6',
+  primaryLight: '#93c5fd',
+  primaryDark: '#1e40af',
+
   // Borders
-  border: '#374151',
-  borderLight: '#4b5563',
-  
+  border: 'rgba(148, 163, 184, 0.18)',
+  borderLight: 'rgba(148, 163, 184, 0.28)',
+
   // Input
-  inputBackground: '#1f2937',
-  inputBorder: '#4b5563',
-  inputText: '#f9fafb',
-  inputPlaceholder: '#6b7280',
-  
+  inputBackground: 'rgba(6, 24, 54, 0.7)',
+  inputBorder: 'rgba(148, 163, 184, 0.3)',
+  inputText: '#e5e7eb',
+  inputPlaceholder: '#94a3b8',
+
   // Status
   error: '#f87171',
-  errorBackground: '#450a0a',
-  success: '#34d399',
-  successBackground: '#064e3b',
+  errorBackground: 'rgba(127, 29, 29, 0.45)',
+
+  success: '#60a5fa',                   // blue success (on-brand)
+  successBackground: 'rgba(30, 64, 175, 0.35)',
+
   warning: '#fbbf24',
-  warningBackground: '#451a03',
-  
+  warningBackground: 'rgba(120, 53, 15, 0.45)',
+
   // Modal
-  modalOverlay: 'rgba(0, 0, 0, 0.7)',
-  modalBackground: '#1f2937',
+  modalOverlay: 'rgba(2, 6, 27, 0.75)',
+  modalBackground: '#04152b',
 };
 
 export const getThemedColors = (isDark: boolean): ThemedColors => {

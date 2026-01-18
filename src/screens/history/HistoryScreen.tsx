@@ -15,6 +15,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types';
 import { useTransactionStore } from '@/store';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
+import { useTheme } from '@/contexts';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
 
 const { width } = Dimensions.get('window');
 
@@ -27,6 +29,10 @@ interface Props {
 type FilterType = 'all' | 'buy' | 'sell';
 
 export default function HistoryScreen({ navigation }: Props) {
+  const { isDark } = useTheme();
+  const colors = getThemedColors(isDark);
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
   const [selectedChartType, setSelectedChartType] = useState<'line' | 'bar' | 'pie'>('line');
@@ -45,20 +51,21 @@ export default function HistoryScreen({ navigation }: Props) {
   const stats = getTotalStats();
 
   // Prepare chart data
+  // Prepare chart data
   const chartConfig = {
-    backgroundColor: '#ffffff',
-    backgroundGradientFrom: '#ffffff',
-    backgroundGradientTo: '#ffffff',
+    backgroundColor: colors.card,
+    backgroundGradientFrom: colors.card,
+    backgroundGradientTo: colors.card,
     decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
+    color: (opacity = 1) => isDark ? `rgba(147, 197, 253, ${opacity})` : `rgba(59, 130, 246, ${opacity})`,
+    labelColor: (opacity = 1) => isDark ? `rgba(226, 232, 240, ${opacity})` : `rgba(100, 116, 139, ${opacity})`,
     style: {
       borderRadius: 16,
     },
     propsForDots: {
       r: '6',
       strokeWidth: '2',
-      stroke: '#3b82f6',
+      stroke: colors.primary,
     },
   };
 
@@ -67,7 +74,7 @@ export default function HistoryScreen({ navigation }: Props) {
     datasets: [
       {
         data: [300, 450, 320, 600, 540, 750],
-        color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+        color: (opacity = 1) => isDark ? `rgba(147, 197, 253, ${opacity})` : `rgba(59, 130, 246, ${opacity})`,
         strokeWidth: 3,
       },
     ],
@@ -147,6 +154,7 @@ export default function HistoryScreen({ navigation }: Props) {
             paddingLeft="15"
             absolute
             style={styles.chart}
+            hasLegend={true}
           />
         );
       default:
@@ -172,7 +180,7 @@ export default function HistoryScreen({ navigation }: Props) {
   const renderTransactionCard = (transaction: any, index: number) => {
     const isBuy = transaction.tradeType === 'buy';
     const iconName = isBuy ? 'arrow-down-circle' : 'arrow-up-circle';
-    const iconColor = isBuy ? '#ef4444' : '#3b82f6';
+    const iconColor = isBuy ? colors.error : colors.primary;
     const date = transaction.timestamp ? new Date(transaction.timestamp) : new Date();
 
     return (
@@ -185,7 +193,7 @@ export default function HistoryScreen({ navigation }: Props) {
           setShowDetailModal(true);
         }}
       >
-        <View style={[styles.transactionIconContainer, { backgroundColor: isBuy ? '#fee2e2' : '#dbeafe' }]}>
+        <View style={[styles.transactionIconContainer, { backgroundColor: isBuy ? colors.errorBackground : colors.primaryLight }]}>
           <Ionicons name={iconName} size={28} color={iconColor} />
         </View>
 
@@ -199,11 +207,11 @@ export default function HistoryScreen({ navigation }: Props) {
 
           <View style={styles.transactionMeta}>
             <View style={styles.transactionMetaItem}>
-              <MaterialCommunityIcons name="lightning-bolt" size={14} color="#64748b" />
+              <MaterialCommunityIcons name="lightning-bolt" size={14} color={colors.textMuted} />
               <Text style={styles.transactionMetaText}>{transaction.energyAmount} kWh</Text>
             </View>
             <View style={styles.transactionMetaItem}>
-              <Ionicons name="calendar-outline" size={14} color="#64748b" />
+              <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
               <Text style={styles.transactionMetaText}>{formatDate(date)}</Text>
             </View>
           </View>
@@ -233,7 +241,7 @@ export default function HistoryScreen({ navigation }: Props) {
           <View style={styles.filterModalHeader}>
             <Text style={styles.filterModalTitle}>Filter Transactions</Text>
             <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-              <Ionicons name="close" size={24} color="#64748b" />
+              <Ionicons name="close" size={24} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -248,14 +256,14 @@ export default function HistoryScreen({ navigation }: Props) {
               <Ionicons
                 name="list"
                 size={20}
-                color={selectedFilter === 'all' ? '#3b82f6' : '#64748b'}
+                color={selectedFilter === 'all' ? colors.primary : colors.textMuted}
               />
             </View>
             <Text style={[styles.filterOptionText, selectedFilter === 'all' && styles.filterOptionTextActive]}>
               All Transactions
             </Text>
             {selectedFilter === 'all' && (
-              <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
+              <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
             )}
           </TouchableOpacity>
 
@@ -270,14 +278,14 @@ export default function HistoryScreen({ navigation }: Props) {
               <Ionicons
                 name="arrow-down-circle"
                 size={20}
-                color={selectedFilter === 'buy' ? '#3b82f6' : '#64748b'}
+                color={selectedFilter === 'buy' ? colors.primary : colors.textMuted}
               />
             </View>
             <Text style={[styles.filterOptionText, selectedFilter === 'buy' && styles.filterOptionTextActive]}>
               Buy Only
             </Text>
             {selectedFilter === 'buy' && (
-              <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
+              <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
             )}
           </TouchableOpacity>
 
@@ -292,14 +300,14 @@ export default function HistoryScreen({ navigation }: Props) {
               <Ionicons
                 name="arrow-up-circle"
                 size={20}
-                color={selectedFilter === 'sell' ? '#3b82f6' : '#64748b'}
+                color={selectedFilter === 'sell' ? colors.primary : colors.textMuted}
               />
             </View>
             <Text style={[styles.filterOptionText, selectedFilter === 'sell' && styles.filterOptionTextActive]}>
               Sell Only
             </Text>
             {selectedFilter === 'sell' && (
-              <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
+              <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
             )}
           </TouchableOpacity>
         </View>
@@ -326,11 +334,11 @@ export default function HistoryScreen({ navigation }: Props) {
         >
           <View style={styles.detailModal}>
             <View style={styles.detailModalHeader}>
-              <View style={[styles.detailIconLarge, { backgroundColor: isBuy ? '#fee2e2' : '#dbeafe' }]}>
+              <View style={[styles.detailIconLarge, { backgroundColor: isBuy ? colors.errorBackground : colors.primaryLight }]}>
                 <Ionicons
                   name={isBuy ? 'arrow-down-circle' : 'arrow-up-circle'}
                   size={40}
-                  color={isBuy ? '#ef4444' : '#3b82f6'}
+                  color={isBuy ? colors.error : colors.primary}
                 />
               </View>
               <Text style={styles.detailModalTitle}>{selectedTransaction.counterPartyName}</Text>
@@ -351,16 +359,16 @@ export default function HistoryScreen({ navigation }: Props) {
             <View style={styles.detailInfoGrid}>
               <View style={styles.detailInfoRow}>
                 <View style={styles.detailInfoItem}>
-                  <View style={[styles.detailInfoIcon, { backgroundColor: '#fef3c7' }]}>
-                    <MaterialCommunityIcons name="lightning-bolt" size={20} color="#f59e0b" />
+                  <View style={[styles.detailInfoIcon, { backgroundColor: colors.warningBackground }]}>
+                    <MaterialCommunityIcons name="lightning-bolt" size={20} color={colors.warning} />
                   </View>
                   <Text style={styles.detailInfoLabel}>Energy</Text>
                   <Text style={styles.detailInfoValue}>{selectedTransaction.energyAmount} kWh</Text>
                 </View>
 
                 <View style={styles.detailInfoItem}>
-                  <View style={[styles.detailInfoIcon, { backgroundColor: '#dbeafe' }]}>
-                    <MaterialCommunityIcons name="cash" size={20} color="#3b82f6" />
+                  <View style={[styles.detailInfoIcon, { backgroundColor: colors.primaryLight }]}>
+                    <MaterialCommunityIcons name="cash" size={20} color={colors.primary} />
                   </View>
                   <Text style={styles.detailInfoLabel}>Rate</Text>
                   <Text style={styles.detailInfoValue}>₹{selectedTransaction.pricePerUnit}/kWh</Text>
@@ -400,7 +408,7 @@ export default function HistoryScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as [string, string, ...string[]]}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -413,7 +421,7 @@ export default function HistoryScreen({ navigation }: Props) {
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <View>
               <Text style={styles.title}>Transaction History</Text>
@@ -426,7 +434,7 @@ export default function HistoryScreen({ navigation }: Props) {
             style={styles.filterButton}
             onPress={() => setShowFilterModal(true)}
           >
-            <Ionicons name="filter" size={20} color="#1e293b" />
+            <Ionicons name="filter" size={20} color={colors.text} />
             {selectedFilter !== 'all' && <View style={styles.filterBadge} />}
           </TouchableOpacity>
         </View>
@@ -441,26 +449,26 @@ export default function HistoryScreen({ navigation }: Props) {
             <Text style={styles.sectionTitle}>Overview</Text>
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#fee2e2' }]}>
-                  <Ionicons name="arrow-down-circle" size={22} color="#ef4444" />
+                <View style={[styles.statIcon, { backgroundColor: colors.errorBackground }]}>
+                  <Ionicons name="arrow-down-circle" size={22} color={colors.error} />
                 </View>
                 <Text style={styles.statLabel}>Total Buy</Text>
-                <Text style={[styles.statValue, { color: '#ef4444' }]}>₹{stats.totalBuyAmount}</Text>
+                <Text style={[styles.statValue, { color: colors.error }]}>₹{stats.totalBuyAmount}</Text>
                 <Text style={styles.statSubValue}>{stats.totalBuyEnergy} kWh</Text>
               </View>
 
               <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#dbeafe' }]}>
-                  <Ionicons name="arrow-up-circle" size={22} color="#3b82f6" />
+                <View style={[styles.statIcon, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="arrow-up-circle" size={22} color={colors.primary} />
                 </View>
                 <Text style={styles.statLabel}>Total Sell</Text>
-                <Text style={[styles.statValue, { color: '#3b82f6' }]}>₹{stats.totalSellAmount}</Text>
+                <Text style={[styles.statValue, { color: colors.primary }]}>₹{stats.totalSellAmount}</Text>
                 <Text style={styles.statSubValue}>{stats.totalSellEnergy} kWh</Text>
               </View>
 
               <View style={[styles.statCard, styles.statCardFullWidth]}>
-                <View style={[styles.statIcon, { backgroundColor: '#dbeafe' }]}>
-                  <MaterialCommunityIcons name="cash-multiple" size={22} color="#3b82f6" />
+                <View style={[styles.statIcon, { backgroundColor: colors.primaryLight }]}>
+                  <MaterialCommunityIcons name="cash-multiple" size={22} color={colors.primary} />
                 </View>
                 <View style={styles.netAmountContent}>
                   <Text style={styles.statLabel}>Net Amount</Text>
@@ -473,9 +481,9 @@ export default function HistoryScreen({ navigation }: Props) {
                   <Ionicons
                     name={stats.netAmount >= 0 ? 'trending-up' : 'trending-down'}
                     size={14}
-                    color={stats.netAmount >= 0 ? '#3b82f6' : '#ef4444'}
+                    color={stats.netAmount >= 0 ? colors.primary : colors.error}
                   />
-                  <Text style={[styles.trendText, stats.netAmount >= 0 ? { color: '#3b82f6' } : { color: '#ef4444' }]}>
+                  <Text style={[styles.trendText, stats.netAmount >= 0 ? { color: colors.primary } : { color: colors.error }]}>
                     {stats.netAmount >= 0 ? 'Profit' : 'Loss'}
                   </Text>
                 </View>
@@ -495,7 +503,7 @@ export default function HistoryScreen({ navigation }: Props) {
                   <MaterialCommunityIcons
                     name="chart-line"
                     size={18}
-                    color={selectedChartType === 'line' ? '#ffffff' : '#64748b'}
+                    color={selectedChartType === 'line' ? '#ffffff' : colors.textMuted}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -505,7 +513,7 @@ export default function HistoryScreen({ navigation }: Props) {
                   <MaterialCommunityIcons
                     name="chart-bar"
                     size={18}
-                    color={selectedChartType === 'bar' ? '#ffffff' : '#64748b'}
+                    color={selectedChartType === 'bar' ? '#ffffff' : colors.textMuted}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -515,7 +523,7 @@ export default function HistoryScreen({ navigation }: Props) {
                   <MaterialCommunityIcons
                     name="chart-pie"
                     size={18}
-                    color={selectedChartType === 'pie' ? '#ffffff' : '#64748b'}
+                    color={selectedChartType === 'pie' ? '#ffffff' : colors.textMuted}
                   />
                 </TouchableOpacity>
               </View>
@@ -530,10 +538,10 @@ export default function HistoryScreen({ navigation }: Props) {
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconContainer}>
                 <LinearGradient
-                  colors={['#dbeafe', '#bfdbfe']}
+                  colors={[colors.primaryLight, colors.backgroundSecondary]}
                   style={styles.emptyIcon}
                 >
-                  <MaterialCommunityIcons name="history" size={64} color="#3b82f6" />
+                  <MaterialCommunityIcons name="history" size={64} color={colors.primary} />
                 </LinearGradient>
               </View>
               <Text style={styles.emptyText}>No transactions found</Text>
@@ -560,7 +568,7 @@ export default function HistoryScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -585,7 +593,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -598,18 +606,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 2,
   },
   subtitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
   },
   filterButton: {
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -625,7 +633,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
   },
   scrollView: {
     flex: 1,
@@ -640,7 +648,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 16,
   },
   statsGrid: {
@@ -650,7 +658,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: (width - 52) / 2,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
     alignItems: 'center',
@@ -676,25 +684,25 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textSecondary,
     marginBottom: 6,
     fontWeight: '500',
   },
   statValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 4,
   },
   statSubValue: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: colors.textMuted,
   },
   positiveValue: {
-    color: '#3b82f6',
+    color: colors.primary,
   },
   negativeValue: {
-    color: '#ef4444',
+    color: colors.error,
   },
   netAmountContent: {
     flex: 1,
@@ -709,17 +717,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   trendPositive: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
   },
   trendNegative: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: colors.errorBackground,
   },
   trendText: {
     fontSize: 12,
     fontWeight: '600',
   },
   chartSection: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 20,
     marginBottom: 24,
@@ -737,7 +745,7 @@ const styles = StyleSheet.create({
   },
   chartTypeSelector: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 10,
     padding: 3,
     gap: 4,
@@ -749,7 +757,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   chartTypeButtonActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
   },
   chartContainer: {
     alignItems: 'center',
@@ -763,7 +771,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   transactionCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
     flexDirection: 'row',
@@ -793,7 +801,7 @@ const styles = StyleSheet.create({
   transactionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
     flex: 1,
   },
   transactionAmount: {
@@ -801,10 +809,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   buyAmount: {
-    color: '#ef4444',
+    color: colors.error,
   },
   sellAmount: {
-    color: '#3b82f6',
+    color: colors.primary,
   },
   transactionMeta: {
     flexDirection: 'row',
@@ -818,7 +826,7 @@ const styles = StyleSheet.create({
   },
   transactionMetaText: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textMuted,
   },
   transactionFooter: {
     flexDirection: 'row',
@@ -831,30 +839,30 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   buyBadge: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: colors.errorBackground,
   },
   sellBadge: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: '#dcfce7', // Keep this green for now or add successBackgroundLight if needed
   },
   blueBadge: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
   },
   transactionBadgeText: {
     fontSize: 10,
     fontWeight: '600',
   },
   buyBadgeText: {
-    color: '#ef4444',
+    color: colors.error,
   },
   sellBadgeText: {
-    color: '#10b981',
+    color: colors.success,
   },
   blueBadgeText: {
-    color: '#3b82f6',
+    color: colors.primary,
   },
   transactionRate: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textMuted,
     fontWeight: '500',
   },
   emptyContainer: {
@@ -875,12 +883,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   modalOverlay: {
@@ -889,7 +897,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   filterModal: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background, // or card
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -901,12 +909,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
   },
   filterModalTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   filterOption: {
     flexDirection: 'row',
@@ -914,37 +922,37 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     marginBottom: 12,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.backgroundSecondary,
     gap: 12,
   },
   filterOptionActive: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     borderWidth: 1,
-    borderColor: '#3b82f6',
+    borderColor: colors.primary,
   },
   filterIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
   },
   filterIconActive: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
   },
   filterOptionText: {
     flex: 1,
     fontSize: 16,
-    color: '#64748b',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   filterOptionTextActive: {
-    color: '#1e293b',
+    color: colors.primary,
     fontWeight: '600',
   },
   detailModal: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
     margin: 24,
@@ -969,7 +977,7 @@ const styles = StyleSheet.create({
   detailModalTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 12,
   },
   detailBadge: {
@@ -984,13 +992,13 @@ const styles = StyleSheet.create({
   detailAmount: {
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 16,
     marginBottom: 24,
   },
   detailAmountLabel: {
     fontSize: 13,
-    color: '#64748b',
+    color: colors.textSecondary,
     marginBottom: 8,
     fontWeight: '500',
   },
@@ -1008,7 +1016,7 @@ const styles = StyleSheet.create({
   },
   detailInfoItem: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
@@ -1023,22 +1031,22 @@ const styles = StyleSheet.create({
   },
   detailInfoLabel: {
     fontSize: 11,
-    color: '#64748b',
+    color: colors.textMuted,
     marginBottom: 6,
     fontWeight: '500',
   },
   detailInfoValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
     textAlign: 'center',
   },
   detailCloseButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
-    shadowColor: '#3b82f6',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

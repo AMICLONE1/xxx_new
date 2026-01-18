@@ -12,6 +12,7 @@ import {
   Switch,
   Modal,
   Dimensions,
+  useColorScheme,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,6 +33,8 @@ import { buyersService } from '@/services/api/buyersService';
 import { useAuthStore } from '@/store';
 import { Buyer } from '@/types';
 import { logError } from '@/utils/errorUtils';
+import { getThemedColors, ThemedColors } from '@/utils/themedStyles';
+import { useTheme } from '@/contexts';
 
 const { width, height } = Dimensions.get('window');
 
@@ -52,6 +55,12 @@ interface Filters {
 export default function MarketplaceScreen({ navigation }: Props) {
   const { isConnected } = useNetworkStatus();
   const isOnline = isConnected;
+  // Use app-wide theme context to respect user settings (not just system)
+  // Use app-wide theme context to respect user settings (not just system)
+  const { isDark, setThemeMode } = useTheme();
+  // Get colors specifically from themedStyles as requested
+  const colors = getThemedColors(isDark);
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuthStore();
   const userType = user?.userType || 'buyer'; // Default to buyer if not set
 
@@ -476,19 +485,19 @@ export default function MarketplaceScreen({ navigation }: Props) {
       <View style={styles.sellerCardHeader}>
         <View style={styles.sellerInfo}>
           <View style={styles.sellerNameRow}>
-            <MaterialCommunityIcons name="store" size={20} color="#3b82f6" />
+            <MaterialCommunityIcons name="store" size={20} color={colors.primary} />
             <Text style={styles.sellerName}>{seller.name}</Text>
           </View>
           {seller.distance !== undefined && (
             <View style={styles.distanceRow}>
-              <Ionicons name="location" size={14} color="#64748b" />
+              <Ionicons name="location" size={14} color={colors.textMuted} />
               <Text style={styles.sellerDistance}>{seller.distance.toFixed(1)} km away</Text>
             </View>
           )}
         </View>
         {seller.greenEnergy && (
           <View style={styles.greenBadge}>
-            <MaterialCommunityIcons name="leaf" size={14} color="#10b981" />
+            <MaterialCommunityIcons name="leaf" size={14} color={colors.success} />
             <Text style={styles.greenBadgeText}>Green</Text>
           </View>
         )}
@@ -497,14 +506,14 @@ export default function MarketplaceScreen({ navigation }: Props) {
       <View style={styles.sellerDetails}>
         <View style={styles.detailRow}>
           <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="currency-inr" size={18} color="#3b82f6" />
+            <MaterialCommunityIcons name="currency-inr" size={18} color={colors.primary} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Price</Text>
               <Text style={styles.detailValue}>{formatCurrency(seller.pricePerUnit)}/kWh</Text>
             </View>
           </View>
           <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="lightning-bolt" size={18} color="#3b82f6" />
+            <MaterialCommunityIcons name="lightning-bolt" size={18} color={colors.primary} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Available</Text>
               <Text style={styles.detailValue}>{formatEnergy(seller.availableEnergy, 'kWh')}</Text>
@@ -513,7 +522,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
         </View>
         {seller.rating !== undefined && (
           <View style={styles.ratingRow}>
-            <Ionicons name="star" size={16} color="#3b82f6" />
+            <Ionicons name="star" size={16} color={colors.primary} />
             <Text style={styles.ratingText}>{seller.rating.toFixed(1)}</Text>
           </View>
         )}
@@ -536,12 +545,12 @@ export default function MarketplaceScreen({ navigation }: Props) {
       <View style={styles.buyerCardHeader}>
         <View style={styles.buyerInfo}>
           <View style={styles.buyerNameRow}>
-            <MaterialCommunityIcons name="account-arrow-down" size={20} color="#3b82f6" />
+            <MaterialCommunityIcons name="account-arrow-down" size={20} color={colors.primary} />
             <Text style={styles.buyerName}>{buyer.name}</Text>
           </View>
           {buyer.distance !== undefined && (
             <View style={styles.distanceRow}>
-              <Ionicons name="location" size={14} color="#64748b" />
+              <Ionicons name="location" size={14} color={colors.textMuted} />
               <Text style={styles.buyerDistance}>{buyer.distance.toFixed(1)} km away</Text>
             </View>
           )}
@@ -551,14 +560,14 @@ export default function MarketplaceScreen({ navigation }: Props) {
       <View style={styles.buyerDetails}>
         <View style={styles.detailRow}>
           <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="currency-inr" size={18} color="#3b82f6" />
+            <MaterialCommunityIcons name="currency-inr" size={18} color={colors.primary} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Max Price</Text>
               <Text style={styles.detailValue}>{formatCurrency(buyer.maxPricePerUnit)}/kWh</Text>
             </View>
           </View>
           <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="lightning-bolt" size={18} color="#3b82f6" />
+            <MaterialCommunityIcons name="lightning-bolt" size={18} color={colors.primary} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Needed</Text>
               <Text style={styles.detailValue}>{formatEnergy(buyer.energyNeeded, 'kWh')}</Text>
@@ -567,13 +576,13 @@ export default function MarketplaceScreen({ navigation }: Props) {
         </View>
         {buyer.preferredDeliveryWindow && (
           <View style={styles.deliveryWindowRow}>
-            <MaterialCommunityIcons name="clock-outline" size={16} color="#64748b" />
+            <MaterialCommunityIcons name="clock-outline" size={16} color={colors.textMuted} />
             <Text style={styles.deliveryWindowText}>{buyer.preferredDeliveryWindow}</Text>
           </View>
         )}
         {buyer.rating !== undefined && (
           <View style={styles.ratingRow}>
-            <Ionicons name="star" size={16} color="#3b82f6" />
+            <Ionicons name="star" size={16} color={colors.primary} />
             <Text style={styles.ratingText}>{buyer.rating.toFixed(1)}</Text>
           </View>
         )}
@@ -588,7 +597,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
       return (
         <View style={styles.mapContainer}>
           <View style={styles.mapPlaceholder}>
-            <MaterialCommunityIcons name="map" size={64} color="#d1d5db" />
+            <MaterialCommunityIcons name="map" size={64} color={colors.border} />
             <Text style={styles.mapPlaceholderText}>
               Map view requires Mapbox credentials{'\n'}
               Configure MAPBOX_ACCESS_TOKEN in your .env file or app.json
@@ -642,7 +651,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
             <MaterialCommunityIcons
               name={autoRefreshEnabled ? "autorenew" : "autorenew-off"}
               size={20}
-              color={autoRefreshEnabled ? "#3b82f6" : "#6b7280"}
+              color={autoRefreshEnabled ? colors.primary : colors.textMuted}
             />
           </TouchableOpacity>
           <TouchableOpacity
@@ -652,13 +661,13 @@ export default function MarketplaceScreen({ navigation }: Props) {
               searchSellers();
             }}
           >
-            <Ionicons name="locate" size={20} color="#3b82f6" />
+            <Ionicons name="locate" size={20} color={colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.mapControlButton}
             onPress={() => setViewMode('list')}
           >
-            <Ionicons name="list" size={20} color="#3b82f6" />
+            <Ionicons name="list" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -675,7 +684,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                 <View style={styles.sellerModalHeader}>
                   <View style={styles.sellerModalTitleRow}>
                     <View style={styles.sellerModalAvatar}>
-                      <Ionicons name="person" size={24} color="#3b82f6" />
+                      <Ionicons name="person" size={24} color={colors.primary} />
                     </View>
                     <Text style={styles.sellerModalTitle}>{selectedSeller.name}</Text>
                   </View>
@@ -683,13 +692,13 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     style={styles.sellerModalCloseBtn}
                     onPress={() => setSelectedSeller(null)}
                   >
-                    <Ionicons name="close" size={20} color="#94a3b8" />
+                    <Ionicons name="close" size={20} color={colors.textMuted} />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.sellerModalContent}>
                   <View style={styles.sellerModalRow}>
                     <View style={styles.sellerModalIconContainer}>
-                      <MaterialCommunityIcons name="currency-inr" size={18} color="#3b82f6" />
+                      <MaterialCommunityIcons name="currency-inr" size={18} color={colors.primary} />
                     </View>
                     <View style={styles.sellerModalTextContainer}>
                       <Text style={styles.sellerModalLabel}>Price per kWh</Text>
@@ -700,7 +709,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   </View>
                   <View style={styles.sellerModalRow}>
                     <View style={styles.sellerModalIconContainer}>
-                      <MaterialCommunityIcons name="lightning-bolt" size={18} color="#f59e0b" />
+                      <MaterialCommunityIcons name="lightning-bolt" size={18} color={colors.warning} />
                     </View>
                     <View style={styles.sellerModalTextContainer}>
                       <Text style={styles.sellerModalLabel}>Available Energy</Text>
@@ -712,7 +721,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   {selectedSeller.distance !== undefined && (
                     <View style={styles.sellerModalRow}>
                       <View style={styles.sellerModalIconContainer}>
-                        <Ionicons name="location" size={18} color="#10b981" />
+                        <Ionicons name="location" size={18} color={colors.success} />
                       </View>
                       <View style={styles.sellerModalTextContainer}>
                         <Text style={styles.sellerModalLabel}>Distance</Text>
@@ -725,7 +734,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   {selectedSeller.rating !== undefined && (
                     <View style={styles.sellerModalRow}>
                       <View style={styles.sellerModalIconContainer}>
-                        <Ionicons name="star" size={18} color="#fbbf24" />
+                        <Ionicons name="star" size={18} color={colors.warning} />
                       </View>
                       <View style={styles.sellerModalTextContainer}>
                         <Text style={styles.sellerModalLabel}>Rating</Text>
@@ -750,12 +759,12 @@ export default function MarketplaceScreen({ navigation }: Props) {
                   }}
                 >
                   <LinearGradient
-                    colors={['#3b82f6', '#1d4ed8']}
+                    colors={[colors.primary, colors.primaryDark] as any}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.sellerModalButtonGradient}
                   >
-                    <Ionicons name="flash" size={20} color="#ffffff" />
+                    <Ionicons name="flash" size={20} color={colors.textInverse} />
                     <Text style={styles.sellerModalButtonText}>Buy Electricity</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -778,15 +787,15 @@ export default function MarketplaceScreen({ navigation }: Props) {
         {/* Map Legend */}
         <View style={styles.mapLegend}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendMarker, { backgroundColor: '#3b82f6' }]} />
+            <View style={[styles.legendMarker, { backgroundColor: colors.primary }]} />
             <Text style={styles.legendText}>Sellers</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendMarker, { backgroundColor: '#f59e0b' }]} />
+            <View style={[styles.legendMarker, { backgroundColor: colors.warning }]} />
             <Text style={styles.legendText}>Buyers</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendMarker, { backgroundColor: '#0062ff7a' }]} />
+            <View style={[styles.legendMarker, { backgroundColor: colors.primaryDark }]} />
             <Text style={styles.legendText}>Your Location</Text>
           </View>
         </View>
@@ -808,7 +817,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
               Filter {userType === 'buyer' ? 'Sellers' : 'Buyers'}
             </Text>
             <TouchableOpacity onPress={() => setShowFilters(false)}>
-              <Ionicons name="close" size={24} color="#111827" />
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -884,8 +893,8 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     <Switch
                       value={filters.greenEnergyOnly}
                       onValueChange={(value) => setFilters({ ...filters, greenEnergyOnly: value })}
-                      trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
-                      thumbColor="#ffffff"
+                      trackColor={{ false: colors.border, true: colors.primary }}
+                      thumbColor={colors.card}
                     />
                   </View>
                 )}
@@ -908,7 +917,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
               }}
             >
               <LinearGradient
-                colors={['#3b82f6', '#2563eb']}
+                colors={[colors.primary, colors.primaryDark] as any}
                 style={styles.applyButtonGradient}
               >
                 <Text style={styles.applyButtonText}>Apply Filters</Text>
@@ -922,7 +931,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
 
   return (
     <LinearGradient
-      colors={['#e0f2fe', '#f0f9ff', '#ffffff']}
+      colors={colors.backgroundGradient as any}
       style={styles.gradientBackground}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -941,7 +950,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                 style={styles.headerButton}
                 onPress={() => setShowFilters(true)}
               >
-                <Ionicons name="filter" size={20} color="#3b82f6" />
+                <Ionicons name="filter" size={20} color={colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.headerButton}
@@ -950,7 +959,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                 <Ionicons
                   name={viewMode === 'list' ? 'map' : 'list'}
                   size={20}
-                  color="#3b82f6"
+                  color={colors.primary}
                 />
               </TouchableOpacity>
             </View>
@@ -963,17 +972,17 @@ export default function MarketplaceScreen({ navigation }: Props) {
               onPress={() => navigation.navigate('SellEnergy', {})}
             >
               <LinearGradient
-                colors={['#0ea5e9', '#0284c7']}
+                colors={[colors.primary, colors.primaryDark] as any}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.listEnergyCtaGradient}
               >
-                <MaterialCommunityIcons name="solar-panel" size={24} color="#ffffff" />
+                <MaterialCommunityIcons name="solar-panel" size={24} color={colors.textInverse} />
                 <View style={styles.listEnergyCtaText}>
                   <Text style={styles.listEnergyCtaTitle}>List Your Energy for Sale</Text>
                   <Text style={styles.listEnergyCtaSubtitle}>Sell to buyers in the marketplace</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={24} color="#ffffff" />
+                <Ionicons name="chevron-forward" size={24} color={colors.textInverse} />
               </LinearGradient>
             </TouchableOpacity>
           )}
@@ -1014,7 +1023,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
               style={styles.scrollView}
               contentContainerStyle={styles.scrollContent}
               refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
               }
             >
               {/* Directory Tab Content */}
@@ -1035,21 +1044,21 @@ export default function MarketplaceScreen({ navigation }: Props) {
                       allBuyers.map((buyer) => (
                         <View key={buyer.id} style={styles.directoryCard}>
                           <View style={styles.directoryCardHeader}>
-                            <MaterialCommunityIcons name="account" size={24} color="#3b82f6" />
+                            <MaterialCommunityIcons name="account" size={24} color={colors.primary} />
                             <Text style={styles.directoryCardName}>{buyer.name}</Text>
                           </View>
                           <View style={styles.directoryCardInfo}>
                             <Text style={styles.directoryCardDetail}>
-                              <MaterialCommunityIcons name="lightning-bolt" size={14} color="#64748b" />
+                              <MaterialCommunityIcons name="lightning-bolt" size={14} color={colors.textMuted} />
                               {' '}Needs: {formatEnergy(buyer.energyNeeded, 'kWh')}
                             </Text>
                             <Text style={styles.directoryCardDetail}>
-                              <MaterialCommunityIcons name="currency-inr" size={14} color="#64748b" />
+                              <MaterialCommunityIcons name="currency-inr" size={14} color={colors.textMuted} />
                               {' '}Max: {formatCurrency(buyer.maxPricePerUnit)}/kWh
                             </Text>
                             {buyer.location?.address && (
                               <Text style={styles.directoryCardDetail}>
-                                <Ionicons name="location" size={14} color="#64748b" />
+                                <Ionicons name="location" size={14} color={colors.textMuted} />
                                 {' '}{buyer.location.address}
                               </Text>
                             )}
@@ -1058,7 +1067,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                       ))
                     ) : (
                       <View style={styles.emptyDirectory}>
-                        <MaterialCommunityIcons name="account-group" size={48} color="#d1d5db" />
+                        <MaterialCommunityIcons name="account-group" size={48} color={colors.border} />
                         <Text style={styles.emptyDirectoryText}>No buyers registered yet</Text>
                       </View>
                     )
@@ -1067,26 +1076,26 @@ export default function MarketplaceScreen({ navigation }: Props) {
                       allSellers.map((seller) => (
                         <View key={seller.id} style={styles.directoryCard}>
                           <View style={styles.directoryCardHeader}>
-                            <MaterialCommunityIcons name="store" size={24} color="#10b981" />
+                            <MaterialCommunityIcons name="store" size={24} color={colors.success} />
                             <Text style={styles.directoryCardName}>{seller.name}</Text>
                             {seller.greenEnergy && (
                               <View style={styles.greenBadgeSmall}>
-                                <MaterialCommunityIcons name="leaf" size={12} color="#10b981" />
+                                <MaterialCommunityIcons name="leaf" size={12} color={colors.success} />
                               </View>
                             )}
                           </View>
                           <View style={styles.directoryCardInfo}>
                             <Text style={styles.directoryCardDetail}>
-                              <MaterialCommunityIcons name="lightning-bolt" size={14} color="#64748b" />
+                              <MaterialCommunityIcons name="lightning-bolt" size={14} color={colors.textMuted} />
                               {' '}Available: {formatEnergy(seller.availableEnergy, 'kWh')}
                             </Text>
                             <Text style={styles.directoryCardDetail}>
-                              <MaterialCommunityIcons name="currency-inr" size={14} color="#64748b" />
+                              <MaterialCommunityIcons name="currency-inr" size={14} color={colors.textMuted} />
                               {' '}Price: {formatCurrency(seller.pricePerUnit)}/kWh
                             </Text>
                             {seller.rating !== undefined && seller.rating > 0 && (
                               <Text style={styles.directoryCardDetail}>
-                                <Ionicons name="star" size={14} color="#fbbf24" />
+                                <Ionicons name="star" size={14} color={colors.warning} />
                                 {' '}{seller.rating.toFixed(1)} rating
                               </Text>
                             )}
@@ -1095,7 +1104,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                       ))
                     ) : (
                       <View style={styles.emptyDirectory}>
-                        <MaterialCommunityIcons name="store-off" size={48} color="#d1d5db" />
+                        <MaterialCommunityIcons name="store-off" size={48} color={colors.border} />
                         <Text style={styles.emptyDirectoryText}>No sellers registered yet</Text>
                       </View>
                     )
@@ -1105,7 +1114,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                 /* Market Tab Content - Original functionality */
                 loading && !refreshing ? (
                   <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#3b82f6" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                     <Text style={styles.loadingText}>
                       Searching for {userType === 'seller' ? 'buyers' : 'sellers'}...
                     </Text>
@@ -1115,7 +1124,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     <MaterialCommunityIcons
                       name={userType === 'seller' ? 'account-off' : 'store-off'}
                       size={64}
-                      color="#d1d5db"
+                      color={colors.border}
                     />
                     <Text style={styles.emptyText}>
                       No {userType === 'seller' ? 'buyers' : 'sellers'} found
@@ -1131,10 +1140,10 @@ export default function MarketplaceScreen({ navigation }: Props) {
                         onPress={() => navigation.navigate('SellEnergy', {})}
                       >
                         <LinearGradient
-                          colors={['#0ea5e9', '#0284c7']}
+                          colors={[colors.primary, colors.primaryDark] as any}
                           style={styles.listEnergyButtonGradient}
                         >
-                          <MaterialCommunityIcons name="solar-panel" size={20} color="#ffffff" />
+                          <MaterialCommunityIcons name="solar-panel" size={20} color={colors.textInverse} />
                           <Text style={styles.listEnergyButtonText}>List Your Energy</Text>
                         </LinearGradient>
                       </TouchableOpacity>
@@ -1142,10 +1151,10 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     {!userLocation && (
                       <TouchableOpacity style={styles.locationButton} onPress={() => getLocation(true)}>
                         <LinearGradient
-                          colors={['#3b82f6', '#2563eb']}
+                          colors={[colors.primary, colors.primaryDark] as any}
                           style={styles.locationButtonGradient}
                         >
-                          <Ionicons name="location" size={20} color="#ffffff" />
+                          <Ionicons name="location" size={20} color={colors.textInverse} />
                           <Text style={styles.locationButtonText}>Enable Location</Text>
                         </LinearGradient>
                       </TouchableOpacity>
@@ -1193,7 +1202,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                       setShowTradeModal(false);
                       setSelectedSeller(null);
                     }}>
-                      <Ionicons name="close" size={24} color="#6b7280" />
+                      <Ionicons name="close" size={24} color={colors.textMuted} />
                     </TouchableOpacity>
                   </View>
 
@@ -1225,10 +1234,10 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     onPress={() => handleTradeOptionSelect('buy')}
                   >
                     <LinearGradient
-                      colors={['#3b82f6', '#2563eb']}
+                      colors={[colors.primary, colors.primaryDark] as any}
                       style={styles.tradeModalButtonGradient}
                     >
-                      <Ionicons name="cart" size={24} color="#ffffff" />
+                      <Ionicons name="cart" size={24} color={colors.text} />
                       <Text style={styles.tradeModalButtonText}>Buy Electricity</Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -1268,7 +1277,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                       setShowTradeModal(false);
                       setSelectedBuyer(null);
                     }}>
-                      <Ionicons name="close" size={24} color="#6b7280" />
+                      <Ionicons name="close" size={24} color={colors.textMuted} />
                     </TouchableOpacity>
                   </View>
 
@@ -1303,7 +1312,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
 
                   {/* Info-only notice - sellers cannot initiate sales */}
                   <View style={styles.infoNotice}>
-                    <Ionicons name="information-circle" size={20} color="#6b7280" />
+                    <Ionicons name="information-circle" size={20} color={colors.textMuted} />
                     <Text style={styles.infoNoticeText}>
                       Only buyers can place energy orders. List your energy for sale and wait for buyers to order.
                     </Text>
@@ -1328,7 +1337,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemedColors) => StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
@@ -1349,12 +1358,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 30,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 15,
-    color: '#64748b',
+    color: colors.textMuted,
     fontWeight: '500',
   },
   toggleContainer: {
@@ -1368,12 +1377,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.textInverse,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#d1fae5',
+    color: colors.primaryLight,
     fontWeight: '500',
   },
   headerActions: {
@@ -1384,7 +1393,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -1395,14 +1404,14 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.modalOverlay,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 40,
   },
   filtersContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     width: '100%',
     maxHeight: '90%',
@@ -1419,12 +1428,12 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
   },
   filtersTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
   },
   filtersContent: {
     padding: 20,
@@ -1435,7 +1444,7 @@ const styles = StyleSheet.create({
   filterSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 12,
   },
   filterRow: {
@@ -1447,27 +1456,28 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   filterHint: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 4,
   },
   filterInput: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
+    color: colors.text,
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 5,
   },
   switchLabelContainer: {
     flex: 1,
@@ -1476,8 +1486,9 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    backgroundColor: '#ffffff',
+    borderTopColor: colors.border,
+    backgroundColor: colors.card,
+    color: colors.text,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
@@ -1490,7 +1501,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   applyButtonText: {
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1509,7 +1520,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   emptyContainer: {
     flex: 1,
@@ -1520,13 +1531,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -1542,7 +1553,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   locationButtonText: {
-    color: '#ffffff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1559,7 +1570,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   listEnergyButtonText: {
-    color: '#ffffff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1572,15 +1583,15 @@ const styles = StyleSheet.create({
   resultsCount: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   filterLink: {
     fontSize: 14,
-    color: '#3b82f6',
+    color: colors.primary,
     fontWeight: '600',
   },
   sellerCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
     marginBottom: 12,
@@ -1591,7 +1602,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   buyerCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
     marginBottom: 12,
@@ -1601,7 +1612,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     borderLeftWidth: 4,
-    borderLeftColor: '#3b82f6',
+    borderLeftColor: colors.primary,
   },
   buyerCardHeader: {
     flexDirection: 'row',
@@ -1621,11 +1632,11 @@ const styles = StyleSheet.create({
   buyerName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   buyerDistance: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   buyerDetails: {
     gap: 12,
@@ -1638,7 +1649,7 @@ const styles = StyleSheet.create({
   },
   deliveryWindowText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   sellerCardHeader: {
     flexDirection: 'row',
@@ -1658,7 +1669,7 @@ const styles = StyleSheet.create({
   sellerName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   distanceRow: {
     flexDirection: 'row',
@@ -1667,12 +1678,12 @@ const styles = StyleSheet.create({
   },
   sellerDistance: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   greenBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#dcfce7',
+    backgroundColor: colors.successBackground,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -1681,7 +1692,7 @@ const styles = StyleSheet.create({
   greenBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#10b981',
+    color: colors.success,
   },
   sellerDetails: {
     gap: 12,
@@ -1701,13 +1712,13 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginBottom: 2,
   },
   detailValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -1717,11 +1728,11 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   mapContainer: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.backgroundSecondary,
   },
   map: {
     flex: 1,
@@ -1735,14 +1746,14 @@ const styles = StyleSheet.create({
   mapPlaceholderTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginTop: 16,
     marginBottom: 12,
     textAlign: 'center',
   },
   mapPlaceholderText: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 20,
@@ -1751,11 +1762,11 @@ const styles = StyleSheet.create({
   switchToListButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     borderRadius: 12,
   },
   switchToListButtonText: {
-    color: '#ffffff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1763,9 +1774,9 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     borderWidth: 3,
-    borderColor: '#ffffff',
+    borderColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1773,25 +1784,25 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
   },
   userLocationPulse: {
     position: 'absolute',
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     opacity: 0.3,
   },
   sellerMarker: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#ffffff',
+    borderColor: colors.card,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -1799,7 +1810,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   sellerMarkerGreen: {
-    backgroundColor: '#22c55e',
+    backgroundColor: colors.success,
   },
   mapControls: {
     position: 'absolute',
@@ -1811,7 +1822,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -1821,19 +1832,19 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   mapControlButtonActive: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primaryLight,
     borderWidth: 2,
-    borderColor: '#3b82f6',
+    borderColor: colors.primary,
   },
   sellerModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.modalOverlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   sellerModal: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
     width: '100%',
@@ -1851,7 +1862,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: colors.border,
   },
   sellerModalTitleRow: {
     flexDirection: 'row',
@@ -1862,7 +1873,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1870,14 +1881,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sellerModalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    color: colors.text,
   },
   sellerModalContent: {
     gap: 12,
@@ -1887,7 +1898,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.backgroundSecondary,
     padding: 14,
     borderRadius: 12,
   },
@@ -1895,7 +1906,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1904,13 +1915,13 @@ const styles = StyleSheet.create({
   },
   sellerModalLabel: {
     fontSize: 12,
-    color: '#64748b',
+    color: colors.textMuted,
     marginBottom: 2,
   },
   sellerModalValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
   },
   sellerModalButton: {
     borderRadius: 12,
@@ -1929,7 +1940,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   sellerModalButtonText: {
-    color: '#ffffff',
+    color: colors.textInverse,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -1938,7 +1949,7 @@ const styles = StyleSheet.create({
     top: 16,
     left: 16,
     right: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
@@ -1951,14 +1962,14 @@ const styles = StyleSheet.create({
   mapResultsText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
     textAlign: 'center',
   },
   mapLegend: {
     position: 'absolute',
     bottom: 80,
     left: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 12,
     shadowColor: '#000',
@@ -1978,23 +1989,23 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#ffffff',
+    borderColor: colors.card,
   },
   legendText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   // Trade Modal Styles
   tradeModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.modalOverlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   tradeModalContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
     width: '100%',
@@ -2014,11 +2025,11 @@ const styles = StyleSheet.create({
   tradeModalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     flex: 1,
   },
   tradeModalInfo: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
@@ -2031,18 +2042,18 @@ const styles = StyleSheet.create({
   },
   tradeModalInfoLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontWeight: '500',
   },
   tradeModalInfoValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   tradeModalQuestion: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -2064,7 +2075,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tradeModalButtonText: {
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -2076,12 +2087,12 @@ const styles = StyleSheet.create({
   tradeModalCancelText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   // Tab Navigation Styles
   tabNavigation: {
     flexDirection: 'row',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 12,
     padding: 4,
     marginTop: 12,
@@ -2094,7 +2105,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabButtonActive: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -2104,10 +2115,10 @@ const styles = StyleSheet.create({
   tabButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#64748b',
+    color: colors.textMuted,
   },
   tabButtonTextActive: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontWeight: '600',
   },
   // List Energy CTA Styles (for sellers)
@@ -2134,11 +2145,11 @@ const styles = StyleSheet.create({
   listEnergyCtaTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.textInverse,
   },
   listEnergyCtaSubtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textInverse,
     marginTop: 2,
   },
   // Directory Styles
@@ -2149,15 +2160,15 @@ const styles = StyleSheet.create({
   directoryTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
   },
   directorySubtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textMuted,
     marginTop: 4,
   },
   directoryCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -2176,7 +2187,7 @@ const styles = StyleSheet.create({
   directoryCardName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text,
     flex: 1,
   },
   directoryCardInfo: {
@@ -2184,7 +2195,7 @@ const styles = StyleSheet.create({
   },
   directoryCardDetail: {
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textMuted,
   },
   emptyDirectory: {
     alignItems: 'center',
@@ -2204,7 +2215,7 @@ const styles = StyleSheet.create({
   infoNotice: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.backgroundSecondary,
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
@@ -2213,7 +2224,7 @@ const styles = StyleSheet.create({
   infoNoticeText: {
     flex: 1,
     fontSize: 14,
-    color: '#64748b',
+    color: colors.textMuted,
     lineHeight: 20,
   },
 });
