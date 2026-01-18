@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { locationService } from '@/services/locationService';
 import Constants from 'expo-constants';
 import { RootStackParamList, Seller } from '@/types';
@@ -353,6 +354,18 @@ export default function MarketplaceScreen({ navigation }: Props) {
     }
   }, [userLocation, filters, isOnline, viewMode, mapReady]);
 
+  // Reload data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (userType === 'seller') {
+        searchBuyers();
+      } else {
+        searchSellers();
+      }
+      fetchDirectory();
+    }, [userType, searchBuyers, searchSellers, fetchDirectory])
+  );
+
   // Auto-refresh based on mode - Fixed memory leak by clearing existing interval before creating new one
   useEffect(() => {
     // Always clear existing interval first to prevent stacking
@@ -433,7 +446,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
     if (option === 'buy' && selectedSeller) {
       // Navigate to order screen for buying
       navigation.navigate('Order', {
-        sellerId: selectedSeller.id,
+        sellerId: selectedSeller.userId || selectedSeller.id,
         sellerName: selectedSeller.name,
         pricePerUnit: selectedSeller.pricePerUnit,
         availableEnergy: selectedSeller.availableEnergy,
@@ -726,8 +739,14 @@ export default function MarketplaceScreen({ navigation }: Props) {
                 <TouchableOpacity
                   style={styles.sellerModalButton}
                   onPress={() => {
+                    const seller = selectedSeller;
                     setSelectedSeller(null);
-                    handleSellerPress(selectedSeller);
+                    navigation.navigate('Order', {
+                      sellerId: seller.userId || seller.id,
+                      sellerName: seller.name,
+                      pricePerUnit: seller.pricePerUnit,
+                      availableEnergy: seller.availableEnergy,
+                    });
                   }}
                 >
                   <LinearGradient
@@ -736,8 +755,8 @@ export default function MarketplaceScreen({ navigation }: Props) {
                     end={{ x: 1, y: 0 }}
                     style={styles.sellerModalButtonGradient}
                   >
-                    <Ionicons name="eye" size={20} color="#ffffff" />
-                    <Text style={styles.sellerModalButtonText}>View Details</Text>
+                    <Ionicons name="flash" size={20} color="#ffffff" />
+                    <Text style={styles.sellerModalButtonText}>Buy Electricity</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -759,7 +778,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
         {/* Map Legend */}
         <View style={styles.mapLegend}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendMarker, { backgroundColor: '#10b981' }]} />
+            <View style={[styles.legendMarker, { backgroundColor: '#3b82f6' }]} />
             <Text style={styles.legendText}>Sellers</Text>
           </View>
           <View style={styles.legendItem}>
@@ -767,7 +786,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
             <Text style={styles.legendText}>Buyers</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendMarker, { backgroundColor: '#3b82f6' }]} />
+            <View style={[styles.legendMarker, { backgroundColor: '#0062ff7a' }]} />
             <Text style={styles.legendText}>Your Location</Text>
           </View>
         </View>
@@ -873,6 +892,10 @@ export default function MarketplaceScreen({ navigation }: Props) {
               </View>
             </View>
 
+          </ScrollView>
+
+          {/* Apply Filters Button - Fixed at bottom */}
+          <View style={styles.applyButtonContainer}>
             <TouchableOpacity
               style={styles.applyButton}
               onPress={() => {
@@ -891,7 +914,7 @@ export default function MarketplaceScreen({ navigation }: Props) {
                 <Text style={styles.applyButtonText}>Apply Filters</Text>
               </LinearGradient>
             </TouchableOpacity>
-          </ScrollView>
+          </View>
         </View>
       </View>
     </Modal>
@@ -933,8 +956,8 @@ export default function MarketplaceScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {/* Seller: Prominent List Energy CTA */}
-          {userType === 'seller' && (
+          {/* Seller: Prominent List Energy CTA - hidden in map view */}
+          {userType === 'seller' && viewMode !== 'map' && (
             <TouchableOpacity
               style={styles.listEnergyCta}
               onPress={() => navigation.navigate('SellEnergy', {})}
@@ -955,25 +978,27 @@ export default function MarketplaceScreen({ navigation }: Props) {
             </TouchableOpacity>
           )}
 
-          {/* Tab Navigation: Market / Directory */}
-          <View style={styles.tabNavigation}>
-            <TouchableOpacity
-              style={[styles.tabButton, directoryTab === 'market' && styles.tabButtonActive]}
-              onPress={() => setDirectoryTab('market')}
-            >
-              <Text style={[styles.tabButtonText, directoryTab === 'market' && styles.tabButtonTextActive]}>
-                {userType === 'buyer' ? 'Browse Sellers' : 'Browse Buyers'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tabButton, directoryTab === 'directory' && styles.tabButtonActive]}
-              onPress={() => setDirectoryTab('directory')}
-            >
-              <Text style={[styles.tabButtonText, directoryTab === 'directory' && styles.tabButtonTextActive]}>
-                {userType === 'buyer' ? 'Buyers Directory' : 'Sellers Directory'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {/* Tab Navigation: Market / Directory - hidden in map view */}
+          {viewMode !== 'map' && (
+            <View style={styles.tabNavigation}>
+              <TouchableOpacity
+                style={[styles.tabButton, directoryTab === 'market' && styles.tabButtonActive]}
+                onPress={() => setDirectoryTab('market')}
+              >
+                <Text style={[styles.tabButtonText, directoryTab === 'market' && styles.tabButtonTextActive]}>
+                  {userType === 'buyer' ? 'Browse Sellers' : 'Browse Buyers'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tabButton, directoryTab === 'directory' && styles.tabButtonActive]}
+                onPress={() => setDirectoryTab('directory')}
+              >
+                <Text style={[styles.tabButtonText, directoryTab === 'directory' && styles.tabButtonTextActive]}>
+                  {userType === 'buyer' ? 'Buyers Directory' : 'Sellers Directory'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Toggle removed - role determines view (buyers see sellers, sellers see buyers) */}
         </View>
@@ -1371,19 +1396,28 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 40,
   },
   filtersContainer: {
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '80%',
+    borderRadius: 24,
+    width: '100%',
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 10,
   },
   filtersHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
+    paddingTop: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
@@ -1438,10 +1472,18 @@ const styles = StyleSheet.create({
   switchLabelContainer: {
     flex: 1,
   },
+  applyButtonContainer: {
+    padding: 20,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
   applyButton: {
     borderRadius: 12,
     overflow: 'hidden',
-    marginTop: 8,
   },
   applyButtonGradient: {
     paddingVertical: 16,
@@ -1785,27 +1827,31 @@ const styles = StyleSheet.create({
   },
   sellerModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   sellerModal: {
-    backgroundColor: '#1a1a2e',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
     padding: 24,
-    maxHeight: '55%',
-    borderWidth: 1,
-    borderColor: '#2a2a4e',
-    borderBottomWidth: 0,
+    width: '100%',
+    maxWidth: 360,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
   },
   sellerModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a4e',
+    borderBottomColor: '#e2e8f0',
   },
   sellerModalTitleRow: {
     flexDirection: 'row',
@@ -1813,10 +1859,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sellerModalAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#eff6ff',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1824,32 +1870,32 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(148, 163, 184, 0.1)',
+    backgroundColor: '#f1f5f9',
     justifyContent: 'center',
     alignItems: 'center',
   },
   sellerModalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#f8fafc',
+    color: '#1e293b',
   },
   sellerModalContent: {
-    gap: 14,
-    marginBottom: 24,
+    gap: 12,
+    marginBottom: 20,
   },
   sellerModalRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: 'rgba(42, 42, 78, 0.5)',
+    backgroundColor: '#f8fafc',
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 12,
   },
   sellerModalIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 10,
+    backgroundColor: '#eff6ff',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1858,25 +1904,25 @@ const styles = StyleSheet.create({
   },
   sellerModalLabel: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: '#64748b',
     marginBottom: 2,
   },
   sellerModalValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#f1f5f9',
+    color: '#1e293b',
   },
   sellerModalButton: {
-    borderRadius: 14,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#3b82f6',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 6,
   },
   sellerModalButtonGradient: {
-    paddingVertical: 16,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1884,8 +1930,8 @@ const styles = StyleSheet.create({
   },
   sellerModalButtonText: {
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
   },
   mapResultsOverlay: {
     position: 'absolute',

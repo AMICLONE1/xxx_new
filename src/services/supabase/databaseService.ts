@@ -213,6 +213,7 @@ class SupabaseDatabaseService {
     };
   }
 
+
   /**
    * Get user's transactions
    */
@@ -768,6 +769,71 @@ class SupabaseDatabaseService {
     if (error) throw error;
 
     return this.mapSellerFromDb(data);
+  }
+
+  /**
+   * Update wallet without returning data
+   * Useful when RLS prevents selecting the updated row
+   */
+  async updateWalletNoReturn(
+    userId: string,
+    updates: Partial<Pick<Wallet, 'energyBalance' | 'cashBalance'>>
+  ): Promise<void> {
+    const updateData: Record<string, number> = {};
+    if (updates.energyBalance !== undefined) updateData.energy_balance = updates.energyBalance;
+    if (updates.cashBalance !== undefined) updateData.cash_balance = updates.cashBalance;
+
+    const { error, count } = await supabase
+      .from('wallets')
+      .update(updateData, { count: 'exact' })
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    if (count === 0) {
+      console.warn(`[Supabase] updateWalletNoReturn led to 0 updates for user ${userId}. Possible RLS restriction.`);
+    }
+  }
+
+  /**
+   * Update seller listing without returning data
+   * Useful when RLS prevents selecting the updated row
+   */
+  async updateSellerNoReturn(
+    userId: string,
+    updates: Partial<{
+      name: string;
+      location: { lat: number; lng: number; address?: string };
+      pricePerUnit: number;
+      availableEnergy: number;
+      greenEnergy: boolean;
+      avgGeneration: number;
+      peakGeneration: number;
+      netExport: number;
+      totalEnergySold: number;
+      status: 'active' | 'inactive' | 'suspended';
+    }>
+  ): Promise<void> {
+    const updateData: Record<string, unknown> = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.location !== undefined) updateData.location = updates.location;
+    if (updates.pricePerUnit !== undefined) updateData.price_per_unit = updates.pricePerUnit;
+    if (updates.availableEnergy !== undefined) updateData.available_energy = updates.availableEnergy;
+    if (updates.greenEnergy !== undefined) updateData.green_energy = updates.greenEnergy;
+    if (updates.avgGeneration !== undefined) updateData.avg_generation = updates.avgGeneration;
+    if (updates.peakGeneration !== undefined) updateData.peak_generation = updates.peakGeneration;
+    if (updates.netExport !== undefined) updateData.net_export = updates.netExport;
+    if (updates.totalEnergySold !== undefined) updateData.total_energy_sold = updates.totalEnergySold;
+    if (updates.status !== undefined) updateData.status = updates.status;
+
+    const { error, count } = await supabase
+      .from('sellers')
+      .update(updateData, { count: 'exact' })
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    if (count === 0) {
+      console.warn(`[Supabase] updateSellerNoReturn led to 0 updates for user ${userId}. Possible RLS restriction.`);
+    }
   }
 
   /**

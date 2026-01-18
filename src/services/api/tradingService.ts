@@ -148,6 +148,25 @@ class TradingService {
       };
     }
   }
+
+  /**
+   * Place an order with full transaction processing
+   * - Creates order record
+   * - Deducts cash from buyer's wallet
+   * - Adds cash to seller's wallet
+   * - Creates transaction records for both parties
+   * - Updates seller's available energy
+   */
+  async placeOrderWithTransaction(data: CreateOrderRequest & { buyerId: string }): Promise<ApiResponse<Order>> {
+    // Delegate to backend API which now handles the full transaction securely (admin context)
+    // This avoids RLS issues where buyer cannot update seller's wallet/data
+    const { sellerId, energyAmount, pricePerUnit } = data;
+    return this.createOrder({
+      sellerId,
+      energyAmount,
+      pricePerUnit
+    });
+  }
 }
 
 export const tradingService = new TradingService();

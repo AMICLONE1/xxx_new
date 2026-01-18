@@ -57,7 +57,7 @@ const ENERGY_NODE_CONFIGS: Record<EnergyNodeType, EnergyNodeConfig> = {
   },
   home: {
     id: 'home',
-    label: 'Home',
+    label: 'Consumption',
     icon: 'home',
     iconFamily: 'Ionicons',
     gradientColors: ['#3b82f6', '#2563eb'],
@@ -131,22 +131,24 @@ export default function HomeScreen({ navigation }: Props) {
   // DYNAMIC ENERGY NODES
   // ============================================
 
-  // Determine which energy nodes to show based on user's assets
+  // Determine which energy nodes to show based on user type and assets
+  // Seller: Solar -> Grid -> Consumption (Home)
+  // Buyer: Grid -> Battery(optional) -> Consumption (Home)
   const visibleEnergyNodes = useMemo(() => {
-    // Default to showing all nodes if user data not available (for demo/dev)
-    const hasSolar = user?.hasSolar ?? true;
+    const userType = user?.userType || 'buyer';
     const hasBattery = user?.hasBattery ?? true;
-    const hasGrid = user?.hasGrid ?? true;
 
-    const nodeVisibility: Record<EnergyNodeType, boolean> = {
-      solar: hasSolar,
-      home: true, // Home is ALWAYS present
-      battery: hasBattery,
-      grid: hasGrid,
-    };
-
-    return ENERGY_FLOW_ORDER.filter((nodeId) => nodeVisibility[nodeId]);
-  }, [user?.hasSolar, user?.hasBattery, user?.hasGrid]);
+    if (userType === 'seller') {
+      // Seller flow: Solar -> Grid -> Home (Consumption)
+      return ['solar', 'grid', 'home'] as EnergyNodeType[];
+    } else {
+      // Buyer flow: Grid -> Battery(optional) -> Home (Consumption)
+      if (hasBattery) {
+        return ['grid', 'battery', 'home'] as EnergyNodeType[];
+      }
+      return ['grid', 'home'] as EnergyNodeType[];
+    }
+  }, [user?.userType, user?.hasBattery]);
 
   // Animation opacities for each node type
   const nodeAnimations = useMemo(() => ({
